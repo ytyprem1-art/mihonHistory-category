@@ -20,9 +20,8 @@ class ManageHistoryCategory(
     }
 
     suspend fun moveToCategory(mangaId: Long, categoryId: Long) {
-        if (categoryId == 0L) {
-            repository.deleteMangaMapping(mangaId)
-        } else {
+        repository.deleteMangaMapping(mangaId)
+        if (categoryId != 0L) {
             repository.insertMangaMapping(mangaId, categoryId)
         }
     }
