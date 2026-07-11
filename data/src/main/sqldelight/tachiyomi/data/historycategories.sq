@@ -1,0 +1,46 @@
+import java.lang.Long;
+
+-- Tabel untuk menyimpan nama Kategori History (misal: "18+", "Manhwa")
+CREATE TABLE history_categories (
+    _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL
+);
+
+-- Tabel pemetaan untuk mencatat manga_id mana masuk ke kategori history mana
+CREATE TABLE history_category_mapping (
+    _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    manga_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    FOREIGN KEY(category_id) REFERENCES history_categories(_id) ON DELETE CASCADE
+);
+
+-- Kueri untuk mengambil semua kategori history
+getHistoryCategories:
+SELECT *
+FROM history_categories;
+
+-- Kueri untuk membuat kategori history baru
+insertHistoryCategory:
+INSERT INTO history_categories(name)
+VALUES (?);
+
+-- Kueri untuk menghapus kategori history
+deleteHistoryCategory:
+DELETE FROM history_categories
+WHERE _id = ?;
+
+-- Kueri untuk memasukkan/memindahkan manga ke kategori history khusus
+insertMangaMapping:
+INSERT OR REPLACE INTO history_category_mapping(manga_id, category_id)
+VALUES (?, ?);
+
+-- Kueri untuk menghapus komik dari kategori history khusus (dikembangkan ke default)
+deleteMangaMapping:
+DELETE FROM history_category_mapping
+WHERE manga_id = ?;
+
+-- Kueri untuk mengecek komik ini masuk di kategori history mana
+getCategoryForManga:
+SELECT category_id
+FROM history_category_mapping
+WHERE manga_id = ?;

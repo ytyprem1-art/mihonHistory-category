@@ -52,12 +52,18 @@ class HistoryScreenModelStateProvider : PreviewParameterProvider<HistoryScreenMo
 
     private val loadingWithSearchQuery = HistoryScreenModel.State(
         searchQuery = "Example Search Query",
+        list = emptyList(),
+        dialog = null,
+        historyCategories = emptyList(),
+        selectedCategoryId = 0L
     )
 
     private val loading = HistoryScreenModel.State(
         searchQuery = null,
-        list = null,
+        list = emptyList(), // 👈 UBAH DARI null MENJADI emptyList()
         dialog = null,
+        historyCategories = emptyList(),
+        selectedCategoryId = 0L
     )
 
     override val values: Sequence<HistoryScreenModel.State> = sequenceOf(

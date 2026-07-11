@@ -1,13 +1,20 @@
 package eu.kanade.presentation.history
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -39,28 +46,63 @@ fun HistoryScreen(
     onClickResume: (mangaId: Long, chapterId: Long) -> Unit,
     onClickFavorite: (mangaId: Long) -> Unit,
     onDialogChange: (HistoryScreenModel.Dialog?) -> Unit,
+    onTabSelected: (Long) -> Unit,
+    onClickChangeCategory: (mangaId: Long) -> Unit,
+    screenModel: HistoryScreenModel,
 ) {
     Scaffold(
         topBar = { scrollBehavior ->
-            SearchToolbar(
-                titleContent = { AppBarTitle(stringResource(MR.strings.history)) },
-                searchQuery = state.searchQuery,
-                onChangeSearchQuery = onSearchQueryChange,
-                actions = {
-                    AppBarActions(
-                        listOf(
-                            AppBar.Action(
-                                title = stringResource(MR.strings.pref_clear_history),
-                                icon = Icons.Outlined.DeleteSweep,
-                                onClick = {
-                                    onDialogChange(HistoryScreenModel.Dialog.DeleteAll)
-                                },
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SearchToolbar(
+                    titleContent = { AppBarTitle(stringResource(MR.strings.history)) },
+                    searchQuery = state.searchQuery,
+                    onChangeSearchQuery = onSearchQueryChange,
+                    actions = {
+                        AppBarActions(
+                            listOf(
+                                AppBar.Action(
+                                    title = "Tambah Kategori History",
+                                    icon = Icons.Outlined.Create,
+                                    onClick = {
+                                        onDialogChange(HistoryScreenModel.Dialog.CreateHistoryCategory)
+                                    },
+                                ),
+                                AppBar.Action(
+                                    title = stringResource(MR.strings.pref_clear_history),
+                                    icon = Icons.Outlined.DeleteSweep,
+                                    onClick = {
+                                        onDialogChange(HistoryScreenModel.Dialog.DeleteAll)
+                                    },
+                                ),
                             ),
-                        ),
-                    )
-                },
-                scrollBehavior = scrollBehavior,
-            )
+                        )
+                    },
+                    scrollBehavior = scrollBehavior,
+                )
+
+                if (state.historyCategories.isNotEmpty()) {
+                    ScrollableTabRow(
+                        selectedTabIndex = run {
+                            val index = state.historyCategories.indexOfFirst { it.id == state.selectedCategoryId }
+                            if (index == -1) 0 else index + 1
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Tab(
+                            selected = state.selectedCategoryId == 0L,
+                            onClick = { onTabSelected(0L) },
+                            text = { Text("Semua") },
+                        )
+                        state.historyCategories.forEach { category ->
+                            Tab(
+                                selected = state.selectedCategoryId == category.id,
+                                onClick = { onTabSelected(category.id) },
+                                text = { Text(category.name) },
+                            )
+                        }
+                    }
+                }
+            }
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { contentPadding ->
@@ -81,10 +123,13 @@ fun HistoryScreen(
                 HistoryScreenContent(
                     history = it,
                     contentPadding = contentPadding,
+                    selectedCategoryId = state.selectedCategoryId,
+                    categoryMap = state.mangaToCategoryMap, // 👈 OPER MAP MEMORI
                     onClickCover = { history -> onClickCover(history.mangaId) },
                     onClickResume = { history -> onClickResume(history.mangaId, history.chapterId) },
                     onClickDelete = { item -> onDialogChange(HistoryScreenModel.Dialog.Delete(item)) },
                     onClickFavorite = { history -> onClickFavorite(history.mangaId) },
+                    onClickChangeCategory = onClickChangeCategory,
                 )
             }
         }
@@ -95,23 +140,36 @@ fun HistoryScreen(
 private fun HistoryScreenContent(
     history: List<HistoryUiModel>,
     contentPadding: PaddingValues,
+    selectedCategoryId: Long,
+    categoryMap: Map<Long, Long>,
     onClickCover: (HistoryWithRelations) -> Unit,
     onClickResume: (HistoryWithRelations) -> Unit,
     onClickDelete: (HistoryWithRelations) -> Unit,
     onClickFavorite: (HistoryWithRelations) -> Unit,
+    onClickChangeCategory: (Long) -> Unit,
 ) {
+    val filteredHistory = remember(history, selectedCategoryId, categoryMap) {
+        if (selectedCategoryId != 0L) {
+            history.filter { uiModel ->
+                when (uiModel) {
+                    is HistoryUiModel.Header -> true
+                    is HistoryUiModel.Item -> {
+                        val cId = categoryMap[uiModel.item.mangaId] ?: 0L
+                        cId == selectedCategoryId
+                    }
+                }
+            }
+        } else {
+            history
+        }
+    }
+
     FastScrollLazyColumn(
         contentPadding = contentPadding,
     ) {
         items(
-            items = history,
+            items = filteredHistory,
             key = { "history-${it.hashCode()}" },
-            contentType = {
-                when (it) {
-                    is HistoryUiModel.Header -> "header"
-                    is HistoryUiModel.Item -> "item"
-                }
-            },
         ) { item ->
             when (item) {
                 is HistoryUiModel.Header -> {
@@ -120,15 +178,22 @@ private fun HistoryScreenContent(
                         text = relativeDateText(item.date),
                     )
                 }
+
                 is HistoryUiModel.Item -> {
                     val value = item.item
+
                     HistoryItem(
-                        modifier = Modifier.animateItemFastScroll(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateItemFastScroll(),
                         history = value,
                         onClickCover = { onClickCover(value) },
                         onClickResume = { onClickResume(value) },
                         onClickDelete = { onClickDelete(value) },
                         onClickFavorite = { onClickFavorite(value) },
+                        onLongClick = {
+                            onClickChangeCategory(value.mangaId)
+                        },
                     )
                 }
             }
@@ -148,14 +213,6 @@ internal fun HistoryScreenPreviews(
     historyState: HistoryScreenModel.State,
 ) {
     TachiyomiPreviewTheme {
-        HistoryScreen(
-            state = historyState,
-            snackbarHostState = SnackbarHostState(),
-            onSearchQueryChange = {},
-            onClickCover = {},
-            onClickResume = { _, _ -> run {} },
-            onDialogChange = {},
-            onClickFavorite = {},
-        )
+        Text("Preview Mode")
     }
 }

@@ -101,6 +101,10 @@ import uy.kohesive.injekt.api.InjektRegistrar
 import uy.kohesive.injekt.api.addFactory
 import uy.kohesive.injekt.api.addSingletonFactory
 import uy.kohesive.injekt.api.get
+import tachiyomi.domain.history.repository.HistoryCategoryRepository
+import tachiyomi.data.history.HistoryCategoryRepositoryImpl
+import tachiyomi.domain.history.interactor.ManageHistoryCategory
+
 
 class DomainModule : InjektModule {
 
@@ -168,6 +172,8 @@ class DomainModule : InjektModule {
         addFactory { FilterChaptersForDownload(get(), get(), get()) }
 
         addSingletonFactory<HistoryRepository> { HistoryRepositoryImpl(get()) }
+        addSingletonFactory<HistoryCategoryRepository> { HistoryCategoryRepositoryImpl(get()) }
+        addFactory { ManageHistoryCategory(get()) }
         addFactory { GetHistory(get()) }
         addFactory { UpsertHistory(get()) }
         addFactory { RemoveHistory(get()) }

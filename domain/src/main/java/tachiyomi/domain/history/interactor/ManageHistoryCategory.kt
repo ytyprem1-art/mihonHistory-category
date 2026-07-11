@@ -1,0 +1,33 @@
+package tachiyomi.domain.history.interactor
+
+import kotlinx.coroutines.flow.Flow
+import tachiyomi.domain.history.repository.HistoryCategory
+import tachiyomi.domain.history.repository.HistoryCategoryRepository
+
+class ManageHistoryCategory(
+    private val repository: HistoryCategoryRepository
+) {
+    fun subscribe(): Flow<List<HistoryCategory>> {
+        return repository.getHistoryCategories()
+    }
+
+    suspend fun create(name: String) {
+        repository.insertHistoryCategory(name)
+    }
+
+    suspend fun delete(id: Long) {
+        repository.deleteHistoryCategory(id)
+    }
+
+    suspend fun moveToCategory(mangaId: Long, categoryId: Long) {
+        if (categoryId == 0L) {
+            repository.deleteMangaMapping(mangaId)
+        } else {
+            repository.insertMangaMapping(mangaId, categoryId)
+        }
+    }
+
+    suspend fun getMangaCategory(mangaId: Long): Long? {
+        return repository.getCategoryForManga(mangaId)
+    }
+}

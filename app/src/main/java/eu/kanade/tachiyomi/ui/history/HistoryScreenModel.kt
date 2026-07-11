@@ -32,6 +32,7 @@ import tachiyomi.domain.category.model.Category
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.history.interactor.GetHistory
 import tachiyomi.domain.history.interactor.GetNextChapters
+import tachiyomi.domain.history.interactor.ManageHistoryCategory
 import tachiyomi.domain.history.interactor.RemoveHistory
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.library.service.LibraryPreferences
@@ -42,18 +43,20 @@ import tachiyomi.domain.manga.model.MangaWithChapterCount
 import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import kotlinx.coroutines.flow.first
 
 class HistoryScreenModel(
     private val addTracks: AddTracks = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
     private val getDuplicateLibraryManga: GetDuplicateLibraryManga = Injekt.get(),
     private val getHistory: GetHistory = Injekt.get(),
-    private val getManga: GetManga = Injekt.get(),
+    val getManga: GetManga = Injekt.get(),
     private val getNextChapters: GetNextChapters = Injekt.get(),
     private val libraryPreferences: LibraryPreferences = Injekt.get(),
     private val removeHistory: RemoveHistory = Injekt.get(),
     private val setMangaCategories: SetMangaCategories = Injekt.get(),
     private val updateManga: UpdateManga = Injekt.get(),
+    private val manageHistoryCategory: ManageHistoryCategory = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
     private val sourceManager: SourceManager = Injekt.get(),
 ) : StateScreenModel<HistoryScreenModel.State>(State()) {
@@ -62,9 +65,17 @@ class HistoryScreenModel(
     val events: Flow<Event> = _events.receiveAsFlow()
 
     init {
-        screenModelScope.launch {
-            state.map { it.searchQuery }
-                .distinctUntilChanged()
+        // Coroutine 1: Mengambil daftar kategori untuk Tab Row
+        screenModelScope.launchIO {
+            manageHistoryCategory.subscribe()
+                .collect { categories ->
+                    mutableState.update { it.copy(historyCategories = categories) }
+                }
+        }
+
+        // Coroutine 2: Mengambil list riwayat mentah dengan isolasi Dispatcher murni
+        screenModelScope.launchIO {
+            state.map { it.searchQuery }.distinctUntilChanged()
                 .flatMapLatest { query ->
                     getHistory.subscribe(query ?: "")
                         .distinctUntilChanged()
@@ -72,10 +83,35 @@ class HistoryScreenModel(
                             logcat(LogPriority.ERROR, error)
                             _events.send(Event.InternalError)
                         }
-                        .map { it.toHistoryUiModels() }
-                        .flowOn(Dispatchers.IO)
                 }
-                .collect { newList -> mutableState.update { it.copy(list = newList) } }
+                .flowOn(Dispatchers.IO)
+                .collect { list ->
+                    val uiModels = list.toHistoryUiModels()
+
+                    // Kita pisahkan total eksekusi query map ke scope IO terpisah
+                    screenModelScope.launch(Dispatchers.IO) {
+                        val mangaIds = list.map { it.mangaId }.distinct()
+                        val localMap = mutableMapOf<Long, Long>()
+
+                        // Eksekusi satu-persatu secara asinkron murni agar driver SQLDelight tenang
+                        for (mId in mangaIds) {
+                            try {
+                                val cId = manageHistoryCategory.getMangaCategory(mId) ?: 0L
+                                localMap[mId] = cId
+                            } catch (e: Exception) {
+                                localMap[mId] = 0L
+                            }
+                        }
+
+                        // Update state list beserta map kategorinya sekaligus secara aman
+                        mutableState.update {
+                            it.copy(
+                                list = uiModels,
+                                mangaToCategoryMap = localMap
+                            )
+                        }
+                    }
+                }
         }
     }
 
@@ -86,7 +122,6 @@ class HistoryScreenModel(
                 val afterDate = after?.item?.readAt?.time?.toLocalDate()
                 when {
                     beforeDate != afterDate && afterDate != null -> HistoryUiModel.Header(afterDate)
-                    // Return null to avoid adding a separator between two items.
                     else -> null
                 }
             }
@@ -131,15 +166,22 @@ class HistoryScreenModel(
         mutableState.update { it.copy(searchQuery = query) }
     }
 
+    fun updateSelectedCategory(categoryId: Long) {
+        mutableState.update { it.copy(selectedCategoryId = categoryId) }
+    }
+
+    fun createHistoryCategory(name: String) {
+        screenModelScope.launch {
+            manageHistoryCategory.create(name)
+            val updatedCategories = manageHistoryCategory.subscribe().first()
+            mutableState.update { it.copy(historyCategories = updatedCategories) }
+        }
+    }
+
     fun setDialog(dialog: Dialog?) {
         mutableState.update { it.copy(dialog = dialog) }
     }
 
-    /**
-     * Get user categories.
-     *
-     * @return List of categories, not including the default category
-     */
     suspend fun getCategories(): List<Category> {
         return getCategories.await().filterNot { it.isSystemCategory }
     }
@@ -185,31 +227,24 @@ class HistoryScreenModel(
 
     fun addFavorite(manga: Manga) {
         screenModelScope.launchIO {
-            // Move to default category if applicable
             val categories = getCategories()
             val defaultCategoryId = libraryPreferences.defaultCategory.get().toLong()
             val defaultCategory = categories.find { it.id == defaultCategoryId }
 
             when {
-                // Default category set
                 defaultCategory != null -> {
                     val result = updateManga.awaitUpdateFavorite(manga.id, true)
                     if (!result) return@launchIO
                     moveMangaToCategory(manga.id, defaultCategory)
                 }
-
-                // Automatic 'Default' or no categories
                 defaultCategoryId == 0L || categories.isEmpty() -> {
                     val result = updateManga.awaitUpdateFavorite(manga.id, true)
                     if (!result) return@launchIO
                     moveMangaToCategory(manga.id, null)
                 }
-
-                // Choose a category
                 else -> showChangeCategoryDialog(manga)
             }
 
-            // Sync with tracking services if applicable
             addTracks.bindEnhancedTrackers(manga, sourceManager.getOrStub(manga.source))
         }
     }
@@ -240,11 +275,15 @@ class HistoryScreenModel(
         val searchQuery: String? = null,
         val list: List<HistoryUiModel>? = null,
         val dialog: Dialog? = null,
+        val historyCategories: List<tachiyomi.domain.history.repository.HistoryCategory> = emptyList(),
+        val selectedCategoryId: Long = 0L,
+        val mangaToCategoryMap: Map<Long, Long> = emptyMap(), // Cache peta kategori memori UI
     )
 
     sealed interface Dialog {
         data object DeleteAll : Dialog
         data class Delete(val history: HistoryWithRelations) : Dialog
+        data object CreateHistoryCategory : Dialog
         data class DuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
         data class ChangeCategory(
             val manga: Manga,

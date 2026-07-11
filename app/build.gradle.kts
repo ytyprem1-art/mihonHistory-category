@@ -136,15 +136,16 @@ android {
 
     packaging {
         jniLibs {
-            keepDebugSymbols += listOf(
-                "libandroidx.graphics.path",
-                "libarchive-jni",
-                "libconscrypt_jni",
-                "libimagedecoder",
-                "libquickjs",
-                "libsqlite3x",
+            // Tulis manual hasil akhirnya agar tidak memicu pemanggilan fungsi lambda .map yang bikin error
+            val debugLibs = listOf(
+                "**/libandroidx.graphics.path.so",
+                "**/libarchive-jni.so",
+                "**/libconscrypt_jni.so",
+                "**/libimagedecoder.so",
+                "**/libquickjs.so",
+                "**/libsqlite3x.so"
             )
-                .map { "**/$it.so" }
+            keepDebugSymbols.addAll(debugLibs)
         }
         resources {
             excludes += setOf(
@@ -182,6 +183,7 @@ android {
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll(
+            "-Xcontext-parameters", // 👈 TAMBAHKAN BARIS INI DI PALING ATAS
             "-opt-in=androidx.compose.animation.ExperimentalAnimationApi",
             "-opt-in=androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi",
             "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",

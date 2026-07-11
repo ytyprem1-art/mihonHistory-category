@@ -1,6 +1,6 @@
 package eu.kanade.presentation.history.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -41,13 +41,22 @@ fun HistoryItem(
     onClickResume: () -> Unit,
     onClickDelete: () -> Unit,
     onClickFavorite: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
-            .clickable(onClick = onClickResume)
+            .combinedClickable(
+                onClick = onClickResume,
+                onLongClick = {
+                    onLongClick?.invoke()
+                },
+            )
             .height(HistoryItemHeight)
-            .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
+            .padding(
+                horizontal = MaterialTheme.padding.medium,
+                vertical = MaterialTheme.padding.small,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MangaCover.Book(
@@ -55,12 +64,17 @@ fun HistoryItem(
             data = history.coverData,
             onClick = onClickCover,
         )
+
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = MaterialTheme.padding.medium, end = MaterialTheme.padding.small),
+                .padding(
+                    start = MaterialTheme.padding.medium,
+                    end = MaterialTheme.padding.small,
+                ),
         ) {
             val textStyle = MaterialTheme.typography.bodyMedium
+
             Text(
                 text = history.title,
                 fontWeight = FontWeight.SemiBold,
@@ -68,7 +82,11 @@ fun HistoryItem(
                 overflow = TextOverflow.Ellipsis,
                 style = textStyle,
             )
-            val readAt = remember { history.readAt?.toTimestampString() ?: "" }
+
+            val readAt = remember {
+                history.readAt?.toTimestampString() ?: ""
+            }
+
             Text(
                 text = if (history.chapterNumber > -1) {
                     stringResource(
@@ -85,7 +103,9 @@ fun HistoryItem(
         }
 
         if (!history.coverData.isMangaFavorite) {
-            IconButton(onClick = onClickFavorite) {
+            IconButton(
+                onClick = onClickFavorite,
+            ) {
                 Icon(
                     imageVector = Icons.Outlined.FavoriteBorder,
                     contentDescription = stringResource(MR.strings.add_to_library),
@@ -94,7 +114,9 @@ fun HistoryItem(
             }
         }
 
-        IconButton(onClick = onClickDelete) {
+        IconButton(
+            onClick = onClickDelete,
+        ) {
             Icon(
                 imageVector = Icons.Outlined.Delete,
                 contentDescription = stringResource(MR.strings.action_delete),
@@ -118,6 +140,7 @@ private fun HistoryItemPreviews(
                 onClickResume = {},
                 onClickDelete = {},
                 onClickFavorite = {},
+                onLongClick = {},
             )
         }
     }

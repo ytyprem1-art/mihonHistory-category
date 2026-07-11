@@ -35,6 +35,9 @@ import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 data object HistoryTab : Tab {
 
@@ -64,6 +67,7 @@ data object HistoryTab : Tab {
         val context = LocalContext.current
         val screenModel = rememberScreenModel { HistoryScreenModel() }
         val state by screenModel.state.collectAsState()
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
 
         HistoryScreen(
             state = state,
@@ -73,10 +77,55 @@ data object HistoryTab : Tab {
             onClickResume = screenModel::getNextChapterForManga,
             onDialogChange = screenModel::setDialog,
             onClickFavorite = screenModel::addFavorite,
+            onTabSelected = screenModel::updateSelectedCategory,
+            onClickChangeCategory = { mangaId ->
+                scope.launch {
+                    val manga = screenModel.getManga.await(mangaId)
+                    if (manga != null) {
+                        screenModel.showChangeCategoryDialog(manga)
+                    }
+                }
+            },
+            screenModel = screenModel, // 👈 CUKUP TAMBAHKAN BARIS INI DI SINI, BOS!
         )
 
         val onDismissRequest = { screenModel.setDialog(null) }
         when (val dialog = state.dialog) {
+
+            // 👇 TAMBAHKAN BLOK DIALOG KUSTOM INI DI SINI
+            is HistoryScreenModel.Dialog.CreateHistoryCategory -> {
+                var categoryName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Tambah Kategori History Baru") },
+                    text = {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = categoryName,
+                            onValueChange = { categoryName = it },
+                            label = { androidx.compose.material3.Text("Nama Kategori") },
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                if (categoryName.isNotBlank()) {
+                                    screenModel.createHistoryCategory(categoryName)
+                                    onDismissRequest()
+                                }
+                            }
+                        ) {
+                            androidx.compose.material3.Text("Simpan")
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text("Batal")
+                        }
+                    }
+                )
+            }
+
             is HistoryScreenModel.Dialog.Delete -> {
                 HistoryDeleteDialog(
                     onDismissRequest = onDismissRequest,
