@@ -35,6 +35,7 @@ import tachiyomi.domain.history.interactor.GetNextChapters
 import tachiyomi.domain.history.interactor.ManageHistoryCategory
 import tachiyomi.domain.history.interactor.RemoveHistory
 import tachiyomi.domain.history.model.HistoryWithRelations
+import tachiyomi.domain.history.repository.HistoryCategory
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetDuplicateLibraryManga
 import tachiyomi.domain.manga.interactor.GetManga
@@ -170,6 +171,28 @@ class HistoryScreenModel(
         mutableState.update { it.copy(selectedCategoryId = categoryId) }
     }
 
+    fun showChangeHistoryCategoryDialog(mangaId: Long) {
+        screenModelScope.launchIO {
+            val categories = manageHistoryCategory.subscribe().first()
+            val currentCategoryId = manageHistoryCategory.getMangaCategory(mangaId) ?: 0L
+            mutableState.update { currentState ->
+                currentState.copy(
+                    dialog = Dialog.ChangeHistoryCategory(
+                        mangaId = mangaId,
+                        categories = categories,
+                        initialSelection = currentCategoryId,
+                    ),
+                )
+            }
+        }
+    }
+
+    fun moveMangaToHistoryCategory(mangaId: Long, categoryId: Long) {
+        screenModelScope.launchIO {
+            manageHistoryCategory.moveToCategory(mangaId, categoryId)
+        }
+    }
+
     fun createHistoryCategory(name: String) {
         screenModelScope.launch {
             manageHistoryCategory.create(name)
@@ -275,7 +298,7 @@ class HistoryScreenModel(
         val searchQuery: String? = null,
         val list: List<HistoryUiModel>? = null,
         val dialog: Dialog? = null,
-        val historyCategories: List<tachiyomi.domain.history.repository.HistoryCategory> = emptyList(),
+        val historyCategories: List<HistoryCategory> = emptyList(),
         val selectedCategoryId: Long = 0L,
         val mangaToCategoryMap: Map<Long, Long> = emptyMap(), // Cache peta kategori memori UI
     )
@@ -284,6 +307,11 @@ class HistoryScreenModel(
         data object DeleteAll : Dialog
         data class Delete(val history: HistoryWithRelations) : Dialog
         data object CreateHistoryCategory : Dialog
+        data class ChangeHistoryCategory(
+            val mangaId: Long,
+            val categories: List<HistoryCategory>,
+            val initialSelection: Long,
+        ) : Dialog
         data class DuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
         data class ChangeCategory(
             val manga: Manga,

@@ -2,6 +2,8 @@ package eu.kanade.presentation.history.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -11,12 +13,61 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
+import tachiyomi.domain.history.repository.HistoryCategory
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.LabeledCheckbox
+import tachiyomi.presentation.core.components.RadioItem
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
+
+@Composable
+fun HistoryCategoryDialog(
+    categories: List<HistoryCategory>,
+    initialSelection: Long,
+    onDismissRequest: () -> Unit,
+    onConfirm: (Long) -> Unit,
+) {
+    var selectedId by remember { mutableStateOf(initialSelection) }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(text = "Pilih Kategori History") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
+                RadioItem(
+                    label = "Tanpa Kategori",
+                    selected = selectedId == 0L,
+                    onClick = { selectedId = 0L },
+                )
+                categories.forEach { category ->
+                    RadioItem(
+                        label = category.name,
+                        selected = selectedId == category.id,
+                        onClick = { selectedId = category.id },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(selectedId)
+                onDismissRequest()
+            }) {
+                Text(text = stringResource(MR.strings.action_ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(text = stringResource(MR.strings.action_cancel))
+            }
+        },
+    )
+}
 
 @Composable
 fun HistoryDeleteDialog(

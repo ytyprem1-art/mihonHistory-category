@@ -18,6 +18,7 @@ import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import eu.kanade.presentation.category.components.ChangeCategoryDialog
 import eu.kanade.presentation.history.HistoryScreen
+import eu.kanade.presentation.history.components.HistoryCategoryDialog
 import eu.kanade.presentation.history.components.HistoryDeleteAllDialog
 import eu.kanade.presentation.history.components.HistoryDeleteDialog
 import eu.kanade.presentation.manga.DuplicateMangaDialog
@@ -67,7 +68,6 @@ data object HistoryTab : Tab {
         val context = LocalContext.current
         val screenModel = rememberScreenModel { HistoryScreenModel() }
         val state by screenModel.state.collectAsState()
-        val scope = androidx.compose.runtime.rememberCoroutineScope()
 
         HistoryScreen(
             state = state,
@@ -78,15 +78,8 @@ data object HistoryTab : Tab {
             onDialogChange = screenModel::setDialog,
             onClickFavorite = screenModel::addFavorite,
             onTabSelected = screenModel::updateSelectedCategory,
-            onClickChangeCategory = { mangaId ->
-                scope.launch {
-                    val manga = screenModel.getManga.await(mangaId)
-                    if (manga != null) {
-                        screenModel.showChangeCategoryDialog(manga)
-                    }
-                }
-            },
-            screenModel = screenModel, // 👈 CUKUP TAMBAHKAN BARIS INI DI SINI, BOS!
+            onClickChangeCategory = screenModel::showChangeHistoryCategoryDialog,
+            screenModel = screenModel,
         )
 
         val onDismissRequest = { screenModel.setDialog(null) }
@@ -151,6 +144,16 @@ data object HistoryTab : Tab {
                     onConfirm = { screenModel.addFavorite(dialog.manga) },
                     onOpenManga = { navigator.push(MangaScreen(it.id)) },
                     onMigrate = { screenModel.showMigrateDialog(dialog.manga, it) },
+                )
+            }
+            is HistoryScreenModel.Dialog.ChangeHistoryCategory -> {
+                HistoryCategoryDialog(
+                    categories = dialog.categories,
+                    initialSelection = dialog.initialSelection,
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { categoryId ->
+                        screenModel.moveMangaToHistoryCategory(dialog.mangaId, categoryId)
+                    },
                 )
             }
             is HistoryScreenModel.Dialog.ChangeCategory -> {

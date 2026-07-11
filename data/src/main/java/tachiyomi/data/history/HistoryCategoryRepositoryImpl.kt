@@ -1,25 +1,21 @@
 package tachiyomi.data.history
 
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
-import kotlinx.coroutines.Dispatchers // 👈 Tambah import ini
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import tachiyomi.data.Database
+import tachiyomi.data.subscribeToList
 import tachiyomi.domain.history.repository.HistoryCategory
 import tachiyomi.domain.history.repository.HistoryCategoryRepository
-import tachiyomi.data.Database
+
 
 class HistoryCategoryRepositoryImpl(
     private val database: Database,
-    // 👇 UBAH BARIS INI: Pakai Dispatchers.IO langsung
-    private val context: kotlin.coroutines.CoroutineContext = Dispatchers.IO
 ) : HistoryCategoryRepository {
-    // ... sisa kode di bawahnya tetap sama, jangan diubah ...
 
     override fun getHistoryCategories(): Flow<List<HistoryCategory>> {
         return database.historycategoriesQueries.getHistoryCategories()
-            .asFlow()
-            .mapToList(context)
+            .subscribeToList()
             .map { list ->
                 list.map { HistoryCategory(it._id, it.name) }
             }
@@ -42,6 +38,6 @@ class HistoryCategoryRepositoryImpl(
     }
 
     override suspend fun getCategoryForManga(mangaId: Long): Long? {
-        return database.historycategoriesQueries.getCategoryForManga(mangaId).executeAsOneOrNull()
+        return database.historycategoriesQueries.getCategoryForManga(mangaId).awaitAsOneOrNull()
     }
 }
