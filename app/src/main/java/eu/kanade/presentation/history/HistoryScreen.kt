@@ -149,18 +149,21 @@ private fun HistoryScreenContent(
     onClickChangeCategory: (Long) -> Unit,
 ) {
     val filteredHistory = remember(history, selectedCategoryId, categoryMap) {
-        if (selectedCategoryId != 0L) {
-            history.filter { uiModel ->
-                when (uiModel) {
-                    is HistoryUiModel.Header -> true
-                    is HistoryUiModel.Item -> {
-                        val cId = categoryMap[uiModel.item.mangaId] ?: 0L
-                        cId == selectedCategoryId
-                    }
+        val result = history.filter { uiModel ->
+            when (uiModel) {
+                is HistoryUiModel.Header -> true
+                is HistoryUiModel.Item -> {
+                    val cId = categoryMap[uiModel.item.mangaId] ?: 0L
+                    cId == selectedCategoryId
                 }
             }
-        } else {
-            history
+        }
+        result.filterIndexed { index, uiModel ->
+            if (uiModel is HistoryUiModel.Header) {
+                result.getOrNull(index + 1) is HistoryUiModel.Item
+            } else {
+                true
+            }
         }
     }
 
