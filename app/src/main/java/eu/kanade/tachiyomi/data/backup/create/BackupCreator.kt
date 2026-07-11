@@ -13,6 +13,7 @@ import eu.kanade.tachiyomi.data.backup.create.creators.SourcesBackupCreator
 import eu.kanade.tachiyomi.data.backup.models.Backup
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupExtensionStore
+import eu.kanade.tachiyomi.data.backup.models.BackupHistoryCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
 import eu.kanade.tachiyomi.data.backup.models.BackupSource
@@ -20,6 +21,8 @@ import eu.kanade.tachiyomi.data.backup.models.BackupSourcePreferences
 import kotlinx.serialization.protobuf.ProtoBuf
 import logcat.LogPriority
 import okio.buffer
+import tachiyomi.domain.history.interactor.ManageHistoryCategory
+import kotlinx.coroutines.flow.first
 import okio.gzip
 import okio.sink
 import tachiyomi.core.common.i18n.stringResource
@@ -45,6 +48,7 @@ class BackupCreator(
     private val getFavorites: GetFavorites = Injekt.get(),
     private val backupPreferences: BackupPreferences = Injekt.get(),
     private val mangaRepository: MangaRepository = Injekt.get(),
+    private val manageHistoryCategory: ManageHistoryCategory = Injekt.get(),
 
     private val categoriesBackupCreator: CategoriesBackupCreator = CategoriesBackupCreator(),
     private val mangaBackupCreator: MangaBackupCreator = MangaBackupCreator(),
@@ -87,6 +91,9 @@ class BackupCreator(
                 backupPreferences = backupAppPreferences(options),
                 backupExtensionStores = backupExtensionStores(options),
                 backupSourcePreferences = backupSourcePreferences(options),
+                backupHistoryCategories = manageHistoryCategory.subscribe().first().map {
+                    BackupHistoryCategory(it.name, it.id)
+                },
             )
 
             val byteArray = parser.encodeToByteArray(Backup.serializer(), backup)

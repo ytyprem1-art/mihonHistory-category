@@ -13,6 +13,7 @@ import tachiyomi.data.Database
 import tachiyomi.data.MemoColumnAdapter
 import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.history.interactor.GetHistory
+import tachiyomi.domain.history.interactor.ManageHistoryCategory
 import tachiyomi.domain.manga.model.Manga
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -21,6 +22,7 @@ class MangaBackupCreator(
     private val database: Database = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
     private val getHistory: GetHistory = Injekt.get(),
+    private val manageHistoryCategory: ManageHistoryCategory = Injekt.get(),
 ) {
 
     suspend operator fun invoke(mangas: List<Manga>, options: BackupOptions): List<BackupManga> {
@@ -81,6 +83,8 @@ class MangaBackupCreator(
                 }
             }
         }
+
+        mangaObject.historyCategory = manageHistoryCategory.getMangaCategory(manga.id) ?: 0L
 
         return mangaObject
     }

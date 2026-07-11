@@ -30,10 +30,10 @@ android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
-        applicationId = "app.mihon"
+        applicationId = "dev.vishkel.mihon"
 
-        versionCode = 26
-        versionName = "0.20.1"
+        versionCode = 27
+        versionName = "0.2"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getLatestCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getLatestCommitSha()}\"")

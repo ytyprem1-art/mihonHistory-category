@@ -12,4 +12,13 @@ data class Backup(
     @ProtoNumber(104) var backupPreferences: List<BackupPreference> = emptyList(),
     @ProtoNumber(105) var backupSourcePreferences: List<BackupSourcePreferences> = emptyList(),
     @ProtoNumber(106) var backupExtensionStores: List<BackupExtensionStore> = emptyList(),
+
+    // History Mod
+    @ProtoNumber(600) var backupHistoryCategories: List<BackupHistoryCategory> = emptyList(),
+)
+
+@Serializable
+data class BackupHistoryCategory(
+    @ProtoNumber(1) var name: String,
+    @ProtoNumber(2) var id: Long = 0,
 )

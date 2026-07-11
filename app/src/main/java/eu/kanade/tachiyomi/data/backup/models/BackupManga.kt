@@ -48,6 +48,9 @@ class BackupManga(
     @ProtoNumber(110) var notes: String = "",
     @ProtoNumber(111) var initialized: Boolean = false,
     @ProtoNumber(112) var memo: ByteArray = JsonObjectEmptyBytes,
+
+    // History Mod
+    @ProtoNumber(600) var historyCategory: Long = 0,
 ) {
     fun getMangaImpl(): Manga {
         return Manga.create().copy(

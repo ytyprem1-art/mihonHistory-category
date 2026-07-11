@@ -7,6 +7,7 @@ import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupChapter
 import eu.kanade.tachiyomi.data.backup.models.BackupHistory
+import eu.kanade.tachiyomi.data.backup.models.BackupHistoryCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupTracking
 import tachiyomi.data.Database
@@ -16,6 +17,7 @@ import tachiyomi.data.UpdateStrategyColumnAdapter
 import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.chapter.model.Chapter
+import tachiyomi.domain.history.interactor.ManageHistoryCategory
 import tachiyomi.domain.manga.interactor.FetchInterval
 import tachiyomi.domain.manga.interactor.GetMangaByUrlAndSourceId
 import tachiyomi.domain.manga.model.Manga
@@ -25,6 +27,7 @@ import tachiyomi.domain.track.model.Track
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.time.ZonedDateTime
+import kotlinx.coroutines.flow.first
 import java.util.Date
 import kotlin.math.max
 
@@ -36,6 +39,7 @@ class MangaRestorer(
     private val updateManga: UpdateManga = Injekt.get(),
     private val getTracks: GetTracks = Injekt.get(),
     private val insertTrack: InsertTrack = Injekt.get(),
+    private val manageHistoryCategory: ManageHistoryCategory = Injekt.get(),
     fetchInterval: FetchInterval = Injekt.get(),
 ) {
 
@@ -63,6 +67,7 @@ class MangaRestorer(
     suspend fun restore(
         backupManga: BackupManga,
         backupCategories: List<BackupCategory>,
+        backupHistoryCategories: List<BackupHistoryCategory> = emptyList(),
     ) {
         database.transaction {
             val dbManga = findExistingManga(backupManga)
@@ -78,6 +83,8 @@ class MangaRestorer(
                 chapters = backupManga.chapters,
                 categories = backupManga.categories,
                 backupCategories = backupCategories,
+                historyCategory = backupManga.historyCategory,
+                backupHistoryCategories = backupHistoryCategories,
                 history = backupManga.history,
                 tracks = backupManga.tracking,
                 excludedScanlators = backupManga.excludedScanlators,
@@ -278,17 +285,40 @@ class MangaRestorer(
         chapters: List<BackupChapter>,
         categories: List<Long>,
         backupCategories: List<BackupCategory>,
+        historyCategory: Long,
+        backupHistoryCategories: List<BackupHistoryCategory>,
         history: List<BackupHistory>,
         tracks: List<BackupTracking>,
         excludedScanlators: List<String>,
     ): Manga {
         restoreCategories(manga, categories, backupCategories)
+        restoreHistoryCategory(manga, historyCategory, backupHistoryCategories)
         restoreChapters(manga, chapters)
         restoreTracking(manga, tracks)
         restoreHistory(history)
         restoreExcludedScanlators(manga, excludedScanlators)
         updateManga.awaitUpdateFetchInterval(manga, now, currentFetchWindow)
         return manga
+    }
+
+    private suspend fun restoreHistoryCategory(
+        manga: Manga,
+        historyCategory: Long,
+        backupHistoryCategories: List<BackupHistoryCategory>,
+    ) {
+        if (historyCategory == 0L) return
+
+        val backupCategory = backupHistoryCategories.find { it.id == historyCategory } ?: return
+        val dbCategories = manageHistoryCategory.subscribe().first()
+        val dbCategory = dbCategories.find { it.name == backupCategory.name }
+            ?: run {
+                manageHistoryCategory.create(backupCategory.name)
+                manageHistoryCategory.subscribe().first().find { it.name == backupCategory.name }
+            }
+
+        if (dbCategory != null) {
+            manageHistoryCategory.moveToCategory(manga.id, dbCategory.id)
+        }
     }
 
     /**

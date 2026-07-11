@@ -6,6 +6,7 @@ import eu.kanade.tachiyomi.data.backup.BackupDecoder
 import eu.kanade.tachiyomi.data.backup.BackupNotifier
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupExtensionStore
+import eu.kanade.tachiyomi.data.backup.models.BackupHistoryCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
 import eu.kanade.tachiyomi.data.backup.models.BackupSourcePreferences
@@ -118,7 +119,11 @@ class BackupRestorer(
                 restoreSourcePreferences(backup.backupSourcePreferences)
             }
             if (options.libraryEntries) {
-                restoreManga(backup.backupManga, if (options.categories) backup.backupCategories else emptyList())
+                restoreManga(
+                    backup.backupManga,
+                    if (options.categories) backup.backupCategories else emptyList(),
+                    backup.backupHistoryCategories,
+                )
             }
             if (options.extensionStores) {
                 restoreExtensionStores(backup.backupExtensionStores)
@@ -144,6 +149,7 @@ class BackupRestorer(
     private fun CoroutineScope.restoreManga(
         backupMangas: List<BackupManga>,
         backupCategories: List<BackupCategory>,
+        backupHistoryCategories: List<BackupHistoryCategory>,
     ) = launch {
         mangaRestorer.sortByNew(backupMangas)
             .chunked(100)
@@ -153,7 +159,7 @@ class BackupRestorer(
                         ensureActive()
 
                         try {
-                            mangaRestorer.restore(it, backupCategories)
+                            mangaRestorer.restore(it, backupCategories, backupHistoryCategories)
                         } catch (e: Exception) {
                             val sourceName = sourceMapping[it.source] ?: it.source.toString()
                             errors.add(Date() to "${it.title} [$sourceName]: ${e.message}")
