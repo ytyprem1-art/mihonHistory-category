@@ -128,6 +128,13 @@ fun HistoryScreen(
                                             showMenu = false
                                         },
                                     )
+                                    DropdownMenuItem(
+                                        text = { Text("Hapus") },
+                                        onClick = {
+                                            onDialogChange(HistoryScreenModel.Dialog.DeleteHistoryCategory(category))
+                                            showMenu = false
+                                        },
+                                    )
                                 }
                             }
                         }

@@ -151,6 +151,28 @@ data object HistoryTab : Tab {
                     }
                 )
             }
+            is HistoryScreenModel.Dialog.DeleteHistoryCategory -> {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Hapus Kategori History") },
+                    text = { androidx.compose.material3.Text("Semua manga dalam kategori ini akan menjadi tidak berkategori. Tindakan ini tidak dapat dibatalkan.") },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                screenModel.deleteHistoryCategory(dialog.category.id)
+                                onDismissRequest()
+                            }
+                        ) {
+                            androidx.compose.material3.Text("Hapus")
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text("Batal")
+                        }
+                    }
+                )
+            }
 
             is HistoryScreenModel.Dialog.Delete -> {
                 HistoryDeleteDialog(

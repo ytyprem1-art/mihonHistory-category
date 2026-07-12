@@ -209,6 +209,20 @@ class HistoryScreenModel(
         }
     }
 
+    fun deleteHistoryCategory(id: Long) {
+        screenModelScope.launch {
+            manageHistoryCategory.delete(id)
+            val updatedCategories = manageHistoryCategory.subscribe().first()
+            mutableState.update { currentState ->
+                val newSelectedId = if (currentState.selectedCategoryId == id) 0L else currentState.selectedCategoryId
+                currentState.copy(
+                    historyCategories = updatedCategories,
+                    selectedCategoryId = newSelectedId
+                )
+            }
+        }
+    }
+
     fun setDialog(dialog: Dialog?) {
         mutableState.update { it.copy(dialog = dialog) }
     }
@@ -316,6 +330,7 @@ class HistoryScreenModel(
         data class Delete(val history: HistoryWithRelations) : Dialog
         data object CreateHistoryCategory : Dialog
         data class RenameHistoryCategory(val category: HistoryCategory) : Dialog
+        data class DeleteHistoryCategory(val category: HistoryCategory) : Dialog
         data class ChangeHistoryCategory(
             val mangaId: Long,
             val categories: List<HistoryCategory>,
