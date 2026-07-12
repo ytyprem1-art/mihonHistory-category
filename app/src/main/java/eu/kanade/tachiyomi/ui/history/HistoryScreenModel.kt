@@ -222,6 +222,23 @@ class HistoryScreenModel(
         }
     }
 
+    fun moveSelectedToHistoryCategory(mangaIds: Set<Long>, categoryId: Long) {
+        screenModelScope.launchIO {
+            mangaIds.forEach { mangaId ->
+                manageHistoryCategory.moveToCategory(mangaId, categoryId)
+            }
+            mutableState.update { currentState ->
+                val newMap = currentState.mangaToCategoryMap.toMutableMap()
+                mangaIds.forEach { newMap[it] = categoryId }
+                currentState.copy(
+                    mangaToCategoryMap = newMap,
+                    selectionMode = false,
+                    selected = emptySet(),
+                )
+            }
+        }
+    }
+
     fun createHistoryCategory(name: String) {
         screenModelScope.launch {
             manageHistoryCategory.create(name)
@@ -387,6 +404,10 @@ class HistoryScreenModel(
             val mangaId: Long,
             val categories: List<HistoryCategory>,
             val initialSelection: Long,
+        ) : Dialog
+        data class MoveSelectedToHistoryCategory(
+            val mangaIds: Set<Long>,
+            val categories: List<HistoryCategory>,
         ) : Dialog
         data class DuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
         data class ChangeCategory(

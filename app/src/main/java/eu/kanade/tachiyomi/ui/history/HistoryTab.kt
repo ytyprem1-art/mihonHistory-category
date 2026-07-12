@@ -303,6 +303,16 @@ data object HistoryTab : Tab {
                     },
                 )
             }
+            is HistoryScreenModel.Dialog.MoveSelectedToHistoryCategory -> {
+                HistoryCategoryDialog(
+                    categories = dialog.categories,
+                    initialSelection = 0L,
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { categoryId ->
+                        screenModel.moveSelectedToHistoryCategory(dialog.mangaIds, categoryId)
+                    },
+                )
+            }
             is HistoryScreenModel.Dialog.ChangeCategory -> {
                 ChangeCategoryDialog(
                     initialSelection = dialog.initialSelection,

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.FlipToBack
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ScrollableTabRow
@@ -93,6 +94,19 @@ fun HistoryScreen(
                         actions = {
                             AppBarActions(
                                 listOf(
+                                    AppBar.Action(
+                                        title = "Pindahkan ke Kategori",
+                                        icon = Icons.Outlined.Folder,
+                                        onClick = {
+                                            onDialogChange(
+                                                HistoryScreenModel.Dialog.MoveSelectedToHistoryCategory(
+                                                    state.selected,
+                                                    state.historyCategories
+                                                )
+                                            )
+                                        },
+                                        enabled = state.selected.isNotEmpty(),
+                                    ),
                                     AppBar.Action(
                                         title = stringResource(MR.strings.action_select_all),
                                         icon = Icons.Outlined.SelectAll,
