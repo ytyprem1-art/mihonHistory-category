@@ -42,7 +42,7 @@ fun HistoryCategoryDialog(
             Box(modifier = Modifier.fillMaxWidth()) {
                 Text(text = "Pilih Kategori History")
                 Text(
-                    text = "History Mod • v0.2\nDiscord • @vishkel01\nSource on GitHub",
+                    text = "History Mod • v0.5\nDiscord • @vishkel01\nSource on GitHub",
                     modifier = Modifier.align(Alignment.TopEnd),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

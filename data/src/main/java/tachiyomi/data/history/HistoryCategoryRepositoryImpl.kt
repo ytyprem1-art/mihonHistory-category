@@ -17,16 +17,20 @@ class HistoryCategoryRepositoryImpl(
         return database.historycategoriesQueries.getHistoryCategories()
             .subscribeToList()
             .map { list ->
-                list.map { HistoryCategory(it._id, it.name) }
+                list.map { HistoryCategory(it._id, it.name, it.sort.toInt()) }
             }
     }
 
-    override suspend fun insertHistoryCategory(name: String) {
-        database.historycategoriesQueries.insertHistoryCategory(name)
+    override suspend fun insertHistoryCategory(name: String, sort: Int) {
+        database.historycategoriesQueries.insertHistoryCategory(name, sort.toLong())
     }
 
     override suspend fun updateHistoryCategory(id: Long, name: String) {
         database.historycategoriesQueries.updateHistoryCategory(name, id)
+    }
+
+    override suspend fun updateHistoryCategorySort(id: Long, sort: Int) {
+        database.historycategoriesQueries.updateHistoryCategorySort(sort.toLong(), id)
     }
 
     override suspend fun deleteHistoryCategory(id: Long) {

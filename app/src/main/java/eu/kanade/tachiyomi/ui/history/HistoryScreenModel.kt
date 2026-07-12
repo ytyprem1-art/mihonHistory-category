@@ -190,6 +190,11 @@ class HistoryScreenModel(
     fun moveMangaToHistoryCategory(mangaId: Long, categoryId: Long) {
         screenModelScope.launchIO {
             manageHistoryCategory.moveToCategory(mangaId, categoryId)
+            mutableState.update { currentState ->
+                val newMap = currentState.mangaToCategoryMap.toMutableMap()
+                newMap[mangaId] = categoryId
+                currentState.copy(mangaToCategoryMap = newMap)
+            }
         }
     }
 
@@ -204,6 +209,22 @@ class HistoryScreenModel(
     fun renameHistoryCategory(id: Long, name: String) {
         screenModelScope.launch {
             manageHistoryCategory.rename(id, name)
+            val updatedCategories = manageHistoryCategory.subscribe().first()
+            mutableState.update { it.copy(historyCategories = updatedCategories) }
+        }
+    }
+
+    fun moveHistoryCategoryLeft(category: HistoryCategory) {
+        screenModelScope.launch {
+            manageHistoryCategory.moveLeft(category)
+            val updatedCategories = manageHistoryCategory.subscribe().first()
+            mutableState.update { it.copy(historyCategories = updatedCategories) }
+        }
+    }
+
+    fun moveHistoryCategoryRight(category: HistoryCategory) {
+        screenModelScope.launch {
+            manageHistoryCategory.moveRight(category)
             val updatedCategories = manageHistoryCategory.subscribe().first()
             mutableState.update { it.copy(historyCategories = updatedCategories) }
         }
@@ -333,6 +354,7 @@ class HistoryScreenModel(
         data object DeleteAll : Dialog
         data class Delete(val history: HistoryWithRelations) : Dialog
         data object CreateHistoryCategory : Dialog
+        data class ManageHistoryCategory(val category: HistoryCategory) : Dialog
         data class RenameHistoryCategory(val category: HistoryCategory) : Dialog
         data class DeleteHistoryCategory(val category: HistoryCategory) : Dialog
         data class ChangeHistoryCategory(

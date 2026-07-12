@@ -3,7 +3,8 @@ import java.lang.Long;
 -- Tabel untuk menyimpan nama Kategori History (misal: "18+", "Manhwa")
 CREATE TABLE history_categories (
     _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    sort INTEGER NOT NULL DEFAULT 0
 );
 
 -- Tabel pemetaan untuk mencatat manga_id mana masuk ke kategori history mana
@@ -17,12 +18,13 @@ CREATE TABLE history_category_mapping (
 -- Kueri untuk mengambil semua kategori history
 getHistoryCategories:
 SELECT *
-FROM history_categories;
+FROM history_categories
+ORDER BY sort;
 
 -- Kueri untuk membuat kategori history baru
 insertHistoryCategory:
-INSERT INTO history_categories(name)
-VALUES (?);
+INSERT INTO history_categories(name, sort)
+VALUES (?, ?);
 
 -- Kueri untuk menghapus kategori history
 deleteHistoryCategory:
@@ -33,6 +35,12 @@ WHERE _id = ?;
 updateHistoryCategory:
 UPDATE history_categories
 SET name = ?
+WHERE _id = ?;
+
+-- Kueri untuk mengubah urutan kategori history
+updateHistoryCategorySort:
+UPDATE history_categories
+SET sort = ?
 WHERE _id = ?;
 
 -- Kueri untuk memasukkan/memindahkan manga ke kategori history khusus

@@ -16,6 +16,16 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.category.components.ChangeCategoryDialog
 import eu.kanade.presentation.history.HistoryScreen
 import eu.kanade.presentation.history.components.HistoryCategoryDialog
@@ -114,6 +124,88 @@ data object HistoryTab : Tab {
                     dismissButton = {
                         androidx.compose.material3.TextButton(onClick = onDismissRequest) {
                             androidx.compose.material3.Text("Batal")
+                        }
+                    }
+                )
+            }
+
+            is HistoryScreenModel.Dialog.ManageHistoryCategory -> {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Kelola Kategori History") },
+                    text = {
+                        androidx.compose.foundation.layout.Column {
+                            androidx.compose.material3.Text(
+                                text = "Kategori: ${dialog.category.name}",
+                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    screenModel.setDialog(HistoryScreenModel.Dialog.RenameHistoryCategory(dialog.category))
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                ) {
+                                    androidx.compose.material3.Icon(
+                                        imageVector = Icons.Outlined.Edit,
+                                        contentDescription = null
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    androidx.compose.material3.Text("Ubah Nama Kategori")
+                                }
+                            }
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                androidx.compose.material3.OutlinedButton(
+                                    onClick = {
+                                        screenModel.moveHistoryCategoryLeft(dialog.category)
+                                        onDismissRequest()
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    androidx.compose.material3.Text("⬅ Geser Kiri")
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                androidx.compose.material3.OutlinedButton(
+                                    onClick = {
+                                        screenModel.moveHistoryCategoryRight(dialog.category)
+                                        onDismissRequest()
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    androidx.compose.material3.Text("Geser Kanan ➡")
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    screenModel.setDialog(HistoryScreenModel.Dialog.DeleteHistoryCategory(dialog.category))
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                                    contentColor = androidx.compose.material3.MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                ) {
+                                    androidx.compose.material3.Icon(
+                                        imageVector = Icons.Outlined.Delete,
+                                        contentDescription = null
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    androidx.compose.material3.Text("Hapus Kategori")
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text("Tutup")
                         }
                     }
                 )
