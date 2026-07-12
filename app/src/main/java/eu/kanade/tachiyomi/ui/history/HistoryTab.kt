@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource as androidStringResource
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.category.components.ChangeCategoryDialog
 import eu.kanade.presentation.history.HistoryScreen
@@ -101,12 +102,12 @@ data object HistoryTab : Tab {
                 var categoryName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = onDismissRequest,
-                    title = { androidx.compose.material3.Text("Tambah Kategori History Baru") },
+                    title = { androidx.compose.material3.Text(androidStringResource(R.string.history_categories_create_title)) },
                     text = {
                         androidx.compose.material3.OutlinedTextField(
                             value = categoryName,
                             onValueChange = { categoryName = it },
-                            label = { androidx.compose.material3.Text("Nama Kategori") },
+                            label = { androidx.compose.material3.Text(androidStringResource(R.string.history_categories_name)) },
                             singleLine = true
                         )
                     },
@@ -119,12 +120,12 @@ data object HistoryTab : Tab {
                                 }
                             }
                         ) {
-                            androidx.compose.material3.Text("Simpan")
+                            androidx.compose.material3.Text(androidStringResource(R.string.history_categories_save))
                         }
                     },
                     dismissButton = {
                         androidx.compose.material3.TextButton(onClick = onDismissRequest) {
-                            androidx.compose.material3.Text("Batal")
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
                         }
                     }
                 )
@@ -133,11 +134,11 @@ data object HistoryTab : Tab {
             is HistoryScreenModel.Dialog.ManageHistoryCategory -> {
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = onDismissRequest,
-                    title = { androidx.compose.material3.Text("Kelola Kategori History") },
+                    title = { androidx.compose.material3.Text(androidStringResource(R.string.history_categories_edit_title)) },
                     text = {
                         androidx.compose.foundation.layout.Column {
                             androidx.compose.material3.Text(
-                                text = "Kategori: ${dialog.category.name}",
+                                text = androidStringResource(R.string.history_categories_current, dialog.category.name),
                                 style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -156,7 +157,7 @@ data object HistoryTab : Tab {
                                         contentDescription = null
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    androidx.compose.material3.Text("Ubah Nama Kategori")
+                                    androidx.compose.material3.Text(androidStringResource(R.string.history_categories_rename))
                                 }
                             }
                             Row(modifier = Modifier.fillMaxWidth()) {
@@ -167,7 +168,7 @@ data object HistoryTab : Tab {
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    androidx.compose.material3.Text("⬅ Geser Kiri")
+                                    androidx.compose.material3.Text(androidStringResource(R.string.history_categories_move_left))
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 androidx.compose.material3.OutlinedButton(
@@ -177,7 +178,7 @@ data object HistoryTab : Tab {
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    androidx.compose.material3.Text("Geser Kanan ➡")
+                                    androidx.compose.material3.Text(androidStringResource(R.string.history_categories_move_right))
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
@@ -199,14 +200,14 @@ data object HistoryTab : Tab {
                                         contentDescription = null
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    androidx.compose.material3.Text("Hapus Kategori")
+                                    androidx.compose.material3.Text(androidStringResource(R.string.history_categories_delete))
                                 }
                             }
                         }
                     },
                     confirmButton = {
                         androidx.compose.material3.TextButton(onClick = onDismissRequest) {
-                            androidx.compose.material3.Text("Tutup")
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_ok))
                         }
                     }
                 )
@@ -216,12 +217,12 @@ data object HistoryTab : Tab {
                 var categoryName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dialog.category.name) }
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = onDismissRequest,
-                    title = { androidx.compose.material3.Text("Ubah Nama Kategori") },
+                    title = { androidx.compose.material3.Text(androidStringResource(R.string.history_categories_rename_title)) },
                     text = {
                         androidx.compose.material3.OutlinedTextField(
                             value = categoryName,
                             onValueChange = { categoryName = it },
-                            label = { androidx.compose.material3.Text("Nama Kategori") },
+                            label = { androidx.compose.material3.Text(androidStringResource(R.string.history_categories_name)) },
                             singleLine = true
                         )
                     },
@@ -234,12 +235,12 @@ data object HistoryTab : Tab {
                                 }
                             }
                         ) {
-                            androidx.compose.material3.Text("Simpan")
+                            androidx.compose.material3.Text(androidStringResource(R.string.history_categories_save))
                         }
                     },
                     dismissButton = {
                         androidx.compose.material3.TextButton(onClick = onDismissRequest) {
-                            androidx.compose.material3.Text("Batal")
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
                         }
                     }
                 )
@@ -247,8 +248,8 @@ data object HistoryTab : Tab {
             is HistoryScreenModel.Dialog.DeleteHistoryCategory -> {
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = onDismissRequest,
-                    title = { androidx.compose.material3.Text("Delete History Category") },
-                    text = { androidx.compose.material3.Text("All manga in this category will become uncategorized.") },
+                    title = { androidx.compose.material3.Text(androidStringResource(R.string.history_categories_delete_title)) },
+                    text = { androidx.compose.material3.Text(androidStringResource(R.string.history_categories_delete_msg)) },
                     confirmButton = {
                         androidx.compose.material3.TextButton(
                             onClick = {
@@ -256,12 +257,12 @@ data object HistoryTab : Tab {
                                 onDismissRequest()
                             }
                         ) {
-                            androidx.compose.material3.Text("Delete")
+                            androidx.compose.material3.Text(androidStringResource(R.string.history_categories_delete))
                         }
                     },
                     dismissButton = {
                         androidx.compose.material3.TextButton(onClick = onDismissRequest) {
-                            androidx.compose.material3.Text("Cancel")
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
                         }
                     }
                 )
@@ -282,8 +283,8 @@ data object HistoryTab : Tab {
             is HistoryScreenModel.Dialog.DeleteSelected -> {
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = onDismissRequest,
-                    title = { androidx.compose.material3.Text("Delete History") },
-                    text = { androidx.compose.material3.Text("Delete the selected history entries?") },
+                    title = { androidx.compose.material3.Text(androidStringResource(R.string.history_delete_selected_title)) },
+                    text = { androidx.compose.material3.Text(androidStringResource(R.string.history_delete_selected_msg)) },
                     confirmButton = {
                         androidx.compose.material3.TextButton(
                             onClick = {
@@ -291,12 +292,12 @@ data object HistoryTab : Tab {
                                 onDismissRequest()
                             }
                         ) {
-                            androidx.compose.material3.Text("Delete")
+                            androidx.compose.material3.Text(androidStringResource(R.string.history_categories_delete))
                         }
                     },
                     dismissButton = {
                         androidx.compose.material3.TextButton(onClick = onDismissRequest) {
-                            androidx.compose.material3.Text("Cancel")
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
                         }
                     }
                 )

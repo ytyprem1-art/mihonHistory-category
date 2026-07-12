@@ -23,6 +23,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource as androidStringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import eu.kanade.presentation.components.AppBar
@@ -33,6 +34,7 @@ import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import eu.kanade.presentation.util.animateItemFastScroll
+import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.i18n.MR
@@ -96,7 +98,7 @@ fun HistoryScreen(
                             AppBarActions(
                                 listOf(
                                     AppBar.Action(
-                                        title = "Hapus",
+                                        title = androidStringResource(R.string.history_categories_delete),
                                         icon = Icons.Outlined.Delete,
                                         onClick = {
                                             onDialogChange(
@@ -106,7 +108,7 @@ fun HistoryScreen(
                                         enabled = state.selected.isNotEmpty(),
                                     ),
                                     AppBar.Action(
-                                        title = "Pindahkan ke Kategori",
+                                        title = androidStringResource(R.string.history_categories_move_to),
                                         icon = Icons.Outlined.Folder,
                                         onClick = {
                                             onDialogChange(
@@ -148,7 +150,7 @@ fun HistoryScreen(
                                 state.historyCategories.find { it.id == state.selectedCategoryId }?.let { category ->
                                     actions.add(
                                         AppBar.Action(
-                                            title = "Kelola Kategori",
+                                            title = androidStringResource(R.string.history_categories_manage),
                                             icon = Icons.Outlined.Settings,
                                             onClick = {
                                                 onDialogChange(HistoryScreenModel.Dialog.ManageHistoryCategory(category))
@@ -160,7 +162,7 @@ fun HistoryScreen(
 
                             actions.add(
                                 AppBar.Action(
-                                    title = "Pilih",
+                                    title = androidStringResource(R.string.history_select),
                                     icon = Icons.Outlined.Checklist,
                                     onClick = { screenModel.toggleSelectionMode() },
                                 )
@@ -168,7 +170,7 @@ fun HistoryScreen(
 
                             actions.add(
                                 AppBar.Action(
-                                    title = "Tambah Kategori History",
+                                    title = androidStringResource(R.string.history_categories_create),
                                     icon = Icons.Outlined.Create,
                                     onClick = {
                                         onDialogChange(HistoryScreenModel.Dialog.CreateHistoryCategory)
@@ -203,7 +205,7 @@ fun HistoryScreen(
                         Tab(
                             selected = state.selectedCategoryId == 0L,
                             onClick = { onTabSelected(0L) },
-                            text = { Text("Semua") },
+                            text = { Text(androidStringResource(R.string.history_categories_all)) },
                         )
                         state.historyCategories.forEach { category ->
                             Tab(

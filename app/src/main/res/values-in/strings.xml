@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_select">Pilih</string>
+    <string name="history_categories_all">Semua</string>
+    <string name="history_categories_manage">Kelola Kategori</string>
+    <string name="history_categories_create">Tambah Kategori History</string>
+    <string name="history_categories_create_title">Tambah Kategori History Baru</string>
+    <string name="history_categories_name">Nama Kategori</string>
+    <string name="history_categories_save">Simpan</string>
+    <string name="history_categories_edit_title">Kelola Kategori History</string>
+    <string name="history_categories_current">Kategori: %1$s</string>
+    <string name="history_categories_rename">Ubah Nama Kategori</string>
+    <string name="history_categories_rename_title">Ubah Nama Kategori</string>
+    <string name="history_categories_move_left">⬅ Geser Kiri</string>
+    <string name="history_categories_move_right">Geser Kanan ➡</string>
+    <string name="history_categories_delete">Hapus Kategori</string>
+    <string name="history_categories_delete_title">Hapus Kategori History</string>
+    <string name="history_categories_delete_msg">Semua manga dalam kategori ini akan menjadi tidak berkategori.</string>
+    <string name="history_categories_move_to">Pindahkan ke Kategori</string>
+    <string name="history_categories_none">Tanpa Kategori</string>
+    <string name="history_delete_selected_title">Hapus Riwayat</string>
+    <string name="history_delete_selected_msg">Hapus entri riwayat yang dipilih?</string>
+</resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_select">Select</string>
+    <string name="history_categories_all">All</string>
+    <string name="history_categories_manage">Manage Category</string>
+    <string name="history_categories_create">Add History Category</string>
+    <string name="history_categories_create_title">Add New History Category</string>
+    <string name="history_categories_name">Category Name</string>
+    <string name="history_categories_save">Save</string>
+    <string name="history_categories_edit_title">Manage History Category</string>
+    <string name="history_categories_current">Category: %1$s</string>
+    <string name="history_categories_rename">Rename Category</string>
+    <string name="history_categories_rename_title">Rename Category</string>
+    <string name="history_categories_move_left">⬅ Move Left</string>
+    <string name="history_categories_move_right">Move Right ➡</string>
+    <string name="history_categories_delete">Delete Category</string>
+    <string name="history_categories_delete_title">Delete History Category</string>
+    <string name="history_categories_delete_msg">All manga in this category will become uncategorized.</string>
+    <string name="history_categories_move_to">Move to Category</string>
+    <string name="history_categories_none">No Category</string>
+    <string name="history_delete_selected_title">Delete History</string>
+    <string name="history_delete_selected_msg">Delete the selected history entries?</string>
+</resources>

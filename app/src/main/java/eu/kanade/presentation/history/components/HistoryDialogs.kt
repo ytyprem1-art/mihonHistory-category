@@ -17,9 +17,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource as androidStringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
+import eu.kanade.tachiyomi.R
 import tachiyomi.domain.history.repository.HistoryCategory
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.LabeledCheckbox
@@ -40,7 +42,7 @@ fun HistoryCategoryDialog(
         onDismissRequest = onDismissRequest,
         title = {
             Box(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "Pilih Kategori History")
+                Text(text = androidStringResource(R.string.history_categories_move_to))
                 Text(
                     text = "History Mod • v0.6\nDiscord • @vishkel01\nSource on GitHub",
                     modifier = Modifier.align(Alignment.TopEnd),
@@ -55,7 +57,7 @@ fun HistoryCategoryDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             ) {
                 RadioItem(
-                    label = "Tanpa Kategori",
+                    label = androidStringResource(R.string.history_categories_none),
                     selected = selectedId == 0L,
                     onClick = { selectedId = 0L },
                 )
