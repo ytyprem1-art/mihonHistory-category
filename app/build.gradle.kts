@@ -17,7 +17,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-if (Config.includeTelemetry) {
+if (false) {
     pluginManager.apply {
         apply(libs.plugins.google.services.get().pluginId)
         apply(libs.plugins.firebase.crashlytics.get().pluginId)
@@ -32,14 +32,14 @@ android {
     defaultConfig {
         applicationId = "dev.vishkel.mihon"
 
-        versionCode = 30
-        versionName = "0.5"
+        versionCode = 31
+        versionName = "0.5.1"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getLatestCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getLatestCommitSha()}\"")
         buildConfigField("String", "BUILD_TIME", "\"${getBuildTime(useLatestCommitTime = false)}\"")
-        buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
-        buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
+        buildConfigField("boolean", "TELEMETRY_INCLUDED", "false")
+        buildConfigField("boolean", "UPDATER_ENABLED", "false")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
