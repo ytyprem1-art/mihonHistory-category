@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.FlipToBack
+import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
@@ -59,52 +63,87 @@ fun HistoryScreen(
     Scaffold(
         topBar = { scrollBehavior ->
             Column(modifier = Modifier.fillMaxWidth()) {
-                SearchToolbar(
-                    titleContent = { AppBarTitle(stringResource(MR.strings.history)) },
-                    searchQuery = state.searchQuery,
-                    onChangeSearchQuery = onSearchQueryChange,
-                    actions = {
-                        val actions = mutableListOf<AppBar.Action>()
-
-                        // Tombol Edit Kategori (Hanya muncul jika bukan tab "Semua")
-                        if (state.selectedCategoryId != 0L) {
-                            state.historyCategories.find { it.id == state.selectedCategoryId }?.let { category ->
-                                actions.add(
+                if (state.selectionMode) {
+                    AppBar(
+                        titleContent = {
+                            AppBarTitle(state.selected.size.toString())
+                        },
+                        actions = {
+                            AppBarActions(
+                                listOf(
                                     AppBar.Action(
-                                        title = "Kelola Kategori",
-                                        icon = Icons.Outlined.Settings,
-                                        onClick = {
-                                            onDialogChange(HistoryScreenModel.Dialog.ManageHistoryCategory(category))
-                                        },
+                                        title = stringResource(MR.strings.action_select_all),
+                                        icon = Icons.Outlined.SelectAll,
+                                        onClick = { /* Future: Implement Select All */ },
+                                    ),
+                                    AppBar.Action(
+                                        title = stringResource(MR.strings.action_select_inverse),
+                                        icon = Icons.Outlined.FlipToBack,
+                                        onClick = { /* Future: Implement Invert Selection */ },
+                                    ),
+                                ),
+                            )
+                        },
+                        isActionMode = true,
+                        onCancelActionMode = { screenModel.toggleSelectionMode() },
+                        scrollBehavior = scrollBehavior,
+                    )
+                } else {
+                    SearchToolbar(
+                        titleContent = { AppBarTitle(stringResource(MR.strings.history)) },
+                        searchQuery = state.searchQuery,
+                        onChangeSearchQuery = onSearchQueryChange,
+                        actions = {
+                            val actions = mutableListOf<AppBar.Action>()
+
+                            // Tombol Edit Kategori (Hanya muncul jika bukan tab "Semua")
+                            if (state.selectedCategoryId != 0L) {
+                                state.historyCategories.find { it.id == state.selectedCategoryId }?.let { category ->
+                                    actions.add(
+                                        AppBar.Action(
+                                            title = "Kelola Kategori",
+                                            icon = Icons.Outlined.Settings,
+                                            onClick = {
+                                                onDialogChange(HistoryScreenModel.Dialog.ManageHistoryCategory(category))
+                                            },
+                                        )
                                     )
-                                )
+                                }
                             }
-                        }
 
-                        actions.add(
-                            AppBar.Action(
-                                title = "Tambah Kategori History",
-                                icon = Icons.Outlined.Create,
-                                onClick = {
-                                    onDialogChange(HistoryScreenModel.Dialog.CreateHistoryCategory)
-                                },
+                            actions.add(
+                                AppBar.Action(
+                                    title = "Pilih",
+                                    icon = Icons.Outlined.Checklist,
+                                    onClick = { screenModel.toggleSelectionMode() },
+                                )
                             )
-                        )
 
-                        actions.add(
-                            AppBar.Action(
-                                title = stringResource(MR.strings.pref_clear_history),
-                                icon = Icons.Outlined.DeleteSweep,
-                                onClick = {
-                                    onDialogChange(HistoryScreenModel.Dialog.DeleteAll)
-                                },
+                            actions.add(
+                                AppBar.Action(
+                                    title = "Tambah Kategori History",
+                                    icon = Icons.Outlined.Create,
+                                    onClick = {
+                                        onDialogChange(HistoryScreenModel.Dialog.CreateHistoryCategory)
+                                    },
+                                )
                             )
-                        )
 
-                        AppBarActions(actions)
-                    },
-                    scrollBehavior = scrollBehavior,
-                )
+                            actions.add(
+                                AppBar.Action(
+                                    title = stringResource(MR.strings.pref_clear_history),
+                                    icon = Icons.Outlined.DeleteSweep,
+                                    onClick = {
+                                        onDialogChange(HistoryScreenModel.Dialog.DeleteAll)
+                                    },
+                                ),
+                            )
+
+                            AppBarActions(actions)
+                        },
+                        scrollBehavior = scrollBehavior,
+                    )
+                }
 
                 if (state.historyCategories.isNotEmpty()) {
                     ScrollableTabRow(

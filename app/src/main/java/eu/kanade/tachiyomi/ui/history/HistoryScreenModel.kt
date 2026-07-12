@@ -167,6 +167,10 @@ class HistoryScreenModel(
         mutableState.update { it.copy(searchQuery = query) }
     }
 
+    fun toggleSelectionMode() {
+        mutableState.update { it.copy(selectionMode = !it.selectionMode, selected = emptySet()) }
+    }
+
     fun updateSelectedCategory(categoryId: Long) {
         mutableState.update { it.copy(selectedCategoryId = categoryId) }
     }
@@ -348,6 +352,8 @@ class HistoryScreenModel(
         val historyCategories: List<HistoryCategory> = emptyList(),
         val selectedCategoryId: Long = 0L,
         val mangaToCategoryMap: Map<Long, Long> = emptyMap(), // Cache peta kategori memori UI
+        val selectionMode: Boolean = false,
+        val selected: Set<Long> = emptySet(),
     )
 
     sealed interface Dialog {
