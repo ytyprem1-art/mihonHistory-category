@@ -1,3 +1,29 @@
+# Mihon History Category Mod
+
+> Organize your reading history with custom categories.
+
+## Screenshots
+
+<div align="center">
+  <img src="https://github.com/ytyprem1-art/mihonHistory-category/blob/fitur-history-category/assets/1.jpg?raw=true" width="200"/>
+  <img src="https://github.com/ytyprem1-art/mihonHistory-category/blob/fitur-history-category/assets/2.jpg?raw=true" width="200"/>
+  <img src="https://github.com/ytyprem1-art/mihonHistory-category/blob/fitur-history-category/assets/3.jpg?raw=true" width="200"/>
+  <img src="https://github.com/ytyprem1-art/mihonHistory-category/blob/fitur-history-category/assets/4.jpg?raw=true" width="200"/>
+  <img src="https://github.com/ytyprem1-art/mihonHistory-category/blob/fitur-history-category/assets/5.jpg?raw=true" width="200"/>
+</div>
+
+## Features
+
+- ✅ **Create History Categories**: Organize your reading history into custom categories.
+- ✅ **Category Management**: Create, rename, delete, and reorder your categories easily.
+- ✅ **Flexible Organization**: Move manga/manhwa/manhua between different history categories.
+- ✅ **Automatic UI Refresh**: Seamlessly update your history view.
+- ✅ **Backup & Restore Support**: Keep your data safe with built-in backup features.
+
+---
+
+# Original Mihon README
+
 <div align="center">
 
 <a href="https://mihon.app">
@@ -45,7 +71,6 @@ Discover and read manga, webtoons, comics, and more – easier than ever on your
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 Before reporting a new issue, take a look at the [FAQ](https://mihon.app/docs/faq/general), the [changelog](https://mihon.app/changelogs/) and the already opened [issues](https://github.com/mihonapp/mihon/issues); if you got any questions, join our [Discord server](https://discord.gg/mihon).
-
 
 ### Repositories
 
