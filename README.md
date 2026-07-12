@@ -1,6 +1,18 @@
 # Mihon History Category Mod
 
 > Organize your reading history with custom categories.
+## About
+This is a modified version of [Mihon](https://github.com/mihonapp/mihon).
+
+**Important Information:**
+* **Standalone Installation:** This mod uses a different package name, allowing you to install it alongside the original Mihon app without any conflicts.
+* **Usage & Features:** For a detailed guide on how to use the new features, please check the [Releases tab](https://github.com/ytyprem1-art/mihonHistory-category/releases).
+* **Open for Testing:** While this started as a personal project for fun, I've decided to share it for anyone who wants to try it out!
+* **Credits:** I deeply respect the hard work and dedication of the original Mihon creators and contributors. This project is maintained as a hobby and is for educational purposes. Thank you!
+---
+# Mihon History Category Mod
+
+> Organize your reading history with custom categories.
 
 ## Screenshots
 
