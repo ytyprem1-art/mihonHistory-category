@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Create
@@ -52,6 +53,9 @@ fun HistoryScreen(
     onClickChangeCategory: (mangaId: Long) -> Unit,
     screenModel: HistoryScreenModel,
 ) {
+    val scrollStates = remember { mutableMapOf<Long, LazyListState>() }
+    val scrollState = scrollStates.getOrPut(state.selectedCategoryId) { LazyListState() }
+
     Scaffold(
         topBar = { scrollBehavior ->
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -146,7 +150,8 @@ fun HistoryScreen(
                     history = it,
                     contentPadding = contentPadding,
                     selectedCategoryId = state.selectedCategoryId,
-                    categoryMap = state.mangaToCategoryMap, // 👈 OPER MAP MEMORI
+                    categoryMap = state.mangaToCategoryMap,
+                    scrollState = scrollState,
                     onClickCover = { history -> onClickCover(history.mangaId) },
                     onClickResume = { history -> onClickResume(history.mangaId, history.chapterId) },
                     onClickDelete = { item -> onDialogChange(HistoryScreenModel.Dialog.Delete(item)) },
@@ -164,6 +169,7 @@ private fun HistoryScreenContent(
     contentPadding: PaddingValues,
     selectedCategoryId: Long,
     categoryMap: Map<Long, Long>,
+    scrollState: LazyListState,
     onClickCover: (HistoryWithRelations) -> Unit,
     onClickResume: (HistoryWithRelations) -> Unit,
     onClickDelete: (HistoryWithRelations) -> Unit,
@@ -191,6 +197,7 @@ private fun HistoryScreenContent(
 
     FastScrollLazyColumn(
         contentPadding = contentPadding,
+        state = scrollState,
     ) {
         items(
             items = filteredHistory,
