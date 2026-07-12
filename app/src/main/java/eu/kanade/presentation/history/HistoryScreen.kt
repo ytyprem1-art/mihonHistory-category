@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Checklist
@@ -60,7 +63,27 @@ fun HistoryScreen(
     onClickChangeCategory: (mangaId: Long) -> Unit,
     screenModel: HistoryScreenModel,
 ) {
-    val scrollStates = remember { mutableMapOf<Long, LazyListState>() }
+    val scrollStates = rememberSaveable(
+        saver = Saver<MutableMap<Long, LazyListState>, Map<Long, List<Int>>>(
+            save = { map ->
+                map.mapValues { (_, state) ->
+                    listOf(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset)
+                }
+            },
+            restore = { savedMap ->
+                val restoredMap = mutableMapOf<Long, LazyListState>()
+                savedMap.forEach { (id, values) ->
+                    restoredMap[id] = LazyListState(
+                        firstVisibleItemIndex = values[0],
+                        firstVisibleItemScrollOffset = values[1],
+                    )
+                }
+                restoredMap
+            },
+        ),
+    ) {
+        mutableMapOf()
+    }
     val scrollState = scrollStates.getOrPut(state.selectedCategoryId) { LazyListState() }
 
     val filteredHistory = remember(state.list, state.selectedCategoryId, state.mangaToCategoryMap) {
