@@ -171,6 +171,26 @@ class HistoryScreenModel(
         mutableState.update { it.copy(selectionMode = !it.selectionMode, selected = emptySet()) }
     }
 
+    fun toggleSelection(mangaId: Long) {
+        mutableState.update { state ->
+            val newSelected = state.selected.toMutableSet().apply {
+                if (contains(mangaId)) remove(mangaId) else add(mangaId)
+            }
+            state.copy(selected = newSelected)
+        }
+    }
+
+    fun selectAll(mangaIds: List<Long>) {
+        mutableState.update { it.copy(selected = mangaIds.toSet()) }
+    }
+
+    fun invertSelection(mangaIds: List<Long>) {
+        mutableState.update { state ->
+            val newSelected = mangaIds.filter { it !in state.selected }.toSet()
+            state.copy(selected = newSelected)
+        }
+    }
+
     fun updateSelectedCategory(categoryId: Long) {
         mutableState.update { it.copy(selectedCategoryId = categoryId) }
     }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Checklist
-import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.FlipToBack
@@ -60,10 +59,33 @@ fun HistoryScreen(
     val scrollStates = remember { mutableMapOf<Long, LazyListState>() }
     val scrollState = scrollStates.getOrPut(state.selectedCategoryId) { LazyListState() }
 
+    val filteredHistory = remember(state.list, state.selectedCategoryId, state.mangaToCategoryMap) {
+        val history = state.list ?: emptyList()
+        val result = history.filter { uiModel ->
+            when (uiModel) {
+                is HistoryUiModel.Header -> true
+                is HistoryUiModel.Item -> {
+                    val cId = state.mangaToCategoryMap[uiModel.item.mangaId] ?: 0L
+                    cId == state.selectedCategoryId
+                }
+            }
+        }
+        result.filterIndexed { index, uiModel ->
+            if (uiModel is HistoryUiModel.Header) {
+                result.getOrNull(index + 1) is HistoryUiModel.Item
+            } else {
+                true
+            }
+        }
+    }
+
     Scaffold(
         topBar = { scrollBehavior ->
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (state.selectionMode) {
+                    val filteredHistoryIds = remember(filteredHistory) {
+                        filteredHistory.filterIsInstance<HistoryUiModel.Item>().map { it.item.mangaId }
+                    }
                     AppBar(
                         titleContent = {
                             AppBarTitle(state.selected.size.toString())
@@ -74,12 +96,12 @@ fun HistoryScreen(
                                     AppBar.Action(
                                         title = stringResource(MR.strings.action_select_all),
                                         icon = Icons.Outlined.SelectAll,
-                                        onClick = { /* Future: Implement Select All */ },
+                                        onClick = { screenModel.selectAll(filteredHistoryIds) },
                                     ),
                                     AppBar.Action(
                                         title = stringResource(MR.strings.action_select_inverse),
                                         icon = Icons.Outlined.FlipToBack,
-                                        onClick = { /* Future: Implement Invert Selection */ },
+                                        onClick = { screenModel.invertSelection(filteredHistoryIds) },
                                     ),
                                 ),
                             )
@@ -186,16 +208,17 @@ fun HistoryScreen(
                 )
             } else {
                 HistoryScreenContent(
-                    history = it,
+                    history = filteredHistory,
                     contentPadding = contentPadding,
-                    selectedCategoryId = state.selectedCategoryId,
-                    categoryMap = state.mangaToCategoryMap,
                     scrollState = scrollState,
+                    selectionMode = state.selectionMode,
+                    selected = state.selected,
                     onClickCover = { history -> onClickCover(history.mangaId) },
                     onClickResume = { history -> onClickResume(history.mangaId, history.chapterId) },
                     onClickDelete = { item -> onDialogChange(HistoryScreenModel.Dialog.Delete(item)) },
                     onClickFavorite = { history -> onClickFavorite(history.mangaId) },
                     onClickChangeCategory = onClickChangeCategory,
+                    onToggleSelection = screenModel::toggleSelection,
                 )
             }
         }
@@ -206,40 +229,22 @@ fun HistoryScreen(
 private fun HistoryScreenContent(
     history: List<HistoryUiModel>,
     contentPadding: PaddingValues,
-    selectedCategoryId: Long,
-    categoryMap: Map<Long, Long>,
     scrollState: LazyListState,
+    selectionMode: Boolean,
+    selected: Set<Long>,
     onClickCover: (HistoryWithRelations) -> Unit,
     onClickResume: (HistoryWithRelations) -> Unit,
     onClickDelete: (HistoryWithRelations) -> Unit,
     onClickFavorite: (HistoryWithRelations) -> Unit,
     onClickChangeCategory: (Long) -> Unit,
+    onToggleSelection: (Long) -> Unit,
 ) {
-    val filteredHistory = remember(history, selectedCategoryId, categoryMap) {
-        val result = history.filter { uiModel ->
-            when (uiModel) {
-                is HistoryUiModel.Header -> true
-                is HistoryUiModel.Item -> {
-                    val cId = categoryMap[uiModel.item.mangaId] ?: 0L
-                    cId == selectedCategoryId
-                }
-            }
-        }
-        result.filterIndexed { index, uiModel ->
-            if (uiModel is HistoryUiModel.Header) {
-                result.getOrNull(index + 1) is HistoryUiModel.Item
-            } else {
-                true
-            }
-        }
-    }
-
     FastScrollLazyColumn(
         contentPadding = contentPadding,
         state = scrollState,
     ) {
         items(
-            items = filteredHistory,
+            items = history,
             key = { "history-${it.hashCode()}" },
         ) { item ->
             when (item) {
@@ -263,8 +268,14 @@ private fun HistoryScreenContent(
                         onClickDelete = { onClickDelete(value) },
                         onClickFavorite = { onClickFavorite(value) },
                         onLongClick = {
-                            onClickChangeCategory(value.mangaId)
+                            if (selectionMode) {
+                                onToggleSelection(value.mangaId)
+                            } else {
+                                onClickChangeCategory(value.mangaId)
+                            }
                         },
+                        selectionMode = selectionMode,
+                        selected = value.mangaId in selected,
                     )
                 }
             }

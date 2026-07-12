@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -31,6 +33,7 @@ import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.theme.active
 
 private val HistoryItemHeight = 96.dp
 
@@ -41,87 +44,102 @@ fun HistoryItem(
     onClickResume: () -> Unit,
     onClickDelete: () -> Unit,
     onClickFavorite: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
+    onLongClick: () -> Unit,
+    selectionMode: Boolean,
+    selected: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Surface(
         modifier = modifier
             .combinedClickable(
-                onClick = onClickResume,
-                onLongClick = {
-                    onLongClick?.invoke()
-                },
-            )
-            .height(HistoryItemHeight)
-            .padding(
-                horizontal = MaterialTheme.padding.medium,
-                vertical = MaterialTheme.padding.small,
+                onClick = if (selectionMode) onLongClick else onClickResume,
+                onLongClick = onLongClick,
             ),
-        verticalAlignment = Alignment.CenterVertically,
+        color = if (selected) MaterialTheme.colorScheme.active.copy(alpha = 0.12f) else Color.Transparent,
     ) {
-        MangaCover.Book(
-            modifier = Modifier.fillMaxHeight(),
-            data = history.coverData,
-            onClick = onClickCover,
-        )
-
-        Column(
+        Row(
             modifier = Modifier
-                .weight(1f)
+                .height(HistoryItemHeight)
                 .padding(
-                    start = MaterialTheme.padding.medium,
-                    end = MaterialTheme.padding.small,
+                    horizontal = MaterialTheme.padding.medium,
+                    vertical = MaterialTheme.padding.small,
                 ),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            val textStyle = MaterialTheme.typography.bodyMedium
-
-            Text(
-                text = history.title,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                style = textStyle,
-            )
-
-            val readAt = remember {
-                history.readAt?.toTimestampString() ?: ""
-            }
-
-            Text(
-                text = if (history.chapterNumber > -1) {
-                    stringResource(
-                        MR.strings.recent_manga_time,
-                        formatChapterNumber(history.chapterNumber),
-                        readAt,
-                    )
-                } else {
-                    readAt
-                },
-                modifier = Modifier.padding(top = 4.dp),
-                style = textStyle,
-            )
-        }
-
-        if (!history.coverData.isMangaFavorite) {
-            IconButton(
-                onClick = onClickFavorite,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.FavoriteBorder,
-                    contentDescription = stringResource(MR.strings.add_to_library),
-                    tint = MaterialTheme.colorScheme.onSurface,
+            if (selectionMode) {
+                Checkbox(
+                    checked = selected,
+                    onCheckedChange = null,
+                    modifier = Modifier.padding(end = MaterialTheme.padding.medium),
                 )
             }
-        }
 
-        IconButton(
-            onClick = onClickDelete,
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Delete,
-                contentDescription = stringResource(MR.strings.action_delete),
-                tint = MaterialTheme.colorScheme.onSurface,
+            MangaCover.Book(
+                modifier = Modifier.fillMaxHeight(),
+                data = history.coverData,
+                onClick = onClickCover.takeIf { !selectionMode },
             )
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(
+                        start = MaterialTheme.padding.medium,
+                        end = MaterialTheme.padding.small,
+                    ),
+            ) {
+                val textStyle = MaterialTheme.typography.bodyMedium
+
+                Text(
+                    text = history.title,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = textStyle,
+                )
+
+                val readAt = remember {
+                    history.readAt?.toTimestampString() ?: ""
+                }
+
+                Text(
+                    text = if (history.chapterNumber > -1) {
+                        stringResource(
+                            MR.strings.recent_manga_time,
+                            formatChapterNumber(history.chapterNumber),
+                            readAt,
+                        )
+                    } else {
+                        readAt
+                    },
+                    modifier = Modifier.padding(top = 4.dp),
+                    style = textStyle,
+                )
+            }
+
+            if (!selectionMode) {
+                if (!history.coverData.isMangaFavorite) {
+                    IconButton(
+                        onClick = onClickFavorite,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.FavoriteBorder,
+                            contentDescription = stringResource(MR.strings.add_to_library),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = onClickDelete,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = stringResource(MR.strings.action_delete),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
         }
     }
 }
@@ -141,6 +159,8 @@ private fun HistoryItemPreviews(
                 onClickDelete = {},
                 onClickFavorite = {},
                 onLongClick = {},
+                selectionMode = false,
+                selected = false,
             )
         }
     }
