@@ -215,9 +215,13 @@ class HistoryScreenModel(
             val updatedCategories = manageHistoryCategory.subscribe().first()
             mutableState.update { currentState ->
                 val newSelectedId = if (currentState.selectedCategoryId == id) 0L else currentState.selectedCategoryId
+                val newMap = currentState.mangaToCategoryMap.mapValues { (_, v) ->
+                    if (v == id) 0L else v
+                }
                 currentState.copy(
                     historyCategories = updatedCategories,
-                    selectedCategoryId = newSelectedId
+                    selectedCategoryId = newSelectedId,
+                    mangaToCategoryMap = newMap
                 )
             }
         }
