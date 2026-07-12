@@ -201,6 +201,14 @@ class HistoryScreenModel(
         }
     }
 
+    fun renameHistoryCategory(id: Long, name: String) {
+        screenModelScope.launch {
+            manageHistoryCategory.rename(id, name)
+            val updatedCategories = manageHistoryCategory.subscribe().first()
+            mutableState.update { it.copy(historyCategories = updatedCategories) }
+        }
+    }
+
     fun setDialog(dialog: Dialog?) {
         mutableState.update { it.copy(dialog = dialog) }
     }
@@ -307,6 +315,7 @@ class HistoryScreenModel(
         data object DeleteAll : Dialog
         data class Delete(val history: HistoryWithRelations) : Dialog
         data object CreateHistoryCategory : Dialog
+        data class RenameHistoryCategory(val category: HistoryCategory) : Dialog
         data class ChangeHistoryCategory(
             val mangaId: Long,
             val categories: List<HistoryCategory>,

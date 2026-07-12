@@ -25,6 +25,10 @@ class HistoryCategoryRepositoryImpl(
         database.historycategoriesQueries.insertHistoryCategory(name)
     }
 
+    override suspend fun updateHistoryCategory(id: Long, name: String) {
+        database.historycategoriesQueries.updateHistoryCategory(name, id)
+    }
+
     override suspend fun deleteHistoryCategory(id: Long) {
         database.historycategoriesQueries.deleteHistoryCategory(id)
     }

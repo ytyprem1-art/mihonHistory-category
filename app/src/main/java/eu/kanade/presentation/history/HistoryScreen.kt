@@ -1,5 +1,7 @@
 package eu.kanade.presentation.history
 
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,13 +10,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -94,11 +101,35 @@ fun HistoryScreen(
                             text = { Text("Semua") },
                         )
                         state.historyCategories.forEach { category ->
-                            Tab(
-                                selected = state.selectedCategoryId == category.id,
-                                onClick = { onTabSelected(category.id) },
-                                text = { Text(category.name) },
-                            )
+                            var showMenu by remember { mutableStateOf(false) }
+                            Box {
+                                Tab(
+                                    selected = state.selectedCategoryId == category.id,
+                                    onClick = { onTabSelected(category.id) },
+                                    text = { Text(category.name) },
+                                )
+                                // Overlay untuk menangkap Long Click karena Tab bawaan tidak mendukungnya
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .combinedClickable(
+                                            onLongClick = { showMenu = true },
+                                            onClick = { onTabSelected(category.id) },
+                                        ),
+                                )
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Ubah Nama") },
+                                        onClick = {
+                                            onDialogChange(HistoryScreenModel.Dialog.RenameHistoryCategory(category))
+                                            showMenu = false
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
                 }

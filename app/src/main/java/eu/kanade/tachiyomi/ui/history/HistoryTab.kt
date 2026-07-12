@@ -119,6 +119,39 @@ data object HistoryTab : Tab {
                 )
             }
 
+            is HistoryScreenModel.Dialog.RenameHistoryCategory -> {
+                var categoryName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dialog.category.name) }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Ubah Nama Kategori") },
+                    text = {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = categoryName,
+                            onValueChange = { categoryName = it },
+                            label = { androidx.compose.material3.Text("Nama Kategori") },
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                if (categoryName.isNotBlank()) {
+                                    screenModel.renameHistoryCategory(dialog.category.id, categoryName)
+                                    onDismissRequest()
+                                }
+                            }
+                        ) {
+                            androidx.compose.material3.Text("Simpan")
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text("Batal")
+                        }
+                    }
+                )
+            }
+
             is HistoryScreenModel.Dialog.Delete -> {
                 HistoryDeleteDialog(
                     onDismissRequest = onDismissRequest,

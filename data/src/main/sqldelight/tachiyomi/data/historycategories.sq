@@ -29,6 +29,12 @@ deleteHistoryCategory:
 DELETE FROM history_categories
 WHERE _id = ?;
 
+-- Kueri untuk mengubah nama kategori history
+updateHistoryCategory:
+UPDATE history_categories
+SET name = ?
+WHERE _id = ?;
+
 -- Kueri untuk memasukkan/memindahkan manga ke kategori history khusus
 insertMangaMapping:
 INSERT OR REPLACE INTO history_category_mapping(manga_id, category_id)

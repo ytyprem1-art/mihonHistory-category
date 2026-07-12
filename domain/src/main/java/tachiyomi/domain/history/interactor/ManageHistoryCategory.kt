@@ -15,6 +15,10 @@ class ManageHistoryCategory(
         repository.insertHistoryCategory(name)
     }
 
+    suspend fun rename(id: Long, name: String) {
+        repository.updateHistoryCategory(id, name)
+    }
+
     suspend fun delete(id: Long) {
         repository.deleteHistoryCategory(id)
     }
