@@ -155,6 +155,20 @@ class HistoryScreenModel(
         }
     }
 
+    fun removeSelectedFromHistory(mangaIds: Set<Long>) {
+        screenModelScope.launchIO {
+            mangaIds.forEach { mangaId ->
+                removeHistory.await(mangaId)
+            }
+            mutableState.update { state ->
+                state.copy(
+                    selectionMode = false,
+                    selected = emptySet(),
+                )
+            }
+        }
+    }
+
     fun removeAllHistory() {
         screenModelScope.launchIO {
             val result = removeHistory.awaitAll()
@@ -396,6 +410,7 @@ class HistoryScreenModel(
     sealed interface Dialog {
         data object DeleteAll : Dialog
         data class Delete(val history: HistoryWithRelations) : Dialog
+        data class DeleteSelected(val mangaIds: Set<Long>) : Dialog
         data object CreateHistoryCategory : Dialog
         data class ManageHistoryCategory(val category: HistoryCategory) : Dialog
         data class RenameHistoryCategory(val category: HistoryCategory) : Dialog

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.ui.Modifier
@@ -276,6 +277,28 @@ data object HistoryTab : Tab {
                             screenModel.removeFromHistory(dialog.history)
                         }
                     },
+                )
+            }
+            is HistoryScreenModel.Dialog.DeleteSelected -> {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Delete History") },
+                    text = { androidx.compose.material3.Text("Delete the selected history entries?") },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                screenModel.removeSelectedFromHistory(dialog.mangaIds)
+                                onDismissRequest()
+                            }
+                        ) {
+                            androidx.compose.material3.Text("Delete")
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text("Cancel")
+                        }
+                    }
                 )
             }
             is HistoryScreenModel.Dialog.DeleteAll -> {

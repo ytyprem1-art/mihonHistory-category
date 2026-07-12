@@ -43,6 +43,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
 import java.time.LocalDate
+import androidx.compose.material.icons.outlined.Delete
 
 @Composable
 fun HistoryScreen(
@@ -94,6 +95,16 @@ fun HistoryScreen(
                         actions = {
                             AppBarActions(
                                 listOf(
+                                    AppBar.Action(
+                                        title = "Hapus",
+                                        icon = Icons.Outlined.Delete,
+                                        onClick = {
+                                            onDialogChange(
+                                                HistoryScreenModel.Dialog.DeleteSelected(state.selected)
+                                            )
+                                        },
+                                        enabled = state.selected.isNotEmpty(),
+                                    ),
                                     AppBar.Action(
                                         title = "Pindahkan ke Kategori",
                                         icon = Icons.Outlined.Folder,
