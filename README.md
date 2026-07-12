@@ -9,6 +9,12 @@ This is a modified version of [Mihon](https://github.com/mihonapp/mihon).
 * **Usage & Features:** For a detailed guide on how to use the new features, please check the [Releases tab](https://github.com/ytyprem1-art/mihonHistory-category/releases).
 * **Open for Testing:** While this started as a personal project for fun, I've decided to share it for anyone who wants to try it out!
 * **Credits:** I deeply respect the hard work and dedication of the original Mihon creators and contributors. This project is maintained as a hobby and is for educational purposes. Thank you!
+
+  
+* **quick fix in v.0.5.1
+-Disabled telemetry and crash reporting to the original Mihon.
+-Automatic update checker to original Mihon has been disabled.
+for the original mihon sorry before i didnt turn off this, since im new to this. thankyou!
 ---
 # Mihon History Category Mod
 
