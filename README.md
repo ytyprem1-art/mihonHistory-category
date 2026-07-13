@@ -1,3 +1,106 @@
+# Mihon History Category Mod
+
+> Organize your reading history with custom categories.
+
+## 📖 About
+
+This is a modified version of [Mihon](https://github.com/mihonapp/mihon) focused on improving the History experience.
+
+Unlike the original app, this mod lets you organize your reading history using custom categories, making it much easier to keep track of different manga, manhwa, and webtoons.
+
+---
+
+## ✨ Features
+
+- ✅ Create custom History Categories
+- ✅ Rename, delete, and reorder categories
+- ✅ Move history entries between categories
+- ✅ Multi-selection support
+- ✅ Batch move & batch delete
+- ✅ Independent scroll position for every History tab
+- ✅ Automatic UI refresh
+- ✅ English & Bahasa Indonesia localization
+- ✅ Backup & Restore support
+
+---
+
+## 📸 Screenshots
+
+<div align="center">
+  <img src="https://github.com/ytyprem1-art/mihonHistory-category/blob/fitur-history-category/assets/1.jpg?raw=true" width="200"/>
+  <img src="https://github.com/ytyprem1-art/mihonHistory-category/blob/fitur-history-category/assets/2.jpg?raw=true" width="200"/>
+  <img src="https://github.com/ytyprem1-art/mihonHistory-category/blob/fitur-history-category/assets/3.jpg?raw=true" width="200"/>
+  <img src="https://github.com/ytyprem1-art/mihonHistory-category/blob/fitur-history-category/assets/4.jpg?raw=true" width="200"/>
+  <img src="https://github.com/ytyprem1-art/mihonHistory-category/blob/fitur-history-category/assets/5.jpg?raw=true" width="200"/>
+</div>
+
+---
+
+## ℹ️ Information
+
+- **Standalone Installation**  
+  Uses a different package name, so it can be installed alongside the original Mihon without conflicts.
+
+- **Usage Guide**  
+  Feature guides and changelogs are available in the **Releases** section.
+
+- **Open for Testing**  
+  This started as a personal project, but I decided to share it with anyone interested in trying it.
+
+- **Quick Fix (v0.5.1)**  
+  - Disabled telemetry and crash reporting to the original Mihon.
+  - Disabled automatic update checks to the original Mihon.
+
+  Sorry for missing this in the earlier versions—I was still learning. 😅
+
+---
+
+# 💭 Why I Made This
+
+This project started as something I built purely for myself.
+
+I wanted a better way to organize and manage my History in Mihon, so instead of waiting for someone else to implement it, I decided to build it myself.
+
+I have very little programming experience, so this project became both a personal challenge and a learning experience.
+
+Throughout this journey, ChatGPT and Gemini helped me brainstorm ideas, debug problems, and turn those ideas into working features.
+
+Without them, this project probably wouldn't have reached where it is today.
+
+If this mod makes your Mihon experience a little better, then I've already achieved what I wanted.
+
+Cheers! 🍻
+
+---
+
+## 🛠 For Developers
+
+If you're creating your own Mihon fork or experimenting with new ideas, feel free to reuse any part of this implementation.
+
+No need to ask for permission—just grab what you need and build something awesome.
+
+Hopefully this project helps you build something even better.
+
+Credit is appreciated, but don't worry too much about it.
+
+This mod wouldn't exist without the help of ChatGPT and Gemini anyway.
+
+Happy coding! 🍻
+
+---
+
+## 🤝 Credits
+
+Special thanks to:
+
+- The Mihon Team, for creating such an amazing open-source project.
+- ChatGPT (OpenAI), for brainstorming, debugging, implementation ideas, and code generation.
+- Gemini (Google), for brainstorming, debugging, implementation ideas, and code generation.
+
+---
+
+# Original Mihon README
+
 <div align="center">
 
 <a href="https://mihon.app">
