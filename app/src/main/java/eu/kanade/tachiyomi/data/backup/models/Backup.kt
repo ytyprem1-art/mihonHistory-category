@@ -21,4 +21,5 @@ data class Backup(
 data class BackupHistoryCategory(
     @ProtoNumber(1) var name: String,
     @ProtoNumber(2) var id: Long = 0,
+    @ProtoNumber(3) var sort: Int = 0,
 )

@@ -92,7 +92,7 @@ class BackupCreator(
                 backupExtensionStores = backupExtensionStores(options),
                 backupSourcePreferences = backupSourcePreferences(options),
                 backupHistoryCategories = manageHistoryCategory.subscribe().first().map {
-                    BackupHistoryCategory(it.name, it.id)
+                    BackupHistoryCategory(it.name, it.id, it.sort)
                 },
             )
 

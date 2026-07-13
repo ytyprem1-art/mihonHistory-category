@@ -12,14 +12,17 @@ class ManageHistoryCategory(
         return repository.getHistoryCategories()
     }
 
-    suspend fun create(name: String) {
-        val categories = repository.getHistoryCategories().first()
-        val nextSort = (categories.maxOfOrNull { it.sort } ?: 0) + 1
+    suspend fun create(name: String, sort: Int? = null) {
+        val nextSort = sort ?: ((repository.getHistoryCategories().first().maxOfOrNull { it.sort } ?: 0) + 1)
         repository.insertHistoryCategory(name, nextSort)
     }
 
     suspend fun rename(id: Long, name: String) {
         repository.updateHistoryCategory(id, name)
+    }
+
+    suspend fun updateSort(id: Long, sort: Int) {
+        repository.updateHistoryCategorySort(id, sort)
     }
 
     suspend fun delete(id: Long) {

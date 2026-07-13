@@ -310,11 +310,16 @@ class MangaRestorer(
 
         val backupCategory = backupHistoryCategories.find { it.id == historyCategory } ?: return
         val dbCategories = manageHistoryCategory.subscribe().first()
-        val dbCategory = dbCategories.find { it.name == backupCategory.name }
+        var dbCategory = dbCategories.find { it.name == backupCategory.name }
             ?: run {
-                manageHistoryCategory.create(backupCategory.name)
+                manageHistoryCategory.create(backupCategory.name, backupCategory.sort)
                 manageHistoryCategory.subscribe().first().find { it.name == backupCategory.name }
             }
+
+        if (dbCategory != null && dbCategory.sort != backupCategory.sort) {
+            manageHistoryCategory.updateSort(dbCategory.id, backupCategory.sort)
+            dbCategory = dbCategory.copy(sort = backupCategory.sort)
+        }
 
         if (dbCategory != null) {
             manageHistoryCategory.moveToCategory(manga.id, dbCategory.id)
