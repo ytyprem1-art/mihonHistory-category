@@ -5,6 +5,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import kotlinx.coroutines.flow.Flow
 import tachiyomi.data.Database
 import tachiyomi.data.subscribeToList
+import tachiyomi.data.subscribeToOneOrNull
 import tachiyomi.domain.source.linked.model.LinkedSourceGroup
 import tachiyomi.domain.source.linked.repository.LinkedSourceRepository
 
@@ -19,8 +20,8 @@ class LinkedSourceRepositoryImpl(
     }
 
     override suspend fun getGroupById(id: Long): LinkedSourceGroup? {
-        return database.linked_sourcesQueries.getGroupById(id) { _id, name ->
-            LinkedSourceGroup(_id, name, 0L)
+        return database.linked_sourcesQueries.getGroupById(id) { id_, name ->
+            LinkedSourceGroup(id_, name, 0L)
         }.awaitAsOneOrNull()
     }
 
@@ -42,8 +43,14 @@ class LinkedSourceRepositoryImpl(
         }
     }
 
-    override suspend fun getGroupIdForManga(mangaId: Long): Long? {
-        return database.linked_sourcesQueries.getGroupIdForManga(mangaId).awaitAsOneOrNull()
+    override fun getGroupForManga(mangaId: Long, sourceId: Long): Flow<LinkedSourceGroup?> {
+        return database.linked_sourcesQueries.getGroupForManga(mangaId, sourceId) { gId: Long, name: String, memberCount: Long ->
+            LinkedSourceGroup(gId, name, memberCount)
+        }.subscribeToOneOrNull()
+    }
+
+    override suspend fun getGroupIdForManga(mangaId: Long, sourceId: Long): Long? {
+        return database.linked_sourcesQueries.getGroupIdForManga(mangaId, sourceId).awaitAsOneOrNull()
     }
 
     override suspend fun insertMember(groupId: Long, mangaId: Long) {

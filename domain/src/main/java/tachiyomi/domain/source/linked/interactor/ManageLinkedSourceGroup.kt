@@ -19,8 +19,8 @@ class ManageLinkedSourceGroup(
         repository.createAndLink(name, mangaId)
     }
 
-    suspend fun joinGroup(groupId: Long, mangaId: Long) {
-        val currentGroupId = repository.getGroupIdForManga(mangaId)
+    suspend fun joinGroup(groupId: Long, mangaId: Long, sourceId: Long) {
+        val currentGroupId = repository.getGroupIdForManga(mangaId, sourceId)
         if (currentGroupId != groupId) {
             repository.insertMember(groupId, mangaId)
         }
@@ -34,8 +34,12 @@ class ManageLinkedSourceGroup(
         repository.deleteGroup(id)
     }
 
-    suspend fun getGroupForManga(mangaId: Long): LinkedSourceGroup? {
-        val groupId = repository.getGroupIdForManga(mangaId) ?: return null
+    fun subscribeGroupForManga(mangaId: Long, sourceId: Long): Flow<LinkedSourceGroup?> {
+        return repository.getGroupForManga(mangaId, sourceId)
+    }
+
+    suspend fun getGroupForManga(mangaId: Long, sourceId: Long): LinkedSourceGroup? {
+        val groupId = repository.getGroupIdForManga(mangaId, sourceId) ?: return null
         return repository.getGroupById(groupId)
     }
 }

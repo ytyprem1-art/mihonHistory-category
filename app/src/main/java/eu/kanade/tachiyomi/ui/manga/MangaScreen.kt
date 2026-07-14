@@ -189,6 +189,15 @@ class MangaScreen(
                     showLinkedSourcesSheet = false
                     context.toast("Join Existing Group coming soon.")
                 },
+                onAddSourceClick = {
+                    showLinkedSourcesSheet = false
+                    context.toast("Add Source coming soon.")
+                },
+                onManageGroupClick = {
+                    showLinkedSourcesSheet = false
+                    context.toast("Manage Group coming soon.")
+                },
+                linkedGroup = successState.linkedGroup,
             )
         }
 
@@ -295,25 +304,6 @@ class MangaScreen(
                         .takeIf { screenModel.isUpdateIntervalEnabled },
                 )
             }
-            is MangaScreenModel.Dialog.LinkedSourcesInitial -> {
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = onDismissRequest,
-                    title = { androidx.compose.material3.Text("Linked Sources") },
-                    text = { androidx.compose.material3.Text("Connect this manga to a Linked Source group?") },
-                    confirmButton = {
-                        androidx.compose.foundation.layout.Column {
-                            androidx.compose.material3.TextButton(onClick = screenModel::showCreateGroupDialog) {
-                                androidx.compose.material3.Text("Create New Group")
-                            }
-                        }
-                    },
-                    dismissButton = {
-                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
-                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
-                        }
-                    }
-                )
-            }
             is MangaScreenModel.Dialog.CreateLinkedGroup -> {
                 var name by remember { mutableStateOf(dialog.defaultName) }
                 androidx.compose.material3.AlertDialog(
@@ -345,9 +335,6 @@ class MangaScreen(
                         }
                     }
                 )
-            }
-            is MangaScreenModel.Dialog.JoinLinkedGroup -> {
-                onDismissRequest()
             }
         }
 

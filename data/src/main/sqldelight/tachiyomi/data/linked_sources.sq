@@ -43,10 +43,19 @@ SELECT *
 FROM linked_source_members
 WHERE group_id = ?;
 
+getGroupForManga:
+SELECT
+G._id,
+G.name,
+(SELECT COUNT(*) FROM linked_source_members WHERE group_id = G._id) AS memberCount
+FROM linked_source_groups G
+JOIN linked_source_members M ON G._id = M.group_id
+WHERE M.manga_id = ? OR M.manga_id = ?;
+
 getGroupIdForManga:
 SELECT group_id
 FROM linked_source_members
-WHERE manga_id = ?;
+WHERE manga_id = ? OR manga_id = ?;
 
 insertMember:
 INSERT INTO linked_source_members(group_id, manga_id)

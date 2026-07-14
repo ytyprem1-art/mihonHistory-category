@@ -45,7 +45,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -204,6 +203,15 @@ class MangaScreenModel(
         }
 
         observeDownloads()
+
+        screenModelScope.launchIO {
+            val manga = getMangaAndChapters.awaitManga(mangaId)
+            manageLinkedSourceGroup.subscribeGroupForManga(mangaId, manga.source)
+                .flowWithLifecycle(lifecycle)
+                .collectLatest { linkedGroup ->
+                    updateSuccessState { it.copy(linkedGroup = linkedGroup) }
+                }
+        }
 
         screenModelScope.launchIO {
             val manga = getMangaAndChapters.awaitManga(mangaId)
@@ -1069,9 +1077,7 @@ class MangaScreenModel(
         data object TrackSheet : Dialog
         data object FullCover : Dialog
 
-        data class LinkedSourcesInitial(val allGroups: List<LinkedSourceGroup>) : Dialog
         data class CreateLinkedGroup(val defaultName: String) : Dialog
-        data class JoinLinkedGroup(val allGroups: List<LinkedSourceGroup>) : Dialog
     }
 
     fun dismissDialog() {
@@ -1102,17 +1108,6 @@ class MangaScreenModel(
     fun setExcludedScanlators(excludedScanlators: Set<String>) {
         screenModelScope.launchIO {
             setExcludedScanlators.await(mangaId, excludedScanlators)
-        }
-    }
-
-    fun showLinkedSourcesDialog() {
-        val successState = successState ?: return
-        screenModelScope.launchIO {
-            val linkedGroup = manageLinkedSourceGroup.getGroupForManga(mangaId)
-            val allGroups = manageLinkedSourceGroup.subscribe().first()
-            if (linkedGroup == null) {
-                updateSuccessState { it.copy(dialog = Dialog.LinkedSourcesInitial(allGroups)) }
-            }
         }
     }
 
@@ -1155,6 +1150,7 @@ class MangaScreenModel(
             val excludedScanlators: Set<String>,
             val trackingCount: Int = 0,
             val hasLoggedInTrackers: Boolean = false,
+            val linkedGroup: LinkedSourceGroup? = null,
             val isRefreshingData: Boolean = false,
             val dialog: Dialog? = null,
             val hasPromptedToAddBefore: Boolean = false,
