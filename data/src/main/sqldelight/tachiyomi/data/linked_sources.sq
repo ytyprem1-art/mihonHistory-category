@@ -6,7 +6,7 @@ CREATE TABLE linked_source_groups (
 CREATE TABLE linked_source_members (
     _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     group_id INTEGER NOT NULL,
-    source_id INTEGER NOT NULL,
+    manga_id INTEGER NOT NULL,
     FOREIGN KEY(group_id) REFERENCES linked_source_groups(_id) ON DELETE CASCADE
 );
 
@@ -26,7 +26,8 @@ WHERE _id = ?;
 
 insertGroup:
 INSERT INTO linked_source_groups(name)
-VALUES (?);
+VALUES (?)
+RETURNING _id;
 
 updateGroup:
 UPDATE linked_source_groups
@@ -41,3 +42,12 @@ getMembersByGroupId:
 SELECT *
 FROM linked_source_members
 WHERE group_id = ?;
+
+getGroupIdForManga:
+SELECT group_id
+FROM linked_source_members
+WHERE manga_id = ?;
+
+insertMember:
+INSERT INTO linked_source_members(group_id, manga_id)
+VALUES (?, ?);

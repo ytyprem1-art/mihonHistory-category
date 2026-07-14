@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -77,6 +78,8 @@ import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.manga.model.MangaWithChapterCount
 import tachiyomi.domain.manga.model.applyFilter
 import tachiyomi.domain.manga.repository.MangaRepository
+import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
+import tachiyomi.domain.source.linked.model.LinkedSourceGroup
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.track.interactor.GetTracks
 import tachiyomi.i18n.MR
@@ -114,6 +117,7 @@ class MangaScreenModel(
     private val mangaRepository: MangaRepository = Injekt.get(),
     private val filterChaptersForDownload: FilterChaptersForDownload = Injekt.get(),
     private val updateMangaFromRemote: UpdateMangaFromRemote = Injekt.get(),
+    private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
 ) : StateScreenModel<MangaScreenModel.State>(State.Loading) {
 
@@ -1064,6 +1068,10 @@ class MangaScreenModel(
         data object SettingsSheet : Dialog
         data object TrackSheet : Dialog
         data object FullCover : Dialog
+
+        data class LinkedSourcesInitial(val allGroups: List<LinkedSourceGroup>) : Dialog
+        data class CreateLinkedGroup(val defaultName: String) : Dialog
+        data class JoinLinkedGroup(val allGroups: List<LinkedSourceGroup>) : Dialog
     }
 
     fun dismissDialog() {
@@ -1094,6 +1102,28 @@ class MangaScreenModel(
     fun setExcludedScanlators(excludedScanlators: Set<String>) {
         screenModelScope.launchIO {
             setExcludedScanlators.await(mangaId, excludedScanlators)
+        }
+    }
+
+    fun showLinkedSourcesDialog() {
+        val successState = successState ?: return
+        screenModelScope.launchIO {
+            val linkedGroup = manageLinkedSourceGroup.getGroupForManga(mangaId)
+            val allGroups = manageLinkedSourceGroup.subscribe().first()
+            if (linkedGroup == null) {
+                updateSuccessState { it.copy(dialog = Dialog.LinkedSourcesInitial(allGroups)) }
+            }
+        }
+    }
+
+    fun showCreateGroupDialog() {
+        val manga = manga ?: return
+        updateSuccessState { it.copy(dialog = Dialog.CreateLinkedGroup(manga.title)) }
+    }
+
+    fun createGroup(name: String) {
+        screenModelScope.launchIO {
+            manageLinkedSourceGroup.create(name)
         }
     }
 

@@ -64,6 +64,8 @@ import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.presentation.core.screens.LoadingScreen
+import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.i18n.stringResource
 
 class MangaScreen(
     private val mangaId: Long,
@@ -179,8 +181,14 @@ class MangaScreen(
         if (showLinkedSourcesSheet) {
             LinkedSourcesSheet(
                 onDismissRequest = { showLinkedSourcesSheet = false },
-                onSearchSourcesClick = { /* TODO */ },
-                onJoinGroupClick = { /* TODO */ },
+                onSearchSourcesClick = {
+                    showLinkedSourcesSheet = false
+                    screenModel.showCreateGroupDialog()
+                },
+                onJoinGroupClick = {
+                    showLinkedSourcesSheet = false
+                    context.toast("Join Existing Group coming soon.")
+                },
             )
         }
 
@@ -286,6 +294,61 @@ class MangaScreen(
                     onValueChanged = { interval: Int -> screenModel.setFetchInterval(dialog.manga, interval) }
                         .takeIf { screenModel.isUpdateIntervalEnabled },
                 )
+            }
+            is MangaScreenModel.Dialog.LinkedSourcesInitial -> {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Linked Sources") },
+                    text = { androidx.compose.material3.Text("Connect this manga to a Linked Source group?") },
+                    confirmButton = {
+                        androidx.compose.foundation.layout.Column {
+                            androidx.compose.material3.TextButton(onClick = screenModel::showCreateGroupDialog) {
+                                androidx.compose.material3.Text("Create New Group")
+                            }
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
+                        }
+                    }
+                )
+            }
+            is MangaScreenModel.Dialog.CreateLinkedGroup -> {
+                var name by remember { mutableStateOf(dialog.defaultName) }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Create New Group") },
+                    text = {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { androidx.compose.material3.Text("Group Name") },
+                            singleLine = true,
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                if (name.isNotBlank()) {
+                                    screenModel.createGroup(name)
+                                    context.toast("Linked Source Group created.")
+                                    onDismissRequest()
+                                }
+                            },
+                        ) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_ok))
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
+                        }
+                    }
+                )
+            }
+            is MangaScreenModel.Dialog.JoinLinkedGroup -> {
+                onDismissRequest()
             }
         }
 

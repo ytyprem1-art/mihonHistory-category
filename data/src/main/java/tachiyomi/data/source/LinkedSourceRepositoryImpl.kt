@@ -1,8 +1,8 @@
 package tachiyomi.data.source
 
+import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import tachiyomi.data.Database
 import tachiyomi.data.subscribeToList
 import tachiyomi.domain.source.linked.model.LinkedSourceGroup
@@ -20,12 +20,12 @@ class LinkedSourceRepositoryImpl(
 
     override suspend fun getGroupById(id: Long): LinkedSourceGroup? {
         return database.linked_sourcesQueries.getGroupById(id) { _id, name ->
-            LinkedSourceGroup(_id, name, 0L) // memberCount not used here usually
+            LinkedSourceGroup(_id, name, 0L)
         }.awaitAsOneOrNull()
     }
 
-    override suspend fun insertGroup(name: String) {
-        database.linked_sourcesQueries.insertGroup(name)
+    override suspend fun insertGroup(name: String): Long {
+        return database.linked_sourcesQueries.insertGroup(name).awaitAsOne()
     }
 
     override suspend fun updateGroup(id: Long, name: String) {
@@ -34,5 +34,13 @@ class LinkedSourceRepositoryImpl(
 
     override suspend fun deleteGroup(id: Long) {
         database.linked_sourcesQueries.deleteGroup(id)
+    }
+
+    override suspend fun getGroupIdForManga(mangaId: Long): Long? {
+        return database.linked_sourcesQueries.getGroupIdForManga(mangaId).awaitAsOneOrNull()
+    }
+
+    override suspend fun insertMember(groupId: Long, mangaId: Long) {
+        database.linked_sourcesQueries.insertMember(groupId, mangaId)
     }
 }

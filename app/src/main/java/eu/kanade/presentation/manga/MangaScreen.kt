@@ -296,7 +296,7 @@ private fun MangaScreenSmallImpl(
             )
             MangaToolbar(
                 title = state.manga.title,
-                hasFilters = state.chapters.size != state.processedChapters.size,
+                hasFilters = state.filterActive,
                 navigateUp = navigateUp,
                 onClickFilter = onFilterClicked,
                 onClickShare = onShareClicked,
@@ -533,7 +533,7 @@ fun MangaScreenLargeImpl(
             MangaToolbar(
                 modifier = Modifier.onSizeChanged { topBarHeight = it.height },
                 title = state.manga.title,
-                hasFilters = state.chapters.size != state.processedChapters.size,
+                hasFilters = state.filterActive,
                 navigateUp = navigateUp,
                 onClickFilter = onFilterButtonClicked,
                 onClickShare = onShareClicked,
@@ -754,7 +754,7 @@ private fun LazyListScope.sharedChapterItems(
         key = { item ->
             when (item) {
                 is ChapterList.MissingCount -> "missing-count-${item.id}"
-                is ChapterList.Item -> "chapter-${item.chapter.id}"
+                is ChapterList.Item -> "chapter-${item.id}"
             }
         },
         contentType = { MangaScreenItem.CHAPTER },

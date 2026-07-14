@@ -11,8 +11,8 @@ class ManageLinkedSourceGroup(
         return repository.getGroups()
     }
 
-    suspend fun create(name: String) {
-        repository.insertGroup(name)
+    suspend fun create(name: String): Long {
+        return repository.insertGroup(name)
     }
 
     suspend fun rename(id: Long, name: String) {
@@ -21,5 +21,10 @@ class ManageLinkedSourceGroup(
 
     suspend fun delete(id: Long) {
         repository.deleteGroup(id)
+    }
+
+    suspend fun getGroupForManga(mangaId: Long): LinkedSourceGroup? {
+        val groupId = repository.getGroupIdForManga(mangaId) ?: return null
+        return repository.getGroupById(groupId)
     }
 }
