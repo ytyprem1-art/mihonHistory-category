@@ -33,6 +33,7 @@ import eu.kanade.presentation.manga.DuplicateMangaDialog
 import eu.kanade.presentation.manga.EditCoverAction
 import eu.kanade.presentation.manga.MangaScreen
 import eu.kanade.presentation.manga.components.DeleteChaptersDialog
+import eu.kanade.presentation.manga.components.LinkedSourcesSheet
 import eu.kanade.presentation.manga.components.MangaCoverDialog
 import eu.kanade.presentation.manga.components.ScanlatorFilterDialog
 import eu.kanade.presentation.manga.components.SetIntervalDialog
@@ -98,6 +99,8 @@ class MangaScreen(
 
         val successState = state as MangaScreenModel.State.Success
         val isHttpSource = remember { successState.source is HttpSource }
+
+        var showLinkedSourcesSheet by remember { mutableStateOf(false) }
 
         LaunchedEffect(successState.manga, screenModel.source) {
             if (isHttpSource) {
@@ -170,8 +173,16 @@ class MangaScreen(
             onChapterSelected = screenModel::toggleSelection,
             onAllChapterSelected = screenModel::toggleAllSelection,
             onInvertSelection = screenModel::invertSelection,
-            onLinkedSourcesClicked = { context.toast("Linked Sources (Coming Soon)") },
+            onLinkedSourcesClicked = { showLinkedSourcesSheet = true },
         )
+
+        if (showLinkedSourcesSheet) {
+            LinkedSourcesSheet(
+                onDismissRequest = { showLinkedSourcesSheet = false },
+                onSearchSourcesClick = { /* TODO */ },
+                onJoinGroupClick = { /* TODO */ },
+            )
+        }
 
         var showScanlatorsDialog by remember { mutableStateOf(false) }
 
