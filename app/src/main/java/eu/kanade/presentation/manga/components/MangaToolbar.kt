@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.FlipToBack
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +38,7 @@ fun MangaToolbar(
     onClickRefresh: () -> Unit,
     onClickMigrate: (() -> Unit)?,
     onClickEditNotes: () -> Unit,
+    onLinkedSourcesClicked: () -> Unit,
 
     // For action mode
     actionModeCounter: Int,
@@ -108,6 +110,13 @@ fun MangaToolbar(
                             icon = Icons.Outlined.FilterList,
                             iconTint = filterTint,
                             onClick = onClickFilter,
+                        ),
+                    )
+                    add(
+                        AppBar.Action(
+                            title = "Linked Sources",
+                            icon = Icons.Outlined.Link,
+                            onClick = onLinkedSourcesClicked,
                         ),
                     )
                     add(

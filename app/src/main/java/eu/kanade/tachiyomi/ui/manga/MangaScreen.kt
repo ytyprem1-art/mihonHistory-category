@@ -170,6 +170,7 @@ class MangaScreen(
             onChapterSelected = screenModel::toggleSelection,
             onAllChapterSelected = screenModel::toggleAllSelection,
             onInvertSelection = screenModel::invertSelection,
+            onLinkedSourcesClicked = { context.toast("Linked Sources (Coming Soon)") },
         )
 
         var showScanlatorsDialog by remember { mutableStateOf(false) }

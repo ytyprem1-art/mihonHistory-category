@@ -125,6 +125,7 @@ fun MangaScreen(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
+    onLinkedSourcesClicked: () -> Unit,
 ) {
     val context = LocalContext.current
     val onCopyTagToClipboard: (tag: String) -> Unit = {
@@ -168,6 +169,7 @@ fun MangaScreen(
             onChapterSelected = onChapterSelected,
             onAllChapterSelected = onAllChapterSelected,
             onInvertSelection = onInvertSelection,
+            onLinkedSourcesClicked = onLinkedSourcesClicked,
         )
     } else {
         MangaScreenLargeImpl(
@@ -204,6 +206,7 @@ fun MangaScreen(
             onChapterSelected = onChapterSelected,
             onAllChapterSelected = onAllChapterSelected,
             onInvertSelection = onInvertSelection,
+            onLinkedSourcesClicked = onLinkedSourcesClicked,
         )
     }
 }
@@ -256,6 +259,7 @@ private fun MangaScreenSmallImpl(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
+    onLinkedSourcesClicked: () -> Unit,
 ) {
     val chapterListState = rememberLazyListState()
 
@@ -292,7 +296,7 @@ private fun MangaScreenSmallImpl(
             )
             MangaToolbar(
                 title = state.manga.title,
-                hasFilters = state.filterActive,
+                hasFilters = state.chapters.size != state.processedChapters.size,
                 navigateUp = navigateUp,
                 onClickFilter = onFilterClicked,
                 onClickShare = onShareClicked,
@@ -301,6 +305,7 @@ private fun MangaScreenSmallImpl(
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
                 onClickEditNotes = onEditNotesClicked,
+                onLinkedSourcesClicked = onLinkedSourcesClicked,
                 actionModeCounter = selectedChapterCount,
                 onCancelActionMode = { onAllChapterSelected(false) },
                 onSelectAll = { onAllChapterSelected(true) },
@@ -498,6 +503,7 @@ fun MangaScreenLargeImpl(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
+    onLinkedSourcesClicked: () -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
@@ -527,7 +533,7 @@ fun MangaScreenLargeImpl(
             MangaToolbar(
                 modifier = Modifier.onSizeChanged { topBarHeight = it.height },
                 title = state.manga.title,
-                hasFilters = state.filterActive,
+                hasFilters = state.chapters.size != state.processedChapters.size,
                 navigateUp = navigateUp,
                 onClickFilter = onFilterButtonClicked,
                 onClickShare = onShareClicked,
@@ -536,6 +542,7 @@ fun MangaScreenLargeImpl(
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
                 onClickEditNotes = onEditNotesClicked,
+                onLinkedSourcesClicked = onLinkedSourcesClicked,
                 onCancelActionMode = { onAllChapterSelected(false) },
                 actionModeCounter = selectedChapterCount,
                 onSelectAll = { onAllChapterSelected(true) },
@@ -747,7 +754,7 @@ private fun LazyListScope.sharedChapterItems(
         key = { item ->
             when (item) {
                 is ChapterList.MissingCount -> "missing-count-${item.id}"
-                is ChapterList.Item -> "chapter-${item.id}"
+                is ChapterList.Item -> "chapter-${item.chapter.id}"
             }
         },
         contentType = { MangaScreenItem.CHAPTER },
