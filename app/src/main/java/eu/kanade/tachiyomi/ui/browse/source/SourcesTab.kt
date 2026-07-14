@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.browse.source
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,6 +18,7 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.TabContent
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
+import eu.kanade.tachiyomi.ui.browse.source.linked.LinkedSourcesScreen
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
@@ -35,6 +37,11 @@ fun Screen.sourcesTab(): TabContent {
                 title = stringResource(MR.strings.action_global_search),
                 icon = Icons.Outlined.TravelExplore,
                 onClick = { navigator.push(GlobalSearchScreen()) },
+            ),
+            AppBar.Action(
+                title = "Linked Sources",
+                icon = Icons.Outlined.Link,
+                onClick = { navigator.push(LinkedSourcesScreen()) },
             ),
             AppBar.Action(
                 title = stringResource(MR.strings.action_filter),

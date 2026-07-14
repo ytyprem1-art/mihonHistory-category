@@ -1,0 +1,43 @@
+CREATE TABLE linked_source_groups (
+    _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE linked_source_members (
+    _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL,
+    source_id INTEGER NOT NULL,
+    FOREIGN KEY(group_id) REFERENCES linked_source_groups(_id) ON DELETE CASCADE
+);
+
+getGroups:
+SELECT
+G._id,
+G.name,
+COUNT(M._id) AS memberCount
+FROM linked_source_groups G
+LEFT JOIN linked_source_members M ON G._id = M.group_id
+GROUP BY G._id;
+
+getGroupById:
+SELECT *
+FROM linked_source_groups
+WHERE _id = ?;
+
+insertGroup:
+INSERT INTO linked_source_groups(name)
+VALUES (?);
+
+updateGroup:
+UPDATE linked_source_groups
+SET name = ?
+WHERE _id = ?;
+
+deleteGroup:
+DELETE FROM linked_source_groups
+WHERE _id = ?;
+
+getMembersByGroupId:
+SELECT *
+FROM linked_source_members
+WHERE group_id = ?;

@@ -104,6 +104,9 @@ import uy.kohesive.injekt.api.get
 import tachiyomi.domain.history.repository.HistoryCategoryRepository
 import tachiyomi.data.history.HistoryCategoryRepositoryImpl
 import tachiyomi.domain.history.interactor.ManageHistoryCategory
+import tachiyomi.domain.source.linked.repository.LinkedSourceRepository
+import tachiyomi.data.source.LinkedSourceRepositoryImpl
+import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
 
 
 class DomainModule : InjektModule {
@@ -190,6 +193,8 @@ class DomainModule : InjektModule {
 
         addSingletonFactory<SourceRepository> { SourceRepositoryImpl(get(), get()) }
         addSingletonFactory<StubSourceRepository> { StubSourceRepositoryImpl(get()) }
+        addSingletonFactory<LinkedSourceRepository> { LinkedSourceRepositoryImpl(get()) }
+        addFactory { ManageLinkedSourceGroup(get()) }
         addFactory { GetEnabledSources(get(), get()) }
         addFactory { GetLanguagesWithSources(get(), get()) }
         addFactory { GetRemoteManga(get()) }
