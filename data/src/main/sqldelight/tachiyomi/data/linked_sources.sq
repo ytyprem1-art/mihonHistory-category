@@ -64,3 +64,8 @@ VALUES (?, ?);
 removeMangaFromGroups:
 DELETE FROM linked_source_members
 WHERE manga_id = ? OR manga_id = ?;
+
+countMembersInGroup:
+SELECT COUNT(*)
+FROM linked_source_members
+WHERE group_id = ?;

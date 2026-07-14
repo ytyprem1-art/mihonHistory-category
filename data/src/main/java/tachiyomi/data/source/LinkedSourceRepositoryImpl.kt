@@ -1,5 +1,6 @@
 package tachiyomi.data.source
 
+import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import kotlinx.coroutines.flow.Flow
@@ -67,6 +68,16 @@ class LinkedSourceRepositoryImpl(
     override suspend fun removeMangaFromGroups(mangaId: Long, sourceId: Long) {
         database.transaction {
             database.linked_sourcesQueries.removeMangaFromGroups(mangaId, sourceId)
+        }
+    }
+
+    override suspend fun removeMember(groupId: Long, mangaId: Long, sourceId: Long) {
+        database.transaction {
+            database.linked_sourcesQueries.removeMangaFromGroups(mangaId, sourceId)
+            val members = database.linked_sourcesQueries.getMembersByGroupId(groupId).awaitAsList()
+            if (members.isEmpty()) {
+                database.linked_sourcesQueries.deleteGroup(groupId)
+            }
         }
     }
 

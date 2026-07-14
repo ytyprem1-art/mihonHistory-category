@@ -47,6 +47,10 @@ class ManageLinkedSourceGroup(
         repository.deleteGroup(id)
     }
 
+    suspend fun removeMember(groupId: Long, mangaId: Long, sourceId: Long) {
+        repository.removeMember(groupId, mangaId, sourceId)
+    }
+
     fun subscribeGroupForManga(mangaId: Long, sourceId: Long): Flow<LinkedSourceGroup?> {
         return repository.getGroupForManga(mangaId, sourceId)
     }

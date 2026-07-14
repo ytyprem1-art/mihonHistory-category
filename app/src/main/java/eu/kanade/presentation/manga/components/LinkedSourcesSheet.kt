@@ -50,6 +50,7 @@ fun LinkedSourcesSheet(
     onJoinGroupClick: () -> Unit,
     onAddSourceClick: () -> Unit,
     onMemberOpenClick: (Manga) -> Unit,
+    onMemberRemoveClick: (Manga) -> Unit,
     linkedGroup: LinkedSourceGroup?,
     linkedMembers: List<Manga>,
 ) {
@@ -112,7 +113,7 @@ fun LinkedSourcesSheet(
                             member = member,
                             onRefresh = { /* TODO */ },
                             onOpen = { onMemberOpenClick(member) },
-                            onRemove = { /* TODO */ },
+                            onRemove = { onMemberRemoveClick(member) },
                         )
                     }
                 }

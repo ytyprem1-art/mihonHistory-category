@@ -1102,6 +1102,7 @@ class MangaScreenModel(
 
         data class CreateLinkedGroup(val defaultName: String) : Dialog
         data class JoinLinkedGroup(val allGroups: List<LinkedSourceGroup>) : Dialog
+        data class RemoveLinkedMember(val member: Manga, val isLast: Boolean) : Dialog
     }
 
     fun dismissDialog() {
@@ -1158,6 +1159,26 @@ class MangaScreenModel(
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
                 snackbarHostState.showSnackbar("Failed to join group: ${e.message}")
+            }
+        }
+    }
+
+    fun showRemoveMemberDialog(member: Manga) {
+        val group = (state.value as? State.Success)?.linkedGroup ?: return
+        updateSuccessState { it.copy(dialog = Dialog.RemoveLinkedMember(member, group.memberCount <= 1L)) }
+    }
+
+    fun removeMember(member: Manga) {
+        val group = (state.value as? State.Success)?.linkedGroup ?: return
+        screenModelScope.launchIO {
+            try {
+                manageLinkedSourceGroup.removeMember(group.id, member.id, member.source)
+                withUIContext {
+                    context.toast("Removed from group.")
+                }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                snackbarHostState.showSnackbar("Failed to remove from group: ${e.message}")
             }
         }
     }

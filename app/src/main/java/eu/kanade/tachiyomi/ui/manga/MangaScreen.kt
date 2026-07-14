@@ -45,6 +45,9 @@ import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.isLocalOrStub
 import eu.kanade.tachiyomi.source.online.HttpSource
+import tachiyomi.domain.source.service.SourceManager
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.browse.source.linked.LinkedSourceDetailsScreen
@@ -201,6 +204,10 @@ class MangaScreen(
                     if (member.id != mangaId) {
                         navigator.push(MangaScreen(member.id))
                     }
+                },
+                onMemberRemoveClick = { member ->
+                    showLinkedSourcesSheet = false
+                    screenModel.showRemoveMemberDialog(member)
                 },
                 linkedGroup = successState.linkedGroup,
                 linkedMembers = successState.linkedMembers,
@@ -361,6 +368,40 @@ class MangaScreen(
                         }
                     },
                     confirmButton = {},
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
+                        }
+                    }
+                )
+            }
+            is MangaScreenModel.Dialog.RemoveLinkedMember -> {
+                val sourceManager = remember { Injekt.get<SourceManager>() }
+                val sourceName = remember(dialog.member.source) {
+                    sourceManager.getOrStub(dialog.member.source).name
+                }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Remove Source") },
+                    text = {
+                        androidx.compose.material3.Text(
+                            if (dialog.isLast) {
+                                "This is the last source in this group.\n\nRemoving it will also delete the linked source group."
+                            } else {
+                                "Remove '$sourceName' from this group?"
+                            }
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                screenModel.removeMember(dialog.member)
+                                onDismissRequest()
+                            },
+                        ) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_remove))
+                        }
+                    },
                     dismissButton = {
                         androidx.compose.material3.TextButton(onClick = onDismissRequest) {
                             androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
