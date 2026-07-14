@@ -196,13 +196,8 @@ class MangaScreen(
                     showLinkedSourcesSheet = false
                     context.toast("Add Source coming soon.")
                 },
-                onManageGroupClick = {
-                    showLinkedSourcesSheet = false
-                    successState.linkedGroup?.let { group ->
-                        navigator.push(LinkedSourceDetailsScreen(group.id))
-                    }
-                },
                 linkedGroup = successState.linkedGroup,
+                linkedMembers = successState.linkedMembers,
             )
         }
 

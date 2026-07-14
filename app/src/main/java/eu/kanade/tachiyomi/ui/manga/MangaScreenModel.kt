@@ -221,6 +221,19 @@ class MangaScreenModel(
         }
 
         screenModelScope.launchIO {
+            state
+                .mapNotNull { (it as? State.Success)?.linkedGroup?.id }
+                .distinctUntilChanged()
+                .flatMapLatest { groupId ->
+                    manageLinkedSourceGroup.subscribeMembers(groupId)
+                }
+                .flowWithLifecycle(lifecycle)
+                .collectLatest { members ->
+                    updateSuccessState { it.copy(linkedMembers = members) }
+                }
+        }
+
+        screenModelScope.launchIO {
             val manga = getMangaAndChapters.awaitManga(mangaId)
             val chapters = getMangaAndChapters.awaitChapters(mangaId, applyScanlatorFilter = true)
                 .toChapterListItems(manga)
@@ -1184,6 +1197,7 @@ class MangaScreenModel(
             val trackingCount: Int = 0,
             val hasLoggedInTrackers: Boolean = false,
             val linkedGroup: LinkedSourceGroup? = null,
+            val linkedMembers: List<Manga> = emptyList(),
             val isRefreshingData: Boolean = false,
             val dialog: Dialog? = null,
             val hasPromptedToAddBefore: Boolean = false,
