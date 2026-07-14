@@ -130,12 +130,9 @@ fun LinkedSourcesSheet(
                             lastRead = member.lastRead,
                             readAt = member.readAt,
                             isRefreshing = refreshingIds.contains(member.manga.id),
+                            currentMangaId = currentMangaId,
                             onRefresh = { onMemberRefreshClick(member.manga) },
-                            onOpen = if (member.manga.id != currentMangaId) {
-                                { onMemberOpenClick(member.manga) }
-                            } else {
-                                null
-                            },
+                            onOpen = { onMemberOpenClick(member.manga) },
                             onRemove = { onMemberRemoveClick(member.manga) },
                         )
                     }
@@ -221,10 +218,10 @@ private fun MembersTableHeader() {
         Spacer(modifier = Modifier.width(40.dp)) // Cover
         HeaderCell(text = "Source", width = 120.dp)
         HeaderCell(text = "Read", width = 90.dp)
-        HeaderCell(text = "Latest", width = 60.dp)
-        HeaderCell(text = "Last Check", width = 100.dp)
-        HeaderCell(text = "Status", width = 80.dp)
-        HeaderCell(text = "Actions", width = 120.dp)
+        HeaderCell(text = "Latest", width = 80.dp)
+        HeaderCell(text = "Status", width = 150.dp)
+        HeaderCell(text = "Last Check", width = 140.dp)
+        Spacer(modifier = Modifier.width(144.dp)) // Actions (Refresh, Open, Remove)
     }
 }
 
@@ -246,8 +243,9 @@ private fun MemberTableRow(
     lastRead: Double?,
     readAt: Long?,
     isRefreshing: Boolean,
+    currentMangaId: Long,
     onRefresh: () -> Unit,
-    onOpen: (() -> Unit)?,
+    onOpen: () -> Unit,
     onRemove: () -> Unit,
 ) {
     val sourceManager: SourceManager = remember { Injekt.get() }
@@ -270,6 +268,7 @@ private fun MemberTableRow(
 
         TextCell(text = sourceName, width = 120.dp)
 
+        // Read (2 lines)
         Column(
             modifier = Modifier.width(90.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -288,16 +287,53 @@ private fun MemberTableRow(
             )
         }
 
-        TextCell(
-            text = latestChapter?.let { decimalFormat.format(it) } ?: "—",
-            width = 60.dp,
-        )
-        TextCell(text = "N/A", width = 100.dp)
-        TextCell(text = "Unknown", width = 80.dp)
+        // Latest (2 lines)
+        Column(
+            modifier = Modifier.width(80.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = latestChapter?.let { decimalFormat.format(it) } ?: "—",
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+            )
+            if (latestChapter != null && lastRead != null && latestChapter > lastRead) {
+                Text(
+                    text = "NEW",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            } else {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
 
+        // Status
+        val statusText = when {
+            latestChapter != null && lastRead != null && latestChapter > lastRead ->
+                "+${decimalFormat.format(latestChapter - lastRead)} from last read"
+            latestChapter != null && lastRead != null && latestChapter == lastRead ->
+                "You're up to date"
+            else -> ""
+        }
+        TextCell(text = statusText, width = 150.dp)
+
+        // Last Check
+        val lastCheckText = if (member.lastUpdate > 0L) {
+            "Refreshed ${formatCompactRelativeTime(member.lastUpdate)}"
+        } else {
+            "Never refreshed"
+        }
+        TextCell(text = lastCheckText, width = 140.dp)
+
+        // Actions
         Row(
-            modifier = Modifier.width(120.dp),
+            modifier = Modifier.width(144.dp),
             horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             val infiniteTransition = rememberInfiniteTransition(label = "infinite")
             val rotation by infiniteTransition.animateFloat(
@@ -320,13 +356,15 @@ private fun MemberTableRow(
                     modifier = if (isRefreshing) Modifier.rotate(rotation) else Modifier,
                 )
             }
-            if (onOpen != null) {
+
+            if (member.id != currentMangaId) {
                 IconButton(onClick = onOpen) {
                     Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = "Open")
                 }
             } else {
-                Spacer(modifier = Modifier.width(48.dp)) // Maintain alignment
+                Spacer(modifier = Modifier.width(48.dp))
             }
+
             IconButton(onClick = onRemove) {
                 Icon(Icons.Outlined.Delete, contentDescription = "Remove")
             }
@@ -351,10 +389,10 @@ private fun formatCompactRelativeTime(epochMillis: Long): String {
     val diff = now - epochMillis
 
     return when {
-        diff < TimeUnit.MINUTES.toMillis(1) -> "Just now"
+        diff < TimeUnit.MINUTES.toMillis(1) -> "just now"
         diff < TimeUnit.HOURS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toMinutes(diff)}m ago"
-        DateUtils.isToday(epochMillis) -> "Today"
-        isYesterday(epochMillis) -> "Yesterday"
+        DateUtils.isToday(epochMillis) -> "today"
+        isYesterday(epochMillis) -> "yesterday"
         else -> "${TimeUnit.MILLISECONDS.toDays(diff)}d ago"
     }
 }
