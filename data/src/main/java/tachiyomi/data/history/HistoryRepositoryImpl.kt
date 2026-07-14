@@ -8,6 +8,7 @@ import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.data.Database
 import tachiyomi.data.subscribeToList
+import tachiyomi.data.subscribeToOneOrNull
 import tachiyomi.domain.history.model.History
 import tachiyomi.domain.history.model.HistoryUpdate
 import tachiyomi.domain.history.model.HistoryWithRelations
@@ -39,6 +40,12 @@ class HistoryRepositoryImpl(
         return database.historyQueries
             .getHistoryByMangaId(mangaId, HistoryMapper::mapHistory)
             .awaitAsList()
+    }
+
+    override fun getLatestHistoryByMangaIdAsFlow(mangaId: Long): Flow<HistoryWithRelations?> {
+        return database.historyQueries
+            .getLatestHistoryByMangaId(mangaId, HistoryMapper::mapHistoryWithRelations)
+            .subscribeToOneOrNull()
     }
 
     override suspend fun resetHistory(historyId: Long) {

@@ -1,5 +1,6 @@
 package eu.kanade.presentation.manga.components
 
+import android.text.format.DateUtils
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,6 +45,8 @@ import tachiyomi.presentation.core.components.material.TextButton
 import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 @Composable
 fun LinkedSourcesSheet(
@@ -114,6 +118,8 @@ fun LinkedSourcesSheet(
                         MemberTableRow(
                             member = member.manga,
                             latestChapter = member.latestChapter,
+                            lastRead = member.lastRead,
+                            readAt = member.readAt,
                             onRefresh = { /* TODO */ },
                             onOpen = if (member.manga.id != currentMangaId) {
                                 { onMemberOpenClick(member.manga) }
@@ -204,7 +210,7 @@ private fun MembersTableHeader() {
     ) {
         Spacer(modifier = Modifier.width(40.dp)) // Cover
         HeaderCell(text = "Source", width = 120.dp)
-        HeaderCell(text = "Read", width = 60.dp)
+        HeaderCell(text = "Read", width = 90.dp)
         HeaderCell(text = "Latest", width = 60.dp)
         HeaderCell(text = "Last Check", width = 100.dp)
         HeaderCell(text = "Status", width = 80.dp)
@@ -227,6 +233,8 @@ private fun HeaderCell(text: String, width: androidx.compose.ui.unit.Dp) {
 private fun MemberTableRow(
     member: Manga,
     latestChapter: Double?,
+    lastRead: Double?,
+    readAt: Long?,
     onRefresh: () -> Unit,
     onOpen: (() -> Unit)?,
     onRemove: () -> Unit,
@@ -238,7 +246,8 @@ private fun MemberTableRow(
 
     Row(
         modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .heightIn(min = 52.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MangaCover.Book(
@@ -249,10 +258,28 @@ private fun MemberTableRow(
         Spacer(modifier = Modifier.width(8.dp))
 
         TextCell(text = sourceName, width = 120.dp)
-        TextCell(text = "-", width = 60.dp)
+
+        Column(
+            modifier = Modifier.width(90.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = lastRead?.let { decimalFormat.format(it) } ?: "—",
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+            )
+            Text(
+                text = readAt?.let { formatCompactRelativeTime(it) } ?: "",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+
         TextCell(
             text = latestChapter?.let { decimalFormat.format(it) } ?: "—",
-            width = 60.dp
+            width = 60.dp,
         )
         TextCell(text = "N/A", width = 100.dp)
         TextCell(text = "Unknown", width = 80.dp)
@@ -285,7 +312,26 @@ private fun TextCell(text: String, width: androidx.compose.ui.unit.Dp) {
         modifier = Modifier.width(width),
         style = MaterialTheme.typography.bodySmall,
         textAlign = TextAlign.Center,
+        maxLines = 1,
     )
+}
+
+@Composable
+private fun formatCompactRelativeTime(epochMillis: Long): String {
+    val now = Instant.now().toEpochMilli()
+    val diff = now - epochMillis
+
+    return when {
+        diff < TimeUnit.MINUTES.toMillis(1) -> "Just now"
+        diff < TimeUnit.HOURS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toMinutes(diff)}m ago"
+        DateUtils.isToday(epochMillis) -> "Today"
+        isYesterday(epochMillis) -> "Yesterday"
+        else -> "${TimeUnit.MILLISECONDS.toDays(diff)}d ago"
+    }
+}
+
+private fun isYesterday(epochMillis: Long): Boolean {
+    return DateUtils.isToday(epochMillis + DateUtils.DAY_IN_MILLIS)
 }
 
 private val decimalFormat = java.text.DecimalFormat("#.###").apply {

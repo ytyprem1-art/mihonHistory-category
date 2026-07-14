@@ -75,6 +75,7 @@ import tachiyomi.domain.chapter.model.NoChaptersException
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.chapter.service.calculateChapterGap
 import tachiyomi.domain.chapter.service.getChapterSort
+import tachiyomi.domain.history.repository.HistoryRepository
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetDuplicateLibraryManga
 import tachiyomi.domain.manga.interactor.GetMangaWithChapters
@@ -124,6 +125,7 @@ class MangaScreenModel(
     private val updateMangaFromRemote: UpdateMangaFromRemote = Injekt.get(),
     private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
     private val chapterRepository: ChapterRepository = Injekt.get(),
+    private val historyRepository: HistoryRepository = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
 ) : StateScreenModel<MangaScreenModel.State>(State.Loading) {
 
@@ -235,13 +237,17 @@ class MangaScreenModel(
                     if (members.isEmpty()) return@flatMapLatest flowOf(emptyList())
 
                     val memberFlows = members.map { member ->
-                        chapterRepository.getChapterByMangaIdAsFlow(member.id)
-                            .map { chapters ->
-                                LinkedMember(
-                                    manga = member,
-                                    latestChapter = chapters.maxOfOrNull { it.chapterNumber },
-                                )
-                            }
+                        combine(
+                            chapterRepository.getChapterByMangaIdAsFlow(member.id),
+                            historyRepository.getLatestHistoryByMangaIdAsFlow(member.id),
+                        ) { chapters, history ->
+                            LinkedMember(
+                                manga = member,
+                                latestChapter = chapters.maxOfOrNull { it.chapterNumber },
+                                lastRead = history?.chapterNumber,
+                                readAt = history?.readAt?.time,
+                            )
+                        }
                     }
                     combine(memberFlows) { it.toList() }
                 }
@@ -1310,6 +1316,8 @@ class MangaScreenModel(
 data class LinkedMember(
     val manga: Manga,
     val latestChapter: Double?,
+    val lastRead: Double?,
+    val readAt: Long?,
 )
 
 @Immutable

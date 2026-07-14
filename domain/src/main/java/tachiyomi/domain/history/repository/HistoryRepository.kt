@@ -15,6 +15,8 @@ interface HistoryRepository {
 
     suspend fun getHistoryByMangaId(mangaId: Long): List<History>
 
+    fun getLatestHistoryByMangaIdAsFlow(mangaId: Long): Flow<HistoryWithRelations?>
+
     suspend fun resetHistory(historyId: Long)
 
     suspend fun resetHistoryByMangaId(mangaId: Long)

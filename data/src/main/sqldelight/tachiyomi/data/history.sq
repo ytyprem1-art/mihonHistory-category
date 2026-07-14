@@ -72,3 +72,23 @@ WHERE chapter_id = :chapterId;
 getReadDuration:
 SELECT coalesce(sum(time_read), 0)
 FROM history;
+
+getLatestHistoryByMangaId:
+SELECT
+H._id AS historyId,
+M._id AS mangaId,
+C._id AS chapterId,
+M.title,
+M.thumbnail_url AS thumbnailUrl,
+M.source AS sourceId,
+M.favorite AS isFavorite,
+M.cover_last_modified AS coverLastModified,
+C.chapter_number AS chapterNumber,
+H.last_read AS readAt,
+H.time_read AS readDuration
+FROM history H
+JOIN chapters C ON H.chapter_id = C._id
+JOIN mangas M ON C.manga_id = M._id
+WHERE M._id = :mangaId
+ORDER BY H.last_read DESC
+LIMIT 1;
