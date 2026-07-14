@@ -1,0 +1,1 @@
+-- Migration handled in AppModule.kt to safely support both source_id and manga_id columns

@@ -15,6 +15,17 @@ class ManageLinkedSourceGroup(
         return repository.insertGroup(name)
     }
 
+    suspend fun createAndLink(name: String, mangaId: Long) {
+        repository.createAndLink(name, mangaId)
+    }
+
+    suspend fun joinGroup(groupId: Long, mangaId: Long) {
+        val currentGroupId = repository.getGroupIdForManga(mangaId)
+        if (currentGroupId != groupId) {
+            repository.insertMember(groupId, mangaId)
+        }
+    }
+
     suspend fun rename(id: Long, name: String) {
         repository.updateGroup(id, name)
     }

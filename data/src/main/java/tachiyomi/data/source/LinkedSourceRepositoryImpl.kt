@@ -13,8 +13,8 @@ class LinkedSourceRepositoryImpl(
 ) : LinkedSourceRepository {
 
     override fun getGroups(): Flow<List<LinkedSourceGroup>> {
-        return database.linked_sourcesQueries.getGroups { _id, name, memberCount ->
-            LinkedSourceGroup(_id, name, memberCount)
+        return database.linked_sourcesQueries.getGroups { id, name, memberCount ->
+            LinkedSourceGroup(id, name, memberCount)
         }.subscribeToList()
     }
 
@@ -25,15 +25,21 @@ class LinkedSourceRepositoryImpl(
     }
 
     override suspend fun insertGroup(name: String): Long {
-        return database.linked_sourcesQueries.insertGroup(name).awaitAsOne()
+        return database.transactionWithResult {
+            database.linked_sourcesQueries.insertGroup(name).awaitAsOne()
+        }
     }
 
     override suspend fun updateGroup(id: Long, name: String) {
-        database.linked_sourcesQueries.updateGroup(name, id)
+        database.transaction {
+            database.linked_sourcesQueries.updateGroup(name, id)
+        }
     }
 
     override suspend fun deleteGroup(id: Long) {
-        database.linked_sourcesQueries.deleteGroup(id)
+        database.transaction {
+            database.linked_sourcesQueries.deleteGroup(id)
+        }
     }
 
     override suspend fun getGroupIdForManga(mangaId: Long): Long? {
@@ -42,5 +48,12 @@ class LinkedSourceRepositoryImpl(
 
     override suspend fun insertMember(groupId: Long, mangaId: Long) {
         database.linked_sourcesQueries.insertMember(groupId, mangaId)
+    }
+
+    override suspend fun createAndLink(name: String, mangaId: Long) {
+        database.transaction {
+            val groupId = database.linked_sourcesQueries.insertGroup(name).awaitAsOne()
+            database.linked_sourcesQueries.insertMember(groupId, mangaId)
+        }
     }
 }

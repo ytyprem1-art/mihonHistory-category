@@ -1121,9 +1121,23 @@ class MangaScreenModel(
         updateSuccessState { it.copy(dialog = Dialog.CreateLinkedGroup(manga.title)) }
     }
 
+    private var isCreatingGroup = false
+
     fun createGroup(name: String) {
+        if (isCreatingGroup) return
+        isCreatingGroup = true
         screenModelScope.launchIO {
-            manageLinkedSourceGroup.create(name)
+            try {
+                manageLinkedSourceGroup.createAndLink(name, mangaId)
+                withUIContext {
+                    context.toast("Linked Source Group created.")
+                }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                snackbarHostState.showSnackbar("Failed to create and link group: ${e.message}")
+            } finally {
+                isCreatingGroup = false
+            }
         }
     }
 

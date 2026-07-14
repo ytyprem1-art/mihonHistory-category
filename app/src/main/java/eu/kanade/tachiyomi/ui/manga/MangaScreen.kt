@@ -332,7 +332,6 @@ class MangaScreen(
                             onClick = {
                                 if (name.isNotBlank()) {
                                     screenModel.createGroup(name)
-                                    context.toast("Linked Source Group created.")
                                     onDismissRequest()
                                 }
                             },

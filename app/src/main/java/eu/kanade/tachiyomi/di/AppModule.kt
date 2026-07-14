@@ -3,7 +3,10 @@ package eu.kanade.tachiyomi.di
 import android.app.Application
 import androidx.core.content.ContextCompat
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import app.cash.sqldelight.db.AfterVersion
+import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
+import app.cash.sqldelight.db.SqlSchema
 import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteConfiguration
 import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteDatabaseType
 import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteDriver
@@ -49,6 +52,47 @@ import java.lang.ref.WeakReference
 
 private val lock = Any()
 
+private object DatabaseSchema : SqlSchema<QueryResult.AsyncValue<Unit>> {
+    override val version: Long = Database.Schema.version
+
+    override fun create(driver: SqlDriver): QueryResult.AsyncValue<Unit> = Database.Schema.create(driver)
+
+    override fun migrate(
+        driver: SqlDriver,
+        oldVersion: Long,
+        newVersion: Long,
+        vararg callbacks: AfterVersion,
+    ): QueryResult.AsyncValue<Unit> {
+        return QueryResult.AsyncValue {
+            Database.Schema.migrate(driver, oldVersion, newVersion, *callbacks).await()
+
+            if (oldVersion <= 15 && newVersion >= 16) {
+                val hasSourceId = driver.executeQuery(
+                    identifier = null,
+                    sql = "PRAGMA table_info(linked_source_members)",
+                    mapper = { cursor ->
+                        QueryResult.AsyncValue {
+                            var found = false
+                            while (cursor.next().await()) {
+                                if (cursor.getString(1) == "source_id") {
+                                    found = true
+                                    break
+                                }
+                            }
+                            found
+                        }
+                    },
+                    parameters = 0,
+                ).await()
+
+                if (hasSourceId) {
+                    driver.execute(null, "ALTER TABLE linked_source_members RENAME COLUMN source_id TO manga_id", 0).await()
+                }
+            }
+        }
+    }
+}
+
 class AppModule(val app: Application) : InjektModule {
 
     private var sqlDriverRef: WeakReference<SqlDriver>? = null
@@ -63,7 +107,7 @@ class AppModule(val app: Application) : InjektModule {
                 AndroidxSqliteDriver(
                     driver = BundledSQLiteDriver(),
                     databaseType = AndroidxSqliteDatabaseType.FileProvider(app, "tachiyomi.db"),
-                    schema = Database.Schema,
+                    schema = DatabaseSchema,
                     configuration = AndroidxSqliteConfiguration(
                         isForeignKeyConstraintsEnabled = true,
                     ),

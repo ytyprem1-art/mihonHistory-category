@@ -11,4 +11,5 @@ interface LinkedSourceRepository {
     suspend fun deleteGroup(id: Long)
     suspend fun getGroupIdForManga(mangaId: Long): Long?
     suspend fun insertMember(groupId: Long, mangaId: Long)
+    suspend fun createAndLink(name: String, mangaId: Long)
 }

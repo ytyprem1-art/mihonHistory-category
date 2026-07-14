@@ -2,6 +2,8 @@ package eu.kanade.tachiyomi.ui.browse.source.linked
 
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
 import tachiyomi.domain.source.linked.model.LinkedSourceGroup
@@ -15,9 +17,11 @@ class LinkedSourcesScreenModel(
 
     init {
         screenModelScope.launchIO {
-            manageLinkedSourceGroup.subscribe().collect { groups ->
-                mutableState.update { it.copy(groups = groups) }
-            }
+            manageLinkedSourceGroup.subscribe()
+                .distinctUntilChanged()
+                .collectLatest { groups ->
+                    mutableState.update { it.copy(groups = groups) }
+                }
         }
     }
 
