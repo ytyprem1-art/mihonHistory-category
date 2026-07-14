@@ -3,7 +3,9 @@ package eu.kanade.tachiyomi.ui.manga
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -187,7 +189,7 @@ class MangaScreen(
                 },
                 onJoinGroupClick = {
                     showLinkedSourcesSheet = false
-                    context.toast("Join Existing Group coming soon.")
+                    screenModel.showJoinGroupDialog()
                 },
                 onAddSourceClick = {
                     showLinkedSourcesSheet = false
@@ -329,6 +331,32 @@ class MangaScreen(
                             androidx.compose.material3.Text(stringResource(MR.strings.action_ok))
                         }
                     },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
+                        }
+                    }
+                )
+            }
+            is MangaScreenModel.Dialog.JoinLinkedGroup -> {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Join Group") },
+                    text = {
+                        androidx.compose.foundation.lazy.LazyColumn {
+                            items(dialog.allGroups) { group ->
+                                androidx.compose.material3.ListItem(
+                                    modifier = Modifier.clickable {
+                                        screenModel.joinGroup(group.id)
+                                        onDismissRequest()
+                                    },
+                                    headlineContent = { androidx.compose.material3.Text(group.name) },
+                                    supportingContent = { androidx.compose.material3.Text("${group.memberCount} sources") },
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {},
                     dismissButton = {
                         androidx.compose.material3.TextButton(onClick = onDismissRequest) {
                             androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))

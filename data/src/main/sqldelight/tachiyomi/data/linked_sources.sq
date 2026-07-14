@@ -60,3 +60,7 @@ WHERE manga_id = ? OR manga_id = ?;
 insertMember:
 INSERT INTO linked_source_members(group_id, manga_id)
 VALUES (?, ?);
+
+removeMangaFromGroups:
+DELETE FROM linked_source_members
+WHERE manga_id = ? OR manga_id = ?;

@@ -12,5 +12,6 @@ interface LinkedSourceRepository {
     fun getGroupForManga(mangaId: Long, sourceId: Long): Flow<LinkedSourceGroup?>
     suspend fun getGroupIdForManga(mangaId: Long, sourceId: Long): Long?
     suspend fun insertMember(groupId: Long, mangaId: Long)
+    suspend fun removeMangaFromGroups(mangaId: Long, sourceId: Long)
     suspend fun createAndLink(name: String, mangaId: Long)
 }

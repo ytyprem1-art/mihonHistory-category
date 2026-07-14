@@ -45,6 +45,9 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -205,8 +208,12 @@ class MangaScreenModel(
         observeDownloads()
 
         screenModelScope.launchIO {
-            val manga = getMangaAndChapters.awaitManga(mangaId)
-            manageLinkedSourceGroup.subscribeGroupForManga(mangaId, manga.source)
+            state
+                .mapNotNull { (it as? State.Success)?.manga }
+                .distinctUntilChanged { old, new -> old.id == new.id && old.source == new.source }
+                .flatMapLatest { manga ->
+                    manageLinkedSourceGroup.subscribeGroupForManga(manga.id, manga.source)
+                }
                 .flowWithLifecycle(lifecycle)
                 .collectLatest { linkedGroup ->
                     updateSuccessState { it.copy(linkedGroup = linkedGroup) }
@@ -225,6 +232,8 @@ class MangaScreenModel(
             val needRefreshInfo = !manga.initialized
             val needRefreshChapter = chapters.isEmpty()
 
+            val linkedGroup = manageLinkedSourceGroup.getGroupForManga(mangaId, manga.source)
+
             // Show what we have earlier
             mutableState.update {
                 State.Success(
@@ -234,6 +243,7 @@ class MangaScreenModel(
                     chapters = chapters,
                     availableScanlators = getAvailableScanlators.await(mangaId),
                     excludedScanlators = getExcludedScanlators.await(mangaId),
+                    linkedGroup = linkedGroup,
                     isRefreshingData = needRefreshInfo || needRefreshChapter,
                     dialog = null,
                     hideMissingChapters = libraryPreferences.hideMissingChapters.get(),
@@ -1078,6 +1088,7 @@ class MangaScreenModel(
         data object FullCover : Dialog
 
         data class CreateLinkedGroup(val defaultName: String) : Dialog
+        data class JoinLinkedGroup(val allGroups: List<LinkedSourceGroup>) : Dialog
     }
 
     fun dismissDialog() {
@@ -1114,6 +1125,28 @@ class MangaScreenModel(
     fun showCreateGroupDialog() {
         val manga = manga ?: return
         updateSuccessState { it.copy(dialog = Dialog.CreateLinkedGroup(manga.title)) }
+    }
+
+    fun showJoinGroupDialog() {
+        screenModelScope.launchIO {
+            val allGroups = manageLinkedSourceGroup.subscribe().first()
+            updateSuccessState { it.copy(dialog = Dialog.JoinLinkedGroup(allGroups)) }
+        }
+    }
+
+    fun joinGroup(groupId: Long) {
+        screenModelScope.launchIO {
+            try {
+                val manga = getMangaAndChapters.awaitManga(mangaId)
+                manageLinkedSourceGroup.joinGroup(groupId, mangaId, manga.source)
+                withUIContext {
+                    context.toast("Joined Linked Source Group.")
+                }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                snackbarHostState.showSnackbar("Failed to join group: ${e.message}")
+            }
+        }
     }
 
     private var isCreatingGroup = false
