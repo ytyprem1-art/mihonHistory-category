@@ -211,6 +211,7 @@ class MangaScreen(
                 },
                 linkedGroup = successState.linkedGroup,
                 linkedMembers = successState.linkedMembers,
+                currentMangaId = mangaId,
             )
         }
 

@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.AdaptiveSheet
+import eu.kanade.tachiyomi.ui.manga.LinkedMember
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.linked.model.LinkedSourceGroup
 import tachiyomi.domain.source.service.SourceManager
@@ -52,7 +53,8 @@ fun LinkedSourcesSheet(
     onMemberOpenClick: (Manga) -> Unit,
     onMemberRemoveClick: (Manga) -> Unit,
     linkedGroup: LinkedSourceGroup?,
-    linkedMembers: List<Manga>,
+    linkedMembers: List<LinkedMember>,
+    currentMangaId: Long,
 ) {
     AdaptiveSheet(
         onDismissRequest = onDismissRequest,
@@ -110,10 +112,15 @@ fun LinkedSourcesSheet(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     for (member in linkedMembers) {
                         MemberTableRow(
-                            member = member,
+                            member = member.manga,
+                            latestChapter = member.latestChapter,
                             onRefresh = { /* TODO */ },
-                            onOpen = { onMemberOpenClick(member) },
-                            onRemove = { onMemberRemoveClick(member) },
+                            onOpen = if (member.manga.id != currentMangaId) {
+                                { onMemberOpenClick(member.manga) }
+                            } else {
+                                null
+                            },
+                            onRemove = { onMemberRemoveClick(member.manga) },
                         )
                     }
                 }
@@ -219,8 +226,9 @@ private fun HeaderCell(text: String, width: androidx.compose.ui.unit.Dp) {
 @Composable
 private fun MemberTableRow(
     member: Manga,
+    latestChapter: Double?,
     onRefresh: () -> Unit,
-    onOpen: () -> Unit,
+    onOpen: (() -> Unit)?,
     onRemove: () -> Unit,
 ) {
     val sourceManager: SourceManager = remember { Injekt.get() }
@@ -242,7 +250,10 @@ private fun MemberTableRow(
 
         TextCell(text = sourceName, width = 120.dp)
         TextCell(text = "-", width = 60.dp)
-        TextCell(text = "-", width = 60.dp)
+        TextCell(
+            text = latestChapter?.let { decimalFormat.format(it) } ?: "—",
+            width = 60.dp
+        )
         TextCell(text = "N/A", width = 100.dp)
         TextCell(text = "Unknown", width = 80.dp)
 
@@ -253,8 +264,12 @@ private fun MemberTableRow(
             IconButton(onClick = onRefresh) {
                 Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
             }
-            IconButton(onClick = onOpen) {
-                Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = "Open")
+            if (onOpen != null) {
+                IconButton(onClick = onOpen) {
+                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = "Open")
+                }
+            } else {
+                Spacer(modifier = Modifier.width(48.dp)) // Maintain alignment
             }
             IconButton(onClick = onRemove) {
                 Icon(Icons.Outlined.Delete, contentDescription = "Remove")
@@ -271,4 +286,8 @@ private fun TextCell(text: String, width: androidx.compose.ui.unit.Dp) {
         style = MaterialTheme.typography.bodySmall,
         textAlign = TextAlign.Center,
     )
+}
+
+private val decimalFormat = java.text.DecimalFormat("#.###").apply {
+    decimalFormatSymbols = java.text.DecimalFormatSymbols.getInstance(java.util.Locale.US)
 }

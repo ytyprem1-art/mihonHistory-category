@@ -47,6 +47,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -70,6 +72,7 @@ import tachiyomi.domain.chapter.interactor.UpdateChapter
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterUpdate
 import tachiyomi.domain.chapter.model.NoChaptersException
+import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.chapter.service.calculateChapterGap
 import tachiyomi.domain.chapter.service.getChapterSort
 import tachiyomi.domain.library.service.LibraryPreferences
@@ -120,6 +123,7 @@ class MangaScreenModel(
     private val filterChaptersForDownload: FilterChaptersForDownload = Injekt.get(),
     private val updateMangaFromRemote: UpdateMangaFromRemote = Injekt.get(),
     private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
+    private val chapterRepository: ChapterRepository = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
 ) : StateScreenModel<MangaScreenModel.State>(State.Loading) {
 
@@ -226,6 +230,20 @@ class MangaScreenModel(
                 .distinctUntilChanged()
                 .flatMapLatest { groupId ->
                     manageLinkedSourceGroup.subscribeMembers(groupId)
+                }
+                .flatMapLatest { members ->
+                    if (members.isEmpty()) return@flatMapLatest flowOf(emptyList())
+
+                    val memberFlows = members.map { member ->
+                        chapterRepository.getChapterByMangaIdAsFlow(member.id)
+                            .map { chapters ->
+                                LinkedMember(
+                                    manga = member,
+                                    latestChapter = chapters.maxOfOrNull { it.chapterNumber },
+                                )
+                            }
+                    }
+                    combine(memberFlows) { it.toList() }
                 }
                 .flowWithLifecycle(lifecycle)
                 .collectLatest { members ->
@@ -1218,7 +1236,7 @@ class MangaScreenModel(
             val trackingCount: Int = 0,
             val hasLoggedInTrackers: Boolean = false,
             val linkedGroup: LinkedSourceGroup? = null,
-            val linkedMembers: List<Manga> = emptyList(),
+            val linkedMembers: List<LinkedMember> = emptyList(),
             val isRefreshingData: Boolean = false,
             val dialog: Dialog? = null,
             val hasPromptedToAddBefore: Boolean = false,
@@ -1287,6 +1305,12 @@ class MangaScreenModel(
         }
     }
 }
+
+@Immutable
+data class LinkedMember(
+    val manga: Manga,
+    val latestChapter: Double?,
+)
 
 @Immutable
 sealed class ChapterList {
