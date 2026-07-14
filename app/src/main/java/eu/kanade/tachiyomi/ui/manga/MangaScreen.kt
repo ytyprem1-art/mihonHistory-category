@@ -47,6 +47,7 @@ import eu.kanade.tachiyomi.source.isLocalOrStub
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
+import eu.kanade.tachiyomi.ui.browse.source.linked.LinkedSourceDetailsScreen
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
 import eu.kanade.tachiyomi.ui.manga.notes.MangaNotesScreen
@@ -197,7 +198,9 @@ class MangaScreen(
                 },
                 onManageGroupClick = {
                     showLinkedSourcesSheet = false
-                    context.toast("Manage Group coming soon.")
+                    successState.linkedGroup?.let { group ->
+                        navigator.push(LinkedSourceDetailsScreen(group.id))
+                    }
                 },
                 linkedGroup = successState.linkedGroup,
             )

@@ -31,6 +31,12 @@ class MangaRepositoryImpl(
             .awaitAsOne()
     }
 
+    override fun getMangaByIdsAsFlow(ids: List<Long>): Flow<List<Manga>> {
+        return database.mangasQueries
+            .getMangasByIds(ids, MangaMapper::mapManga)
+            .subscribeToList()
+    }
+
     override suspend fun getMangaByIdAsFlow(id: Long): Flow<Manga> {
         return database.mangasQueries
             .getMangaById(id, MangaMapper::mapManga)

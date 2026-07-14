@@ -194,7 +194,7 @@ class DomainModule : InjektModule {
         addSingletonFactory<SourceRepository> { SourceRepositoryImpl(get(), get()) }
         addSingletonFactory<StubSourceRepository> { StubSourceRepositoryImpl(get()) }
         addSingletonFactory<LinkedSourceRepository> { LinkedSourceRepositoryImpl(get()) }
-        addFactory { ManageLinkedSourceGroup(get()) }
+        addFactory { ManageLinkedSourceGroup(get(), get()) }
         addFactory { GetEnabledSources(get(), get()) }
         addFactory { GetLanguagesWithSources(get(), get()) }
         addFactory { GetRemoteManga(get()) }

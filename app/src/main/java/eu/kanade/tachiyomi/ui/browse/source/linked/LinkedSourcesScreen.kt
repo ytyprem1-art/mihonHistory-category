@@ -28,14 +28,13 @@ class LinkedSourcesScreen : Screen() {
         val state by screenModel.state.collectAsState()
 
         var showCreateDialog by remember { mutableStateOf(false) }
-        var groupToRename by remember { mutableStateOf<LinkedSourceGroup?>(null) }
         var groupToDelete by remember { mutableStateOf<LinkedSourceGroup?>(null) }
 
         LinkedSourcesScreen(
             groups = state.groups,
             onClickCreate = { showCreateDialog = true },
-            onClickRename = { groupToRename = it },
             onClickDelete = { groupToDelete = it },
+            onClickGroup = { navigator.push(LinkedSourceDetailsScreen(it.id)) },
             navigateUp = navigator::pop,
         )
 
@@ -66,39 +65,6 @@ class LinkedSourcesScreen : Screen() {
                 },
                 dismissButton = {
                     TextButton(onClick = { showCreateDialog = false }) {
-                        Text(stringResource(MR.strings.action_cancel))
-                    }
-                },
-            )
-        }
-
-        groupToRename?.let { group ->
-            var name by remember { mutableStateOf(group.name) }
-            AlertDialog(
-                onDismissRequest = { groupToRename = null },
-                title = { Text("Rename Group") },
-                text = {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("Group Name") },
-                        singleLine = true,
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            if (name.isNotBlank()) {
-                                screenModel.renameGroup(group.id, name)
-                                groupToRename = null
-                            }
-                        },
-                    ) {
-                        Text(stringResource(MR.strings.action_ok))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { groupToRename = null }) {
                         Text(stringResource(MR.strings.action_cancel))
                     }
                 },

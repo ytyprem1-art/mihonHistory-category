@@ -1,11 +1,13 @@
 package tachiyomi.domain.source.linked.repository
 
 import kotlinx.coroutines.flow.Flow
+import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.linked.model.LinkedSourceGroup
 
 interface LinkedSourceRepository {
     fun getGroups(): Flow<List<LinkedSourceGroup>>
     suspend fun getGroupById(id: Long): LinkedSourceGroup?
+    fun getMembersByGroupId(groupId: Long): Flow<List<Long>>
     suspend fun insertGroup(name: String): Long
     suspend fun updateGroup(id: Long, name: String)
     suspend fun deleteGroup(id: Long)

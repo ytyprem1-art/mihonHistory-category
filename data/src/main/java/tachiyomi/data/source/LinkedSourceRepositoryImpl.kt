@@ -14,15 +14,20 @@ class LinkedSourceRepositoryImpl(
 ) : LinkedSourceRepository {
 
     override fun getGroups(): Flow<List<LinkedSourceGroup>> {
-        return database.linked_sourcesQueries.getGroups { id, name, memberCount ->
+        return database.linked_sourcesQueries.getGroups { id: Long, name: String, memberCount: Long ->
             LinkedSourceGroup(id, name, memberCount)
         }.subscribeToList()
     }
 
     override suspend fun getGroupById(id: Long): LinkedSourceGroup? {
-        return database.linked_sourcesQueries.getGroupById(id) { id_, name ->
-            LinkedSourceGroup(id_, name, 0L)
+        return database.linked_sourcesQueries.getGroupById(id) { groupId: Long, name: String ->
+            LinkedSourceGroup(groupId, name, 0L)
         }.awaitAsOneOrNull()
+    }
+
+    override fun getMembersByGroupId(groupId: Long): Flow<List<Long>> {
+        return database.linked_sourcesQueries.getMembersByGroupId(groupId)
+            .subscribeToList()
     }
 
     override suspend fun insertGroup(name: String): Long {

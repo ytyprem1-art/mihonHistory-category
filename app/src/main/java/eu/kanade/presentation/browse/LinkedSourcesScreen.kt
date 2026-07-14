@@ -27,8 +27,8 @@ import tachiyomi.presentation.core.screens.EmptyScreen
 fun LinkedSourcesScreen(
     groups: List<LinkedSourceGroup>,
     onClickCreate: () -> Unit,
-    onClickRename: (LinkedSourceGroup) -> Unit,
     onClickDelete: (LinkedSourceGroup) -> Unit,
+    onClickGroup: (LinkedSourceGroup) -> Unit,
     navigateUp: () -> Unit,
 ) {
     Scaffold(
@@ -69,7 +69,7 @@ fun LinkedSourcesScreen(
                 LinkedSourceGroupItem(
                     modifier = Modifier.animateItemFastScroll(),
                     group = group,
-                    onClick = { onClickRename(group) },
+                    onClick = { onClickGroup(group) },
                     onLongClick = { onClickDelete(group) },
                 )
             }

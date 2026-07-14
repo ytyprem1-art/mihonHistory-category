@@ -39,7 +39,7 @@ DELETE FROM linked_source_groups
 WHERE _id = ?;
 
 getMembersByGroupId:
-SELECT *
+SELECT manga_id
 FROM linked_source_members
 WHERE group_id = ?;
 
