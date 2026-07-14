@@ -196,6 +196,12 @@ class MangaScreen(
                     showLinkedSourcesSheet = false
                     context.toast("Add Source coming soon.")
                 },
+                onMemberOpenClick = { member ->
+                    showLinkedSourcesSheet = false
+                    if (member.id != mangaId) {
+                        navigator.push(MangaScreen(member.id))
+                    }
+                },
                 linkedGroup = successState.linkedGroup,
                 linkedMembers = successState.linkedMembers,
             )
