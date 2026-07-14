@@ -209,9 +209,13 @@ class MangaScreen(
                     showLinkedSourcesSheet = false
                     screenModel.showRemoveMemberDialog(member)
                 },
+                onMemberRefreshClick = { member ->
+                    screenModel.refreshLinkedMember(member.id)
+                },
                 linkedGroup = successState.linkedGroup,
                 linkedMembers = successState.linkedMembers,
                 currentMangaId = mangaId,
+                refreshingIds = successState.refreshingIds,
             )
         }
 

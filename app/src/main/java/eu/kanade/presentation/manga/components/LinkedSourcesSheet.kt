@@ -1,6 +1,12 @@
 package eu.kanade.presentation.manga.components
 
 import android.text.format.DateUtils
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,9 +63,11 @@ fun LinkedSourcesSheet(
     onAddSourceClick: () -> Unit,
     onMemberOpenClick: (Manga) -> Unit,
     onMemberRemoveClick: (Manga) -> Unit,
+    onMemberRefreshClick: (Manga) -> Unit,
     linkedGroup: LinkedSourceGroup?,
     linkedMembers: List<LinkedMember>,
     currentMangaId: Long,
+    refreshingIds: Set<Long>,
 ) {
     AdaptiveSheet(
         onDismissRequest = onDismissRequest,
@@ -120,7 +129,8 @@ fun LinkedSourcesSheet(
                             latestChapter = member.latestChapter,
                             lastRead = member.lastRead,
                             readAt = member.readAt,
-                            onRefresh = { /* TODO */ },
+                            isRefreshing = refreshingIds.contains(member.manga.id),
+                            onRefresh = { onMemberRefreshClick(member.manga) },
                             onOpen = if (member.manga.id != currentMangaId) {
                                 { onMemberOpenClick(member.manga) }
                             } else {
@@ -235,6 +245,7 @@ private fun MemberTableRow(
     latestChapter: Double?,
     lastRead: Double?,
     readAt: Long?,
+    isRefreshing: Boolean,
     onRefresh: () -> Unit,
     onOpen: (() -> Unit)?,
     onRemove: () -> Unit,
@@ -288,8 +299,26 @@ private fun MemberTableRow(
             modifier = Modifier.width(120.dp),
             horizontalArrangement = Arrangement.Center,
         ) {
-            IconButton(onClick = onRefresh) {
-                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+            val infiniteTransition = rememberInfiniteTransition(label = "infinite")
+            val rotation by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart,
+                ),
+                label = "rotation",
+            )
+
+            IconButton(
+                onClick = onRefresh,
+                enabled = !isRefreshing,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = "Refresh",
+                    modifier = if (isRefreshing) Modifier.rotate(rotation) else Modifier,
+                )
             }
             if (onOpen != null) {
                 IconButton(onClick = onOpen) {

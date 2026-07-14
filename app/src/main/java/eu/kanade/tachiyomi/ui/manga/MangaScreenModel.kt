@@ -1227,6 +1227,33 @@ class MangaScreenModel(
         }
     }
 
+    fun refreshLinkedMember(mangaId: Long) {
+        val state = successState ?: return
+        if (state.refreshingIds.contains(mangaId)) return
+
+        screenModelScope.launchIO {
+            updateSuccessState { it.copy(refreshingIds = it.refreshingIds + mangaId) }
+            try {
+                val manga = mangaRepository.getMangaById(mangaId)
+                val source = Injekt.get<SourceManager>().getOrStub(manga.source)
+                updateMangaFromRemote(
+                    source = source,
+                    manga = manga,
+                    fetchDetails = true,
+                    fetchChapters = true,
+                    manualFetch = true,
+                ).getOrThrow()
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                withUIContext {
+                    context.toast("Failed to refresh: ${e.message}")
+                }
+            } finally {
+                updateSuccessState { it.copy(refreshingIds = it.refreshingIds - mangaId) }
+            }
+        }
+    }
+
     sealed interface State {
         @Immutable
         data object Loading : State
@@ -1243,6 +1270,7 @@ class MangaScreenModel(
             val hasLoggedInTrackers: Boolean = false,
             val linkedGroup: LinkedSourceGroup? = null,
             val linkedMembers: List<LinkedMember> = emptyList(),
+            val refreshingIds: Set<Long> = emptySet(),
             val isRefreshingData: Boolean = false,
             val dialog: Dialog? = null,
             val hasPromptedToAddBefore: Boolean = false,
