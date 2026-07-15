@@ -53,9 +53,35 @@ class HistoryGroupDetailScreenModel(
             }
     }
 
+    fun toggleSelectionMode() {
+        mutableState.update { it.copy(selectionMode = !it.selectionMode, selected = emptySet()) }
+    }
+
+    fun toggleSelection(mangaId: Long) {
+        mutableState.update { state ->
+            val newSelected = state.selected.toMutableSet().apply {
+                if (contains(mangaId)) remove(mangaId) else add(mangaId)
+            }
+            state.copy(selected = newSelected)
+        }
+    }
+
+    fun removeSelectedFromGroup() {
+        val selected = state.value.selected
+        if (selected.isEmpty()) return
+        screenModelScope.launchIO {
+            selected.forEach { mangaId ->
+                manageHistoryGroups.removeMangaFromGroup(mangaId)
+            }
+            mutableState.update { it.copy(selectionMode = false, selected = emptySet()) }
+        }
+    }
+
     @Immutable
     data class State(
         val groupName: String = "",
         val list: List<HistoryUiModel>? = null,
+        val selectionMode: Boolean = false,
+        val selected: Set<Long> = emptySet(),
     )
 }
