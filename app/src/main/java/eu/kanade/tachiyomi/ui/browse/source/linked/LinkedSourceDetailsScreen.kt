@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.presentation.browse.LinkedSourceDetailsScreen
 import eu.kanade.presentation.util.Screen
 
@@ -20,6 +21,7 @@ class LinkedSourceDetailsScreen(private val groupId: Long) : Screen() {
         LinkedSourceDetailsScreen(
             group = state.group,
             members = state.members,
+            onClickMember = { navigator.push(MangaScreen(it.manga.id)) },
             navigateUp = navigator::pop,
         )
     }

@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.ui.Modifier
@@ -37,6 +36,7 @@ import eu.kanade.presentation.manga.DuplicateMangaDialog
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
+import eu.kanade.tachiyomi.ui.browse.source.linked.LinkedSourcesScreen
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
@@ -91,6 +91,7 @@ data object HistoryTab : Tab {
             onClickFavorite = screenModel::addFavorite,
             onTabSelected = screenModel::updateSelectedCategory,
             onClickChangeCategory = screenModel::showChangeHistoryCategoryDialog,
+            onClickLinkedSourceGroups = { navigator.push(LinkedSourcesScreen()) },
             screenModel = screenModel,
         )
 

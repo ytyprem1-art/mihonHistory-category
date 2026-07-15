@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.FlipToBack
@@ -61,6 +62,7 @@ fun HistoryScreen(
     onDialogChange: (HistoryScreenModel.Dialog?) -> Unit,
     onTabSelected: (Long) -> Unit,
     onClickChangeCategory: (mangaId: Long) -> Unit,
+    onClickLinkedSourceGroups: () -> Unit,
     screenModel: HistoryScreenModel,
 ) {
     val scrollStates = rememberSaveable(
@@ -182,6 +184,14 @@ fun HistoryScreen(
                                     )
                                 }
                             }
+
+                            actions.add(
+                                AppBar.Action(
+                                    title = "Linked source groups",
+                                    icon = Icons.Outlined.CollectionsBookmark,
+                                    onClick = onClickLinkedSourceGroups,
+                                )
+                            )
 
                             actions.add(
                                 AppBar.Action(
