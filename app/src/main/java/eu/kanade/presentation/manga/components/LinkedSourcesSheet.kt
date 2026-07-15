@@ -12,6 +12,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -47,6 +48,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.AdaptiveSheet
 import eu.kanade.tachiyomi.ui.manga.LinkedMember
@@ -153,8 +155,8 @@ fun LinkedSourcesSheet(
                     val scrollState = rememberScrollState()
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(scrollState),
+                            .horizontalScroll(scrollState)
+                            .width(IntrinsicSize.Max),
                     ) {
                         MembersTableHeader(isWideCompact = false)
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -203,21 +205,50 @@ private fun GroupHeader(
     onDeleteGroup: () -> Unit,
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(false) }
+    var isOverflowing by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(
-            text = group.name,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(top = 8.dp), // Align with button centers roughly
+        ) {
+            Text(
+                text = group.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = if (isExpanded) Int.MAX_VALUE else 2,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { textLayoutResult ->
+                    if (!isExpanded) {
+                        isOverflowing = textLayoutResult.hasVisualOverflow || textLayoutResult.lineCount > 2
+                    }
+                },
+            )
+            if (isOverflowing || isExpanded) {
+                Text(
+                    text = if (isExpanded) "Less" else "More",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .clickable { isExpanded = !isExpanded }
+                        .padding(vertical = 4.dp),
+                )
+            }
+        }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.padding(start = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             IconButton(onClick = onToggleWideCompact) {
                 Icon(
                     imageVector = Icons.Outlined.DensityMedium,
@@ -259,7 +290,12 @@ private fun GroupHeader(
 private val coverAreaWidth = 40.dp
 private val actionsAreaWidth = 144.dp
 
-private fun RowScope.sourceModifier(isWideCompact: Boolean) = if (isWideCompact) Modifier.weight(1.5f) else Modifier.width(148.dp + coverAreaWidth)
+private fun RowScope.sourceModifier(isWideCompact: Boolean) =
+    if (isWideCompact) {
+        Modifier.weight(1.5f)
+    } else {
+        Modifier.width(120.dp)
+    }
 private fun RowScope.readModifier(isWideCompact: Boolean) = if (isWideCompact) Modifier.weight(1f) else Modifier.width(90.dp)
 private fun RowScope.latestModifier(isWideCompact: Boolean) = if (isWideCompact) Modifier.weight(1f) else Modifier.width(80.dp)
 private fun RowScope.statusModifier(isWideCompact: Boolean) = if (isWideCompact) Modifier.weight(1.2f) else Modifier.width(100.dp)
@@ -271,7 +307,7 @@ private fun MembersTableHeader(isWideCompact: Boolean) {
     Row(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .then(if (isWideCompact) Modifier.fillMaxWidth() else Modifier),
+            .fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = sourceModifier(isWideCompact)) {
@@ -324,7 +360,7 @@ private fun MemberTableRow(
     Row(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .then(if (isWideCompact) Modifier.fillMaxWidth() else Modifier)
+            .fillMaxWidth()
             .height(60.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -357,6 +393,7 @@ private fun MemberTableRow(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     textAlign = TextAlign.Center,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
