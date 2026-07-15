@@ -71,6 +71,9 @@ import tachiyomi.domain.history.interactor.GetTotalReadDuration
 import tachiyomi.domain.history.interactor.RemoveHistory
 import tachiyomi.domain.history.interactor.UpsertHistory
 import tachiyomi.domain.history.repository.HistoryRepository
+import tachiyomi.domain.history.group.repository.HistoryGroupRepository
+import tachiyomi.data.history.HistoryGroupRepositoryImpl
+import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
 import tachiyomi.domain.manga.interactor.FetchInterval
 import tachiyomi.domain.manga.interactor.GetDuplicateLibraryManga
 import tachiyomi.domain.manga.interactor.GetFavorites
@@ -175,7 +178,9 @@ class DomainModule : InjektModule {
         addFactory { FilterChaptersForDownload(get(), get(), get()) }
 
         addSingletonFactory<HistoryRepository> { HistoryRepositoryImpl(get()) }
+        addSingletonFactory<HistoryGroupRepository> { HistoryGroupRepositoryImpl(get()) }
         addSingletonFactory<HistoryCategoryRepository> { HistoryCategoryRepositoryImpl(get()) }
+        addFactory { ManageHistoryGroups(get()) }
         addFactory { ManageHistoryCategory(get()) }
         addFactory { GetHistory(get()) }
         addFactory { UpsertHistory(get()) }
