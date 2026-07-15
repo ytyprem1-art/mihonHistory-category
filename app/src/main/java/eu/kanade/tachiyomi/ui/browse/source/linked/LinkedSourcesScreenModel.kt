@@ -23,7 +23,7 @@ class LinkedSourcesScreenModel(
 
     init {
         screenModelScope.launchIO {
-            manageLinkedSourceGroup.subscribe()
+            val groupsFlow = manageLinkedSourceGroup.subscribe()
                 .distinctUntilChanged()
                 .flatMapLatest { groups ->
                     if (groups.isEmpty()) return@flatMapLatest kotlinx.coroutines.flow.flowOf(emptyList<GroupWithMetadata>())
@@ -33,16 +33,34 @@ class LinkedSourcesScreenModel(
                             GroupWithMetadata(
                                 group = group,
                                 representativeManga = members.firstOrNull(),
-                                sourceNames = members.map { sourceManager.getOrStub(it.source).name }
+                                sourceNames = members.map { sourceManager.getOrStub(it.source).name },
+                                memberTitles = members.map { it.title }
                             )
                         }
                     }
                     combine(flows) { it.toList() }
                 }
-                .collectLatest { groups ->
-                    mutableState.update { it.copy(groups = groups) }
+
+            combine(
+                groupsFlow,
+                state.map { it.searchQuery }.distinctUntilChanged()
+            ) { groups, query ->
+                val q = query
+                if (q.isNullOrBlank()) return@combine groups
+
+                groups.filter { group ->
+                    group.group.name.contains(q, ignoreCase = true) ||
+                        group.sourceNames.any { it.contains(q, ignoreCase = true) } ||
+                        group.memberTitles.any { it.contains(q, ignoreCase = true) }
                 }
+            }.collectLatest { filteredGroups ->
+                mutableState.update { it.copy(groups = filteredGroups) }
+            }
         }
+    }
+
+    fun updateSearchQuery(query: String?) {
+        mutableState.update { it.copy(searchQuery = query) }
     }
 
     fun createGroup(name: String) {
@@ -64,6 +82,7 @@ class LinkedSourcesScreenModel(
     }
 
     data class State(
+        val searchQuery: String? = null,
         val groups: List<GroupWithMetadata> = emptyList(),
     )
 
@@ -71,5 +90,6 @@ class LinkedSourcesScreenModel(
         val group: LinkedSourceGroup,
         val representativeManga: Manga?,
         val sourceNames: List<String>,
+        val memberTitles: List<String>,
     )
 }

@@ -32,6 +32,8 @@ class LinkedSourcesScreen : Screen() {
 
         LinkedSourcesScreen(
             groups = state.groups,
+            searchQuery = state.searchQuery,
+            onSearchQueryChange = screenModel::updateSearchQuery,
             onClickCreate = { showCreateDialog = true },
             onClickDelete = { groupToDelete = it },
             onClickGroup = { navigator.push(LinkedSourceDetailsScreen(it.id)) },
