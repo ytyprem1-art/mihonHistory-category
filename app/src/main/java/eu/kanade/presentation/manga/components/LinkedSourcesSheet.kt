@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.MoreVert
@@ -217,7 +218,7 @@ private fun MembersTableHeader() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Spacer(modifier = Modifier.width(40.dp)) // Cover
-        HeaderCell(text = "Source", width = 120.dp)
+        HeaderCell(text = "Source", width = 140.dp)
         HeaderCell(text = "Read", width = 90.dp)
         HeaderCell(text = "Latest", width = 80.dp)
         HeaderCell(text = "Status", width = 150.dp)
@@ -253,6 +254,7 @@ private fun MemberTableRow(
     val sourceName = remember(manga.source) {
         sourceManager.getOrStub(manga.source).name
     }
+    val isCurrentManga = manga.id == currentMangaId
 
     Row(
         modifier = Modifier
@@ -260,14 +262,56 @@ private fun MemberTableRow(
             .height(60.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MangaCover.Book(
-            data = manga,
-            modifier = Modifier.size(height = 48.dp, width = 32.dp),
-        )
+        Row(
+            modifier = Modifier
+                .width(188.dp) // 32 (cover) + 8 (spacer) + 140 (source) + 8 (trailing spacer)
+                .then(
+                    if (isCurrentManga) {
+                        Modifier
+                    } else {
+                        Modifier.clickable { onOpen() }
+                    }
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MangaCover.Book(
+                data = manga,
+                modifier = Modifier.size(height = 48.dp, width = 32.dp),
+            )
 
-        Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
-        TextCell(text = sourceName, width = 120.dp)
+            Row(
+                modifier = Modifier.width(140.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = sourceName,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                )
+                if (isCurrentManga) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "(Current)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                    )
+                } else {
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
 
         // Read (2 lines)
         val isReadClickable = member.lastReadChapterId != null
