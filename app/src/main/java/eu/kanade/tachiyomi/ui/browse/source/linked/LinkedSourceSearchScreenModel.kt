@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.browse.source.linked
 import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreenModel
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchItemResult
+import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SourceFilter
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.collectLatest
@@ -21,6 +22,9 @@ class LinkedSourceSearchScreenModel(
 ) : GlobalSearchScreenModel(initialQuery) {
 
     init {
+        // Default to All sources for this specific search flow
+        setSourceFilter(SourceFilter.All)
+
         screenModelScope.launchIO {
             state
                 .map { it.items }
