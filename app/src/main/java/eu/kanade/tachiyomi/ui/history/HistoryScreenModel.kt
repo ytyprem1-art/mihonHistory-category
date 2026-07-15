@@ -45,6 +45,7 @@ import tachiyomi.domain.manga.model.MangaWithChapterCount
 import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 
 class HistoryScreenModel(
@@ -68,7 +69,7 @@ class HistoryScreenModel(
     val events: Flow<Event> = _events.receiveAsFlow()
 
     init {
-        // Coroutine 1: Mengambil daftar kategori untuk Tab Row
+        // Coroutine 1: Daftar kategori untuk Tab Row
         screenModelScope.launchIO {
             manageHistoryCategory.subscribe()
                 .collect { categories ->
@@ -76,58 +77,90 @@ class HistoryScreenModel(
                 }
         }
 
-        // Coroutine 2: Mengambil list riwayat mentah dengan isolasi Dispatcher murni
+        // Coroutine 2: Mengambil list riwayat mentah + keanggotaan grup
         screenModelScope.launchIO {
-            state.map { it.searchQuery }.distinctUntilChanged()
+            val historyFlow = state.map { it.searchQuery }.distinctUntilChanged()
                 .flatMapLatest { query ->
                     getHistory.subscribe(query ?: "")
-                        .distinctUntilChanged()
-                        .catch { error ->
-                            logcat(LogPriority.ERROR, error)
-                            _events.send(Event.InternalError)
-                        }
                 }
+
+            combine(
+                historyFlow,
+                manageHistoryGroups.subscribe(),
+                manageHistoryGroups.subscribeAllMemberships(),
+            ) { historyList, groups, memberships ->
+                Triple(historyList, groups, memberships)
+            }
                 .flowOn(Dispatchers.IO)
-                .collect { list ->
-                    val uiModels = list.toHistoryUiModels()
+                .collect { (list, groups, memberships) ->
+                    val uiModels = processHistoryList(list, groups, memberships)
 
-                    // Kita pisahkan total eksekusi query map ke scope IO terpisah
-                    screenModelScope.launch(Dispatchers.IO) {
-                        val mangaIds = list.map { it.mangaId }.distinct()
-                        val localMap = mutableMapOf<Long, Long>()
+                    // Update state list beserta map kategorinya
+                    val mangaIds = list.map { it.mangaId }.distinct()
+                    val localMap = mutableMapOf<Long, Long>()
+                    for (mId in mangaIds) {
+                        localMap[mId] = manageHistoryCategory.getMangaCategory(mId) ?: 0L
+                    }
 
-                        // Eksekusi satu-persatu secara asinkron murni agar driver SQLDelight tenang
-                        for (mId in mangaIds) {
-                            try {
-                                val cId = manageHistoryCategory.getMangaCategory(mId) ?: 0L
-                                localMap[mId] = cId
-                            } catch (e: Exception) {
-                                localMap[mId] = 0L
-                            }
-                        }
-
-                        // Update state list beserta map kategorinya sekaligus secara aman
-                        mutableState.update {
-                            it.copy(
-                                list = uiModels,
-                                mangaToCategoryMap = localMap
-                            )
-                        }
+                    mutableState.update {
+                        it.copy(
+                            list = uiModels,
+                            mangaToCategoryMap = localMap
+                        )
                     }
                 }
         }
     }
 
-    private fun List<HistoryWithRelations>.toHistoryUiModels(): List<HistoryUiModel> {
-        return map { HistoryUiModel.Item(it) }
-            .insertSeparators { before, after ->
-                val beforeDate = before?.item?.readAt?.time?.toLocalDate()
-                val afterDate = after?.item?.readAt?.time?.toLocalDate()
-                when {
-                    beforeDate != afterDate && afterDate != null -> HistoryUiModel.Header(afterDate)
-                    else -> null
-                }
+    private fun processHistoryList(
+        list: List<HistoryWithRelations>,
+        groups: List<tachiyomi.domain.history.group.model.HistoryGroup>,
+        memberships: Map<Long, Long>,
+    ): List<HistoryUiModel> {
+        val processedItems = mutableListOf<HistoryUiModel>()
+        val groupedMangaHandled = mutableSetOf<Long>()
+
+        for (item in list) {
+            val groupId = memberships[item.mangaId]
+            if (groupId == null) {
+                processedItems.add(HistoryUiModel.Item(item))
+            } else {
+                if (groupId in groupedMangaHandled) continue
+
+                // Find all group members in the current history list
+                val group = groups.find { it.id == groupId } ?: continue
+                val groupMembers = list.filter { memberships[it.mangaId] == groupId }
+
+                // The list is sorted by readAt DESC, so the first one is the representative
+                val representative = groupMembers.first()
+
+                processedItems.add(
+                    HistoryUiModel.Group(
+                        group = group,
+                        representative = representative,
+                        memberCount = groupMembers.size
+                    )
+                )
+                groupedMangaHandled.add(groupId)
             }
+        }
+
+        return processedItems.insertSeparators { before, after ->
+            val beforeDate = when (before) {
+                is HistoryUiModel.Item -> before.item.readAt?.time?.toLocalDate()
+                is HistoryUiModel.Group -> before.representative.readAt?.time?.toLocalDate()
+                else -> null
+            }
+            val afterDate = when (after) {
+                is HistoryUiModel.Item -> after.item.readAt?.time?.toLocalDate()
+                is HistoryUiModel.Group -> after.representative.readAt?.time?.toLocalDate()
+                else -> null
+            }
+            when {
+                beforeDate != afterDate && afterDate != null -> HistoryUiModel.Header(afterDate)
+                else -> null
+            }
+        }
     }
 
     suspend fun getNextChapter(): Chapter? {
@@ -227,6 +260,13 @@ class HistoryScreenModel(
         }
     }
 
+    fun showAddToHistoryGroupDialog(mangaId: Long) {
+        screenModelScope.launchIO {
+            val groups = manageHistoryGroups.getGroups()
+            mutableState.update { it.copy(dialog = Dialog.AddToHistoryGroup(mangaId, groups)) }
+        }
+    }
+
     fun moveMangaToHistoryCategory(mangaId: Long, categoryId: Long) {
         screenModelScope.launchIO {
             manageHistoryCategory.moveToCategory(mangaId, categoryId)
@@ -276,6 +316,37 @@ class HistoryScreenModel(
                     )
                 }
                 _events.send(Event.HistoryGroupCreated)
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                _events.send(Event.Error(e.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    fun addMangaToHistoryGroup(mangaId: Long, groupId: Long) {
+        screenModelScope.launchIO {
+            try {
+                manageHistoryGroups.assignMangaToGroup(mangaId, groupId)
+                mutableState.update { state ->
+                    state.copy(
+                        selectionMode = false,
+                        selected = emptySet(),
+                        dialog = null,
+                    )
+                }
+                _events.send(Event.AddedToHistoryGroup)
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                _events.send(Event.Error(e.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    fun deleteHistoryGroup(id: Long) {
+        screenModelScope.launchIO {
+            try {
+                manageHistoryGroups.deleteGroup(id)
+                mutableState.update { it.copy(dialog = null) }
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
                 _events.send(Event.Error(e.message ?: "Unknown error"))
@@ -447,6 +518,8 @@ class HistoryScreenModel(
             val categories: List<HistoryCategory>,
         ) : Dialog
         data class CreateHistoryGroup(val mangaIds: Set<Long>, val suggestedName: String) : Dialog
+        data class DeleteHistoryGroup(val group: tachiyomi.domain.history.group.model.HistoryGroup) : Dialog
+        data class AddToHistoryGroup(val mangaId: Long, val groups: List<tachiyomi.domain.history.group.model.HistoryGroup>) : Dialog
         data class DuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
         data class ChangeCategory(
             val manga: Manga,
@@ -460,6 +533,7 @@ class HistoryScreenModel(
         data object InternalError : Event
         data object HistoryCleared : Event
         data object HistoryGroupCreated : Event
+        data object AddedToHistoryGroup : Event
         data class Error(val message: String) : Event
     }
 }

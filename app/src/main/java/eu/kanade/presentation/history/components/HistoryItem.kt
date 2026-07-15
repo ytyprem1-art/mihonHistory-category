@@ -1,6 +1,7 @@
 package eu.kanade.presentation.history.components
 
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -48,6 +49,7 @@ fun HistoryItem(
     selectionMode: Boolean,
     selected: Boolean,
     modifier: Modifier = Modifier,
+    subtitleBadge: @Composable (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier
@@ -115,6 +117,12 @@ fun HistoryItem(
                     modifier = Modifier.padding(top = 4.dp),
                     style = textStyle,
                 )
+
+                if (subtitleBadge != null) {
+                    Box(modifier = Modifier.padding(top = 4.dp)) {
+                        subtitleBadge()
+                    }
+                }
             }
 
             if (!selectionMode) {

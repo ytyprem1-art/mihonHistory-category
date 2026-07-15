@@ -16,4 +16,5 @@ interface HistoryGroupRepository {
     suspend fun assignMangaToGroup(mangaId: Long, groupId: Long)
     suspend fun createGroupWithMembers(name: String, mangaIds: List<Long>)
     suspend fun removeMangaFromGroup(mangaId: Long)
+    fun subscribeAllMemberships(): Flow<Map<Long, Long>>
 }

@@ -43,3 +43,6 @@ DELETE FROM history_group_members WHERE manga_id = :mangaId;
 
 removeAllMembers:
 DELETE FROM history_group_members WHERE group_id = :groupId;
+
+getAllMemberships:
+SELECT * FROM history_group_members;

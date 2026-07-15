@@ -16,7 +16,9 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,6 +39,7 @@ import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.browse.source.linked.LinkedSourcesScreen
+import eu.kanade.tachiyomi.ui.mod.historygroup.HistoryGroupDetailScreen
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
@@ -46,6 +49,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.domain.chapter.model.Chapter
+import tachiyomi.domain.history.group.model.HistoryGroup
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import kotlinx.coroutines.launch
@@ -92,6 +96,7 @@ data object HistoryTab : Tab {
             onTabSelected = screenModel::updateSelectedCategory,
             onClickChangeCategory = screenModel::showChangeHistoryCategoryDialog,
             onClickLinkedSourceGroups = { navigator.push(LinkedSourcesScreen()) },
+            onClickGroup = { navigator.push(HistoryGroupDetailScreen(it)) },
             screenModel = screenModel,
         )
 
@@ -369,6 +374,59 @@ data object HistoryTab : Tab {
                     }
                 )
             }
+            is HistoryScreenModel.Dialog.AddToHistoryGroup -> {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Add to History Group") },
+                    text = {
+                        if (dialog.groups.isEmpty()) {
+                            androidx.compose.material3.Text("No existing groups found.")
+                        } else {
+                            androidx.compose.foundation.lazy.LazyColumn {
+                                items(
+                                    items = dialog.groups,
+                                    key = { it.id }
+                                ) { group ->
+                                    androidx.compose.material3.ListItem(
+                                        modifier = Modifier.clickable {
+                                            screenModel.addMangaToHistoryGroup(dialog.mangaId, group.id)
+                                        },
+                                        headlineContent = { androidx.compose.material3.Text(group.name) },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
+                        }
+                    }
+                )
+            }
+            is HistoryScreenModel.Dialog.DeleteHistoryGroup -> {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Delete history group?") },
+                    text = { androidx.compose.material3.Text("Members will return to the normal History list. Reading history will not be deleted.") },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                screenModel.deleteHistoryGroup(dialog.group.id)
+                                onDismissRequest()
+                            }
+                        ) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_ok))
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
+                        }
+                    }
+                )
+            }
             is HistoryScreenModel.Dialog.ChangeCategory -> {
                 ChangeCategoryDialog(
                     initialSelection = dialog.initialSelection,
@@ -406,6 +464,8 @@ data object HistoryTab : Tab {
                         snackbarHostState.showSnackbar(context.stringResource(MR.strings.clear_history_completed))
                     HistoryScreenModel.Event.HistoryGroupCreated ->
                         snackbarHostState.showSnackbar("History group created")
+                    HistoryScreenModel.Event.AddedToHistoryGroup ->
+                        snackbarHostState.showSnackbar("Added to history group")
                     is HistoryScreenModel.Event.Error ->
                         snackbarHostState.showSnackbar(e.message)
                     is HistoryScreenModel.Event.OpenChapter -> openChapter(context, e.chapter)

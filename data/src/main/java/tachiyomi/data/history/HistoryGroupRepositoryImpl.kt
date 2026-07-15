@@ -4,6 +4,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import tachiyomi.data.Database
 import tachiyomi.data.subscribeToList
 import tachiyomi.data.subscribeToOneOrNull
@@ -86,5 +87,12 @@ class HistoryGroupRepositoryImpl(
         database.transaction {
             database.history_groupsQueries.removeMember(mangaId)
         }
+    }
+
+    override fun subscribeAllMemberships(): Flow<Map<Long, Long>> {
+        return database.history_groupsQueries.getAllMemberships { mangaId, groupId ->
+            mangaId to groupId
+        }.subscribeToList()
+            .map { list -> list.toMap() }
     }
 }

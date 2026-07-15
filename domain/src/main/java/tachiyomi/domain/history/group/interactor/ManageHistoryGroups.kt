@@ -1,6 +1,7 @@
 package tachiyomi.domain.history.group.interactor
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import tachiyomi.domain.history.group.model.HistoryGroup
 import tachiyomi.domain.history.group.repository.HistoryGroupRepository
 
@@ -49,5 +50,13 @@ class ManageHistoryGroups(
 
     fun subscribeGroupForManga(mangaId: Long): Flow<HistoryGroup?> {
         return repository.subscribeGroupForManga(mangaId)
+    }
+
+    fun subscribeAllMemberships(): Flow<Map<Long, Long>> {
+        return repository.subscribeAllMemberships()
+    }
+
+    suspend fun getAllMemberships(): Map<Long, Long> {
+        return repository.subscribeAllMemberships().first()
     }
 }

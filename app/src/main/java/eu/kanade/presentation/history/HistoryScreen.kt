@@ -1,5 +1,6 @@
 package eu.kanade.presentation.history
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Merge
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -31,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource as androidStringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.AppBarTitle
@@ -64,6 +67,7 @@ fun HistoryScreen(
     onTabSelected: (Long) -> Unit,
     onClickChangeCategory: (mangaId: Long) -> Unit,
     onClickLinkedSourceGroups: () -> Unit,
+    onClickGroup: (groupId: Long) -> Unit,
     screenModel: HistoryScreenModel,
 ) {
     val scrollStates = rememberSaveable(
@@ -98,11 +102,16 @@ fun HistoryScreen(
                     val cId = state.mangaToCategoryMap[uiModel.item.mangaId] ?: 0L
                     cId == state.selectedCategoryId
                 }
+                is HistoryUiModel.Group -> {
+                    val cId = state.mangaToCategoryMap[uiModel.representative.mangaId] ?: 0L
+                    cId == state.selectedCategoryId
+                }
             }
         }
         result.filterIndexed { index, uiModel ->
             if (uiModel is HistoryUiModel.Header) {
-                result.getOrNull(index + 1) is HistoryUiModel.Item
+                val next = result.getOrNull(index + 1)
+                next is HistoryUiModel.Item || next is HistoryUiModel.Group
             } else {
                 true
             }
@@ -147,28 +156,43 @@ fun HistoryScreen(
                                         enabled = state.selected.isNotEmpty(),
                                     ),
                                     AppBar.Action(
-                                        title = "Create history group",
+                                        title = if (state.selected.size == 1) "Add to history group" else "Create history group",
                                         icon = Icons.Outlined.Merge,
                                         onClick = {
-                                            val selectedItems = state.list?.filterIsInstance<HistoryUiModel.Item>()
-                                                ?.filter { it.item.mangaId in state.selected }
-                                                .orEmpty()
-
-                                            val distinctTitles = selectedItems.map { it.item.title }.distinct()
-                                            val suggestedName = if (distinctTitles.size == 1) {
-                                                distinctTitles.first()
+                                            if (state.selected.size == 1) {
+                                                screenModel.showAddToHistoryGroupDialog(state.selected.first())
                                             } else {
-                                                selectedItems.firstOrNull()?.item?.title ?: ""
-                                            }
+                                                val selectedItems = state.list?.filterIsInstance<HistoryUiModel.Item>()
+                                                    ?.filter { it.item.mangaId in state.selected }
+                                                    .orEmpty()
 
-                                            onDialogChange(
-                                                HistoryScreenModel.Dialog.CreateHistoryGroup(
-                                                    state.selected,
-                                                    suggestedName
+                                                val distinctTitles = selectedItems.map { it.item.title }.distinct()
+                                                val suggestedName = if (distinctTitles.size == 1) {
+                                                    distinctTitles.first()
+                                                } else {
+                                                    selectedItems.firstOrNull()?.item?.title ?: ""
+                                                }
+
+                                                onDialogChange(
+                                                    HistoryScreenModel.Dialog.CreateHistoryGroup(
+                                                        state.selected,
+                                                        suggestedName
+                                                    )
                                                 )
-                                            )
+                                            }
                                         },
-                                        enabled = state.selected.size >= 2,
+                                        enabled = run {
+                                            if (state.selected.size >= 2) return@run true
+                                            if (state.selected.size == 1) {
+                                                // Only enable for ungrouped items as per requirements
+                                                val mangaId = state.selected.first()
+                                                val isGrouped = state.list?.filterIsInstance<HistoryUiModel.Group>()
+                                                    ?.any { it.representative.mangaId == mangaId } == true
+                                                !isGrouped
+                                            } else {
+                                                false
+                                            }
+                                        },
                                     ),
                                     AppBar.Action(
                                         title = stringResource(MR.strings.action_select_all),
@@ -292,19 +316,21 @@ fun HistoryScreen(
                     modifier = Modifier.padding(contentPadding),
                 )
             } else {
-                HistoryScreenContent(
-                    history = filteredHistory,
-                    contentPadding = contentPadding,
-                    scrollState = scrollState,
-                    selectionMode = state.selectionMode,
-                    selected = state.selected,
-                    onClickCover = { history -> onClickCover(history.mangaId) },
-                    onClickResume = { history -> onClickResume(history.mangaId, history.chapterId) },
-                    onClickDelete = { item -> onDialogChange(HistoryScreenModel.Dialog.Delete(item)) },
-                    onClickFavorite = { history -> onClickFavorite(history.mangaId) },
-                    onClickChangeCategory = onClickChangeCategory,
-                    onToggleSelection = screenModel::toggleSelection,
-                )
+                    HistoryScreenContent(
+                        history = filteredHistory,
+                        contentPadding = contentPadding,
+                        scrollState = scrollState,
+                        selectionMode = state.selectionMode,
+                        selected = state.selected,
+                        onClickCover = { history -> onClickCover(history.mangaId) },
+                        onClickResume = { history -> onClickResume(history.mangaId, history.chapterId) },
+                        onClickDelete = { item -> onDialogChange(HistoryScreenModel.Dialog.Delete(item)) },
+                        onClickFavorite = { history -> onClickFavorite(history.mangaId) },
+                        onClickChangeCategory = onClickChangeCategory,
+                        onClickGroup = onClickGroup,
+                        onClickDeleteGroup = { group -> onDialogChange(HistoryScreenModel.Dialog.DeleteHistoryGroup(group)) },
+                        onToggleSelection = screenModel::toggleSelection,
+                    )
             }
         }
     }
@@ -322,6 +348,8 @@ private fun HistoryScreenContent(
     onClickDelete: (HistoryWithRelations) -> Unit,
     onClickFavorite: (HistoryWithRelations) -> Unit,
     onClickChangeCategory: (Long) -> Unit,
+    onClickGroup: (Long) -> Unit,
+    onClickDeleteGroup: (tachiyomi.domain.history.group.model.HistoryGroup) -> Unit,
     onToggleSelection: (Long) -> Unit,
 ) {
     FastScrollLazyColumn(
@@ -363,6 +391,38 @@ private fun HistoryScreenContent(
                         selected = value.mangaId in selected,
                     )
                 }
+
+                is HistoryUiModel.Group -> {
+                    val value = item.representative
+                    HistoryItem(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateItemFastScroll(),
+                        history = value,
+                        onClickCover = { onClickGroup(item.group.id) },
+                        onClickResume = { onClickGroup(item.group.id) },
+                        onClickDelete = { onClickDeleteGroup(item.group) },
+                        onClickFavorite = { /* Disable favorite for groups for now */ },
+                        onLongClick = {
+                            onToggleSelection(value.mangaId)
+                        },
+                        selectionMode = selectionMode,
+                        selected = value.mangaId in selected,
+                        subtitleBadge = {
+                            Text(
+                                text = "${item.memberCount} sources",
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier
+                                    .background(
+                                        MaterialTheme.colorScheme.secondaryContainer,
+                                        MaterialTheme.shapes.extraSmall
+                                    )
+                                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    )
+                }
             }
         }
     }
@@ -371,6 +431,11 @@ private fun HistoryScreenContent(
 sealed interface HistoryUiModel {
     data class Header(val date: LocalDate) : HistoryUiModel
     data class Item(val item: HistoryWithRelations) : HistoryUiModel
+    data class Group(
+        val group: tachiyomi.domain.history.group.model.HistoryGroup,
+        val representative: HistoryWithRelations,
+        val memberCount: Int
+    ) : HistoryUiModel
 }
 
 @PreviewLightDark
