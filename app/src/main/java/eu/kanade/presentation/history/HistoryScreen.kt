@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -22,8 +24,11 @@ import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.FlipToBack
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Merge
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
@@ -31,7 +36,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource as androidStringResource
@@ -367,6 +375,7 @@ fun HistoryScreen(
                         onClickFavorite = { history -> onClickFavorite(history.mangaId) },
                         onClickChangeCategory = onClickChangeCategory,
                         onClickGroup = onClickGroup,
+                        onClickRenameGroup = { group -> onDialogChange(HistoryScreenModel.Dialog.RenameHistoryGroup(group)) },
                         onClickDeleteGroup = { group -> onDialogChange(HistoryScreenModel.Dialog.DeleteHistoryGroup(group)) },
                         onToggleSelection = screenModel::toggleSelection,
                     )
@@ -388,6 +397,7 @@ private fun HistoryScreenContent(
     onClickFavorite: (HistoryWithRelations) -> Unit,
     onClickChangeCategory: (Long) -> Unit,
     onClickGroup: (Long) -> Unit,
+    onClickRenameGroup: (tachiyomi.domain.history.group.model.HistoryGroup) -> Unit,
     onClickDeleteGroup: (tachiyomi.domain.history.group.model.HistoryGroup) -> Unit,
     onToggleSelection: (Long) -> Unit,
 ) {
@@ -433,20 +443,38 @@ private fun HistoryScreenContent(
 
                 is HistoryUiModel.Group -> {
                     val value = item.representative
+                    var showMenu by remember { mutableStateOf(false) }
+
                     HistoryItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .animateItemFastScroll(),
                         history = value,
+                        titleOverride = item.group.name,
                         onClickCover = { onClickGroup(item.group.id) },
                         onClickResume = { onClickGroup(item.group.id) },
                         onClickDelete = { onClickDeleteGroup(item.group) },
-                        onClickFavorite = { /* Disable favorite for groups for now */ },
+                        onClickFavorite = null,
                         onLongClick = {
                             onToggleSelection(value.mangaId)
                         },
                         selectionMode = selectionMode,
                         selected = value.mangaId in selected,
+                        onOverflowClick = { showMenu = true },
+                        overflowContent = {
+                            androidx.compose.material3.DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                            ) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("Rename group") },
+                                    onClick = {
+                                        onClickRenameGroup(item.group)
+                                        showMenu = false
+                                    },
+                                )
+                            }
+                        },
                         subtitleBadge = {
                             val metadata = remember(item.memberCount, item.sourceNames) {
                                 val sourceList = item.sourceNames.distinct()

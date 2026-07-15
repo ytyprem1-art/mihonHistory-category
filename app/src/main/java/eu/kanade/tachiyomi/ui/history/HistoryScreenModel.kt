@@ -359,6 +359,19 @@ class HistoryScreenModel(
         }
     }
 
+    fun renameHistoryGroup(id: Long, name: String) {
+        if (name.isBlank()) return
+        screenModelScope.launchIO {
+            try {
+                manageHistoryGroups.renameGroup(id, name)
+                mutableState.update { it.copy(dialog = null) }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                _events.send(Event.Error(e.message ?: "Unknown error"))
+            }
+        }
+    }
+
     fun renameHistoryCategory(id: Long, name: String) {
         screenModelScope.launch {
             manageHistoryCategory.rename(id, name)
@@ -527,6 +540,7 @@ class HistoryScreenModel(
             val categories: List<HistoryCategory>,
         ) : Dialog
         data class CreateHistoryGroup(val mangaIds: Set<Long>, val suggestedName: String) : Dialog
+        data class RenameHistoryGroup(val group: tachiyomi.domain.history.group.model.HistoryGroup) : Dialog
         data class DeleteHistoryGroup(val group: tachiyomi.domain.history.group.model.HistoryGroup) : Dialog
         data class AddToHistoryGroup(val mangaId: Long, val groups: List<tachiyomi.domain.history.group.model.HistoryGroup>) : Dialog
 

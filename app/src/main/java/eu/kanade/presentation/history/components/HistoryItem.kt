@@ -45,7 +45,7 @@ fun HistoryItem(
     onClickCover: () -> Unit,
     onClickResume: () -> Unit,
     onClickDelete: (() -> Unit)?,
-    onClickFavorite: () -> Unit,
+    onClickFavorite: (() -> Unit)?,
     onLongClick: () -> Unit,
     selectionMode: Boolean,
     selected: Boolean,
@@ -54,6 +54,7 @@ fun HistoryItem(
     onOverflowClick: (() -> Unit)? = null,
     overflowContent: (@Composable () -> Unit)? = null,
     secondaryText: String? = null,
+    titleOverride: String? = null,
 ) {
     Surface(
         modifier = modifier
@@ -97,7 +98,7 @@ fun HistoryItem(
                 val textStyle = MaterialTheme.typography.bodyMedium
 
                 Text(
-                    text = history.title,
+                    text = titleOverride ?: history.title,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -134,25 +135,13 @@ fun HistoryItem(
             }
 
             if (!selectionMode) {
-                if (!history.coverData.isMangaFavorite) {
+                if (onClickFavorite != null && !history.coverData.isMangaFavorite) {
                     IconButton(
                         onClick = onClickFavorite,
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.FavoriteBorder,
                             contentDescription = stringResource(MR.strings.add_to_library),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                }
-
-                if (onClickDelete != null) {
-                    IconButton(
-                        onClick = onClickDelete,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = stringResource(MR.strings.action_delete),
                             tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
@@ -168,6 +157,18 @@ fun HistoryItem(
                             )
                         }
                         overflowContent()
+                    }
+                }
+
+                if (onClickDelete != null) {
+                    IconButton(
+                        onClick = onClickDelete,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = stringResource(MR.strings.action_delete),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
                     }
                 }
             }

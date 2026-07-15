@@ -412,6 +412,37 @@ data object HistoryTab : Tab {
                     }
                 )
             }
+            is HistoryScreenModel.Dialog.RenameHistoryGroup -> {
+                var groupName by androidx.compose.runtime.remember(dialog) { androidx.compose.runtime.mutableStateOf(dialog.group.name) }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Rename History Group") },
+                    text = {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = groupName,
+                            onValueChange = { groupName = it },
+                            label = { androidx.compose.material3.Text("Group Name") },
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                if (groupName.isNotBlank()) {
+                                    screenModel.renameHistoryGroup(dialog.group.id, groupName)
+                                }
+                            }
+                        ) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_ok))
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
+                        }
+                    }
+                )
+            }
             is HistoryScreenModel.Dialog.DeleteHistoryGroup -> {
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = onDismissRequest,
