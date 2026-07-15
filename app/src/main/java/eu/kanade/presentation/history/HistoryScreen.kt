@@ -1,9 +1,11 @@
 package eu.kanade.presentation.history
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
@@ -29,6 +31,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource as androidStringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -276,32 +279,61 @@ fun HistoryScreen(
                     )
                 }
 
-                if (state.historyCategories.isNotEmpty()) {
-                    ScrollableTabRow(
-                        selectedTabIndex = run {
+                ScrollableTabRow(
+                    selectedTabIndex = when (state.selectedCategoryId) {
+                        HistoryScreenModel.State.UPDATE_WATCH_TAB_ID -> 0
+                        0L -> 1
+                        else -> {
                             val index = state.historyCategories.indexOfFirst { it.id == state.selectedCategoryId }
-                            if (index == -1) 0 else index + 1
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Tab(
-                            selected = state.selectedCategoryId == 0L,
-                            onClick = { onTabSelected(0L) },
-                            text = { Text(androidStringResource(R.string.history_categories_all)) },
-                        )
-                        state.historyCategories.forEach { category ->
-                            Tab(
-                                selected = state.selectedCategoryId == category.id,
-                                onClick = { onTabSelected(category.id) },
-                                text = { Text(category.name) },
-                            )
+                            if (index == -1) 1 else index + 2
                         }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Tab(
+                        selected = state.selectedCategoryId == HistoryScreenModel.State.UPDATE_WATCH_TAB_ID,
+                        onClick = { onTabSelected(HistoryScreenModel.State.UPDATE_WATCH_TAB_ID) },
+                        text = { Text("Update Watch") },
+                    )
+                    Tab(
+                        selected = state.selectedCategoryId == 0L,
+                        onClick = { onTabSelected(0L) },
+                        text = { Text(androidStringResource(R.string.history_categories_all)) },
+                    )
+                    state.historyCategories.forEach { category ->
+                        Tab(
+                            selected = state.selectedCategoryId == category.id,
+                            onClick = { onTabSelected(category.id) },
+                            text = { Text(category.name) },
+                        )
                     }
                 }
             }
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { contentPadding ->
+        if (state.selectedCategoryId == HistoryScreenModel.State.UPDATE_WATCH_TAB_ID) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding)
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = "Update Watch",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = "Tracked linked-source updates will appear here.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            return@Scaffold
+        }
         state.list.let {
             if (it == null) {
                 LoadingScreen(Modifier.padding(contentPadding))
