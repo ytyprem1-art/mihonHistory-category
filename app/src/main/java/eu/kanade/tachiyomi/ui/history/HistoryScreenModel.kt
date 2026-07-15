@@ -520,6 +520,7 @@ class HistoryScreenModel(
         data class CreateHistoryGroup(val mangaIds: Set<Long>, val suggestedName: String) : Dialog
         data class DeleteHistoryGroup(val group: tachiyomi.domain.history.group.model.HistoryGroup) : Dialog
         data class AddToHistoryGroup(val mangaId: Long, val groups: List<tachiyomi.domain.history.group.model.HistoryGroup>) : Dialog
+
         data class DuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
         data class ChangeCategory(
             val manga: Manga,

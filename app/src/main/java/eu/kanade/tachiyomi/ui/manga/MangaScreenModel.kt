@@ -1139,7 +1139,11 @@ class MangaScreenModel(
         data object FullCover : Dialog
 
         data class CreateLinkedGroup(val defaultName: String) : Dialog
-        data class JoinLinkedGroup(val allGroups: List<LinkedSourceGroup>) : Dialog
+        data class JoinLinkedGroup(val allGroups: List<JoinGroupItem>) : Dialog
+        data class JoinGroupItem(
+            val group: LinkedSourceGroup,
+            val representativeManga: Manga?,
+        )
         data class RemoveLinkedMember(val member: Manga, val isLast: Boolean) : Dialog
     }
 
@@ -1181,8 +1185,12 @@ class MangaScreenModel(
 
     fun showJoinGroupDialog() {
         screenModelScope.launchIO {
-            val allGroups = manageLinkedSourceGroup.subscribe().first()
-            updateSuccessState { it.copy(dialog = Dialog.JoinLinkedGroup(allGroups)) }
+            val groups = manageLinkedSourceGroup.subscribe().first()
+            val items = groups.map { group ->
+                val members = manageLinkedSourceGroup.subscribeMembers(group.id).first()
+                Dialog.JoinGroupItem(group, members.firstOrNull())
+            }
+            updateSuccessState { it.copy(dialog = Dialog.JoinLinkedGroup(items)) }
         }
     }
 

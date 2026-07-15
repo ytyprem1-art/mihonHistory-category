@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -373,14 +375,23 @@ class MangaScreen(
                     title = { androidx.compose.material3.Text("Join Group") },
                     text = {
                         androidx.compose.foundation.lazy.LazyColumn {
-                            items(dialog.allGroups) { group ->
+                            items(
+                                items = dialog.allGroups,
+                                key = { it.group.id }
+                            ) { item ->
                                 androidx.compose.material3.ListItem(
                                     modifier = Modifier.clickable {
-                                        screenModel.joinGroup(group.id)
+                                        screenModel.joinGroup(item.group.id)
                                         onDismissRequest()
                                     },
-                                    headlineContent = { androidx.compose.material3.Text(group.name) },
-                                    supportingContent = { androidx.compose.material3.Text("${group.memberCount} sources") },
+                                    leadingContent = {
+                                        eu.kanade.presentation.manga.components.MangaCover.Book(
+                                            modifier = Modifier.height(48.dp),
+                                            data = item.representativeManga,
+                                        )
+                                    },
+                                    headlineContent = { androidx.compose.material3.Text(item.group.name) },
+                                    supportingContent = { androidx.compose.material3.Text("${item.group.memberCount} sources") },
                                 )
                             }
                         }
