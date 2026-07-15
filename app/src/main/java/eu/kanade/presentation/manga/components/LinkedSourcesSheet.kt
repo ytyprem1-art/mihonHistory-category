@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -62,6 +62,8 @@ fun LinkedSourcesSheet(
     onJoinGroupClick: () -> Unit,
     onAddSourceClick: () -> Unit,
     onMemberOpenClick: (Manga) -> Unit,
+    onMemberReadClick: (mangaId: Long, chapterId: Long) -> Unit,
+    onMemberLatestClick: (mangaId: Long, chapterId: Long) -> Unit,
     onMemberRemoveClick: (Manga) -> Unit,
     onMemberRefreshClick: (Manga) -> Unit,
     linkedGroup: LinkedSourceGroup?,
@@ -125,14 +127,13 @@ fun LinkedSourcesSheet(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     for (member in linkedMembers) {
                         MemberTableRow(
-                            member = member.manga,
-                            latestChapter = member.latestChapter,
-                            lastRead = member.lastRead,
-                            readAt = member.readAt,
+                            member = member,
                             isRefreshing = refreshingIds.contains(member.manga.id),
                             currentMangaId = currentMangaId,
                             onRefresh = { onMemberRefreshClick(member.manga) },
                             onOpen = { onMemberOpenClick(member.manga) },
+                            onRead = { onMemberReadClick(member.manga.id, it) },
+                            onLatest = { onMemberLatestClick(member.manga.id, it) },
                             onRemove = { onMemberRemoveClick(member.manga) },
                         )
                     }
@@ -238,29 +239,29 @@ private fun HeaderCell(text: String, width: androidx.compose.ui.unit.Dp) {
 
 @Composable
 private fun MemberTableRow(
-    member: Manga,
-    latestChapter: Double?,
-    lastRead: Double?,
-    readAt: Long?,
+    member: LinkedMember,
     isRefreshing: Boolean,
     currentMangaId: Long,
     onRefresh: () -> Unit,
     onOpen: () -> Unit,
+    onRead: (Long) -> Unit,
+    onLatest: (Long) -> Unit,
     onRemove: () -> Unit,
 ) {
+    val manga = member.manga
     val sourceManager: SourceManager = remember { Injekt.get() }
-    val sourceName = remember(member.source) {
-        sourceManager.getOrStub(member.source).name
+    val sourceName = remember(manga.source) {
+        sourceManager.getOrStub(manga.source).name
     }
 
     Row(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .heightIn(min = 52.dp),
+            .height(60.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MangaCover.Book(
-            data = member,
+            data = manga,
             modifier = Modifier.size(height = 48.dp, width = 32.dp),
         )
 
@@ -269,18 +270,42 @@ private fun MemberTableRow(
         TextCell(text = sourceName, width = 120.dp)
 
         // Read (2 lines)
+        val isReadClickable = member.lastReadChapterId != null
         Column(
-            modifier = Modifier.width(90.dp),
+            modifier = Modifier
+                .width(90.dp)
+                .then(
+                    if (member.lastReadChapterId != null) {
+                        Modifier.clickable { onRead(member.lastReadChapterId) }
+                    } else {
+                        Modifier
+                    }
+                ),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = member.lastRead?.let { decimalFormat.format(it) } ?: "—",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isReadClickable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                if (isReadClickable) {
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
             Text(
-                text = lastRead?.let { decimalFormat.format(it) } ?: "—",
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-            )
-            Text(
-                text = readAt?.let { formatCompactRelativeTime(it) } ?: "",
+                text = member.readAt?.let { formatCompactRelativeTime(it) } ?: "",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -288,42 +313,62 @@ private fun MemberTableRow(
         }
 
         // Latest (2 lines)
+        val isLatestClickable = member.latestChapterId != null
         Column(
-            modifier = Modifier.width(80.dp),
+            modifier = Modifier
+                .width(80.dp)
+                .then(
+                    if (member.latestChapterId != null) {
+                        Modifier.clickable { onLatest(member.latestChapterId) }
+                    } else {
+                        Modifier
+                    }
+                ),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(
-                text = latestChapter?.let { decimalFormat.format(it) } ?: "—",
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-            )
-            if (latestChapter != null && lastRead != null && latestChapter > lastRead) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
                 Text(
-                    text = "NEW",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
+                    text = member.latestChapter?.let { decimalFormat.format(it) } ?: "—",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isLatestClickable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
-            } else {
-                Spacer(modifier = Modifier.height(16.dp))
+                if (isLatestClickable) {
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
+            Text(
+                text = if ((member.latestChapter != null && member.lastRead != null && member.latestChapter > member.lastRead)) "NEW" else "",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
         }
 
         // Status
         val statusText = when {
-            latestChapter != null && lastRead != null && latestChapter > lastRead ->
-                "+${decimalFormat.format(latestChapter - lastRead)} from last read"
-            latestChapter != null && lastRead != null && latestChapter == lastRead ->
+            member.latestChapter != null && member.lastRead != null && member.latestChapter > member.lastRead ->
+                "+${decimalFormat.format(member.latestChapter - member.lastRead)} from last read"
+            member.latestChapter != null && member.lastRead != null && member.latestChapter == member.lastRead ->
                 "You're up to date"
             else -> ""
         }
         TextCell(text = statusText, width = 150.dp)
 
         // Last Check
-        val lastCheckText = if (member.lastUpdate > 0L) {
-            "Refreshed ${formatCompactRelativeTime(member.lastUpdate)}"
+        val lastCheckText = if (manga.lastUpdate > 0L) {
+            "Refreshed ${formatCompactRelativeTime(manga.lastUpdate)}"
         } else {
             "Never refreshed"
         }
@@ -357,7 +402,7 @@ private fun MemberTableRow(
                 )
             }
 
-            if (member.id != currentMangaId) {
+            if (manga.id != currentMangaId) {
                 IconButton(onClick = onOpen) {
                     Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = "Open")
                 }

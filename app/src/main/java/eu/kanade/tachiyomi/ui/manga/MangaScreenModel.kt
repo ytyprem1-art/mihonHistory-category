@@ -241,10 +241,13 @@ class MangaScreenModel(
                             chapterRepository.getChapterByMangaIdAsFlow(member.id),
                             historyRepository.getLatestHistoryByMangaIdAsFlow(member.id),
                         ) { chapters, history ->
+                            val latestChapter = chapters.maxByOrNull { it.chapterNumber }
                             LinkedMember(
                                 manga = member,
-                                latestChapter = chapters.maxOfOrNull { it.chapterNumber },
+                                latestChapter = latestChapter?.chapterNumber,
+                                latestChapterId = latestChapter?.id,
                                 lastRead = history?.chapterNumber,
+                                lastReadChapterId = history?.chapterId,
                                 readAt = history?.readAt?.time,
                             )
                         }
@@ -1344,7 +1347,9 @@ class MangaScreenModel(
 data class LinkedMember(
     val manga: Manga,
     val latestChapter: Double?,
+    val latestChapterId: Long?,
     val lastRead: Double?,
+    val lastReadChapterId: Long?,
     val readAt: Long?,
 )
 

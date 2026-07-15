@@ -205,6 +205,14 @@ class MangaScreen(
                         navigator.push(MangaScreen(member.id))
                     }
                 },
+                onMemberReadClick = { memberMangaId, chapterId ->
+                    showLinkedSourcesSheet = false
+                    context.startActivity(ReaderActivity.newIntent(context, memberMangaId, chapterId))
+                },
+                onMemberLatestClick = { memberMangaId, chapterId ->
+                    showLinkedSourcesSheet = false
+                    context.startActivity(ReaderActivity.newIntent(context, memberMangaId, chapterId))
+                },
                 onMemberRemoveClick = { member ->
                     showLinkedSourcesSheet = false
                     screenModel.showRemoveMemberDialog(member)
