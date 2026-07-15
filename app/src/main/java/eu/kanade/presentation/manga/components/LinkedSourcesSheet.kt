@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DensityMedium
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.DropdownMenu
@@ -40,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -72,8 +75,13 @@ fun LinkedSourcesSheet(
     currentMangaId: Long,
     refreshingIds: Set<Long>,
 ) {
+    var isWideCompact by remember { mutableStateOf(false) }
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+
     AdaptiveSheet(
         onDismissRequest = onDismissRequest,
+        modifier = if (isWideCompact) Modifier.requiredWidth(screenWidth * 0.95f) else Modifier,
     ) {
         Column(
             modifier = Modifier
@@ -112,31 +120,58 @@ fun LinkedSourcesSheet(
             } else {
                 GroupHeader(
                     group = linkedGroup,
+                    isWideCompact = isWideCompact,
+                    onToggleWideCompact = { isWideCompact = !isWideCompact },
                     onRenameGroup = { /* TODO */ },
                     onDeleteGroup = { /* TODO */ },
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                val scrollState = rememberScrollState()
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(scrollState),
-                ) {
-                    MembersTableHeader()
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    for (member in linkedMembers) {
-                        MemberTableRow(
-                            member = member,
-                            isRefreshing = refreshingIds.contains(member.manga.id),
-                            currentMangaId = currentMangaId,
-                            onRefresh = { onMemberRefreshClick(member.manga) },
-                            onOpen = { onMemberOpenClick(member.manga) },
-                            onRead = { onMemberReadClick(member.manga.id, it) },
-                            onLatest = { onMemberLatestClick(member.manga.id, it) },
-                            onRemove = { onMemberRemoveClick(member.manga) },
-                        )
+                if (isWideCompact) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                    ) {
+                        MembersTableHeader(isWideCompact)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        for (member in linkedMembers) {
+                            MemberTableRow(
+                                member = member,
+                                isRefreshing = refreshingIds.contains(member.manga.id),
+                                currentMangaId = currentMangaId,
+                                isWideCompact = true,
+                                onRefresh = { onMemberRefreshClick(member.manga) },
+                                onOpen = { onMemberOpenClick(member.manga) },
+                                onRead = { onMemberReadClick(member.manga.id, it) },
+                                onLatest = { onMemberLatestClick(member.manga.id, it) },
+                                onRemove = { onMemberRemoveClick(member.manga) },
+                            )
+                        }
+                    }
+                } else {
+                    val scrollState = rememberScrollState()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(scrollState),
+                    ) {
+                        MembersTableHeader(isWideCompact = false)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        for (member in linkedMembers) {
+                            MemberTableRow(
+                                member = member,
+                                isRefreshing = refreshingIds.contains(member.manga.id),
+                                currentMangaId = currentMangaId,
+                                isWideCompact = false,
+                                onRefresh = { onMemberRefreshClick(member.manga) },
+                                onOpen = { onMemberOpenClick(member.manga) },
+                                onRead = { onMemberReadClick(member.manga.id, it) },
+                                onLatest = { onMemberLatestClick(member.manga.id, it) },
+                                onRemove = { onMemberRemoveClick(member.manga) },
+                            )
+                        }
                     }
                 }
 
@@ -163,6 +198,8 @@ fun LinkedSourcesSheet(
 @Composable
 private fun GroupHeader(
     group: LinkedSourceGroup,
+    isWideCompact: Boolean,
+    onToggleWideCompact: () -> Unit,
     onRenameGroup: () -> Unit,
     onDeleteGroup: () -> Unit,
 ) {
@@ -181,57 +218,84 @@ private fun GroupHeader(
             fontWeight = FontWeight.Bold,
         )
 
-        IconButton(onClick = { showMenu = true }) {
-            Icon(
-                imageVector = Icons.Outlined.MoreVert,
-                contentDescription = "Group actions",
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onToggleWideCompact) {
+                Icon(
+                    imageVector = Icons.Outlined.DensityMedium,
+                    contentDescription = if (isWideCompact) "Disable wide compact view" else "Enable wide compact view",
+                    tint = if (isWideCompact) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                )
+            }
 
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Rename Group") },
-                    onClick = {
-                        showMenu = false
-                        onRenameGroup()
-                    },
+            IconButton(onClick = { showMenu = true }) {
+                Icon(
+                    imageVector = Icons.Outlined.MoreVert,
+                    contentDescription = "Group actions",
                 )
-                DropdownMenuItem(
-                    text = { Text("Delete Group") },
-                    onClick = {
-                        showMenu = false
-                        onDeleteGroup()
-                    },
-                )
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Rename Group") },
+                        onClick = {
+                            showMenu = false
+                            onRenameGroup()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete Group") },
+                        onClick = {
+                            showMenu = false
+                            onDeleteGroup()
+                        },
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun MembersTableHeader() {
+private fun MembersTableHeader(isWideCompact: Boolean) {
     Row(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Spacer(modifier = Modifier.width(40.dp)) // Cover area (32 + 8)
-        HeaderCell(text = "Source", width = 148.dp)
-        HeaderCell(text = "Read", width = 90.dp)
-        HeaderCell(text = "Latest", width = 80.dp)
-        HeaderCell(text = "Status", width = 100.dp)
-        HeaderCell(text = "Last Check", width = 100.dp)
+        val coverWidth = if (isWideCompact) 32.dp else 40.dp
+        Spacer(modifier = Modifier.width(coverWidth))
+
+        HeaderCell(
+            text = "Source",
+            modifier = if (isWideCompact) Modifier.weight(1f) else Modifier.width(148.dp),
+        )
+        HeaderCell(
+            text = "Read",
+            modifier = Modifier.width(90.dp),
+        )
+        HeaderCell(
+            text = "Latest",
+            modifier = Modifier.width(80.dp),
+        )
+        HeaderCell(
+            text = "Status",
+            modifier = if (isWideCompact) Modifier.weight(0.8f) else Modifier.width(100.dp),
+        )
+        HeaderCell(
+            text = "Last Check",
+            modifier = Modifier.width(100.dp),
+        )
         Spacer(modifier = Modifier.width(144.dp)) // Actions area
     }
 }
 
 @Composable
-private fun HeaderCell(text: String, width: androidx.compose.ui.unit.Dp) {
+private fun HeaderCell(text: String, modifier: Modifier) {
     Text(
         text = text,
-        modifier = Modifier.width(width),
+        modifier = modifier,
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
@@ -243,6 +307,7 @@ private fun MemberTableRow(
     member: LinkedMember,
     isRefreshing: Boolean,
     currentMangaId: Long,
+    isWideCompact: Boolean,
     onRefresh: () -> Unit,
     onOpen: () -> Unit,
     onRead: (Long) -> Unit,
@@ -262,9 +327,10 @@ private fun MemberTableRow(
             .height(60.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val coverSize = if (isWideCompact) 24.dp else 32.dp
+
         Row(
-            modifier = Modifier
-                .width(188.dp) // 32 (cover) + 8 (spacer) + 148 (source)
+            modifier = (if (isWideCompact) Modifier.weight(1f) else Modifier.width(188.dp))
                 .then(
                     if (isCurrentManga) {
                         Modifier
@@ -276,13 +342,13 @@ private fun MemberTableRow(
         ) {
             MangaCover.Book(
                 data = manga,
-                modifier = Modifier.size(height = 48.dp, width = 32.dp),
+                modifier = Modifier.size(height = 48.dp, width = coverSize),
             )
 
             Spacer(modifier = Modifier.width(8.dp))
 
             Row(
-                modifier = Modifier.width(148.dp),
+                modifier = if (isWideCompact) Modifier.weight(1f) else Modifier.width(148.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
@@ -408,15 +474,20 @@ private fun MemberTableRow(
                 "Up to date"
             else -> ""
         }
-        TextCell(text = statusText, width = 100.dp)
+        val statusModifier = if (isWideCompact) Modifier.weight(0.8f) else Modifier.width(100.dp)
+        Text(
+            text = statusText,
+            modifier = statusModifier,
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
 
         // Last Check
-        val lastCheckText = if (manga.lastUpdate > 0L) {
-            formatCompactRelativeTime(manga.lastUpdate)
-        } else {
-            "Never"
-        }
-        TextCell(text = lastCheckText, width = 100.dp)
+        TextCell(
+            text = if (manga.lastUpdate > 0L) formatCompactRelativeTime(manga.lastUpdate) else "Never",
+            width = 100.dp
+        )
 
         // Actions
         Row(
