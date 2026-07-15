@@ -14,6 +14,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Create
@@ -79,6 +80,7 @@ fun HistoryScreen(
     onClickLinkedSourceGroups: () -> Unit,
     onClickGroup: (groupId: Long) -> Unit,
     onPauseTracking: (Long) -> Unit,
+    onClickTrackedManga: () -> Unit,
     screenModel: HistoryScreenModel,
 ) {
     val scrollStates = rememberSaveable(
@@ -229,6 +231,16 @@ fun HistoryScreen(
                         onChangeSearchQuery = onSearchQueryChange,
                         actions = {
                             val actions = mutableListOf<AppBar.Action>()
+
+                            if (state.selectedCategoryId == HistoryScreenModel.State.UPDATE_WATCH_TAB_ID) {
+                                actions.add(
+                                    AppBar.Action(
+                                        title = "Tracked manga",
+                                        icon = Icons.AutoMirrored.Outlined.ListAlt,
+                                        onClick = onClickTrackedManga,
+                                    )
+                                )
+                            }
 
                             // Tombol Edit Kategori (Hanya muncul jika bukan tab "Semua")
                             if (state.selectedCategoryId != 0L) {

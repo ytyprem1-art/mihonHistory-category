@@ -44,6 +44,7 @@ import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchScreenModel
+import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchManagerScreen
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -102,6 +103,7 @@ data object HistoryTab : Tab {
             onClickLinkedSourceGroups = { navigator.push(LinkedSourcesScreen()) },
             onClickGroup = { navigator.push(HistoryGroupDetailScreen(it)) },
             onPauseTracking = updateWatchScreenModel::pauseTracking,
+            onClickTrackedManga = { navigator.push(UpdateWatchManagerScreen()) },
             screenModel = screenModel,
         )
 
