@@ -140,7 +140,10 @@ class HistoryScreenModel(
                     HistoryUiModel.Group(
                         group = group,
                         representative = representative,
-                        memberCount = groupMembers.size
+                        memberCount = groupMembers.size,
+                        sourceNames = groupMembers.map {
+                            sourceManager.getOrStub(it.coverData.sourceId).name
+                        }
                     )
                 )
                 groupedMangaHandled.add(groupId)

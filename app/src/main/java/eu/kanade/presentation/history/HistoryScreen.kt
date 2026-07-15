@@ -448,8 +448,25 @@ private fun HistoryScreenContent(
                         selectionMode = selectionMode,
                         selected = value.mangaId in selected,
                         subtitleBadge = {
+                            val metadata = remember(item.memberCount, item.sourceNames) {
+                                val sourceList = item.sourceNames.distinct()
+                                val displayLimit = 2
+                                val displayedSources = sourceList.take(displayLimit)
+                                val remainingCount = item.memberCount - displayedSources.size
+
+                                buildString {
+                                    append("${item.memberCount} sources")
+                                    if (displayedSources.isNotEmpty()) {
+                                        append(" · ")
+                                        append(displayedSources.joinToString(" · "))
+                                    }
+                                    if (remainingCount > 0) {
+                                        append(" · +$remainingCount")
+                                    }
+                                }
+                            }
                             Text(
-                                text = "${item.memberCount} sources",
+                                text = metadata,
                                 style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier
                                     .background(
@@ -473,7 +490,8 @@ sealed interface HistoryUiModel {
     data class Group(
         val group: tachiyomi.domain.history.group.model.HistoryGroup,
         val representative: HistoryWithRelations,
-        val memberCount: Int
+        val memberCount: Int,
+        val sourceNames: List<String>,
     ) : HistoryUiModel
 }
 
