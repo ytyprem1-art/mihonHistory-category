@@ -201,6 +201,11 @@ class LibraryPreferences(
         "linked_source_group_sort",
         LinkedSourceGroupSort.Oldest,
     )
+
+    val trackedMangaSort: Preference<TrackedMangaSort> = preferenceStore.getEnum(
+        "tracked_manga_sort",
+        TrackedMangaSort.NewestRelease,
+    )
     // endregion
 
     // region Swipe Actions
@@ -234,6 +239,13 @@ class LibraryPreferences(
     enum class LinkedSourceGroupSort {
         Newest,
         Oldest,
+        TitleAZ,
+        TitleZA,
+    }
+
+    enum class TrackedMangaSort {
+        NewestRelease,
+        OldestRelease,
         TitleAZ,
         TitleZA,
     }
