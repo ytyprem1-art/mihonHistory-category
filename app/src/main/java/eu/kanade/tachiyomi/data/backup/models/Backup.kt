@@ -15,6 +15,9 @@ data class Backup(
 
     // History Mod
     @ProtoNumber(600) var backupHistoryCategories: List<BackupHistoryCategory> = emptyList(),
+    @ProtoNumber(601) var backupLinkedSourceGroups: List<BackupLinkedSourceGroup> = emptyList(),
+    @ProtoNumber(602) var backupManualHistoryGroups: List<BackupManualHistoryGroup> = emptyList(),
+    @ProtoNumber(603) var backupUpdateWatch: List<BackupUpdateWatch> = emptyList(),
 )
 
 @Serializable
@@ -22,4 +25,28 @@ data class BackupHistoryCategory(
     @ProtoNumber(1) var name: String,
     @ProtoNumber(2) var id: Long = 0,
     @ProtoNumber(3) var sort: Int = 0,
+)
+
+@Serializable
+data class BackupLinkedSourceGroup(
+    @ProtoNumber(1) var name: String,
+    @ProtoNumber(2) var members: List<BackupModMember> = emptyList(),
+)
+
+@Serializable
+data class BackupManualHistoryGroup(
+    @ProtoNumber(1) var name: String,
+    @ProtoNumber(2) var members: List<BackupModMember> = emptyList(),
+)
+
+@Serializable
+data class BackupUpdateWatch(
+    @ProtoNumber(1) var member: BackupModMember,
+    @ProtoNumber(2) var isPaused: Boolean = false,
+)
+
+@Serializable
+data class BackupModMember(
+    @ProtoNumber(1) var source: Long,
+    @ProtoNumber(2) var url: String,
 )

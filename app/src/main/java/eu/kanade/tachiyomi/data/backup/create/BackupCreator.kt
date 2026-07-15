@@ -14,6 +14,10 @@ import eu.kanade.tachiyomi.data.backup.models.Backup
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupExtensionStore
 import eu.kanade.tachiyomi.data.backup.models.BackupHistoryCategory
+import eu.kanade.tachiyomi.data.backup.models.BackupLinkedSourceGroup
+import eu.kanade.tachiyomi.data.backup.models.BackupManualHistoryGroup
+import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatch
+import eu.kanade.tachiyomi.data.backup.models.BackupModMember
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
 import eu.kanade.tachiyomi.data.backup.models.BackupSource
@@ -22,7 +26,11 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import logcat.LogPriority
 import okio.buffer
 import tachiyomi.domain.history.interactor.ManageHistoryCategory
+import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
+import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
+import tachiyomi.domain.history.interactor.ManageUpdateWatch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import okio.gzip
 import okio.sink
 import tachiyomi.core.common.i18n.stringResource
@@ -49,6 +57,9 @@ class BackupCreator(
     private val backupPreferences: BackupPreferences = Injekt.get(),
     private val mangaRepository: MangaRepository = Injekt.get(),
     private val manageHistoryCategory: ManageHistoryCategory = Injekt.get(),
+    private val manageHistoryGroups: ManageHistoryGroups = Injekt.get(),
+    private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
+    private val manageUpdateWatch: ManageUpdateWatch = Injekt.get(),
 
     private val categoriesBackupCreator: CategoriesBackupCreator = CategoriesBackupCreator(),
     private val mangaBackupCreator: MangaBackupCreator = MangaBackupCreator(),
@@ -93,6 +104,27 @@ class BackupCreator(
                 backupSourcePreferences = backupSourcePreferences(options),
                 backupHistoryCategories = manageHistoryCategory.subscribe().first().map {
                     BackupHistoryCategory(it.name, it.id, it.sort)
+                },
+                backupLinkedSourceGroups = manageLinkedSourceGroup.subscribe().first().map { group ->
+                    BackupLinkedSourceGroup(
+                        name = group.name,
+                        members = manageLinkedSourceGroup.subscribeMemberIds(group.id).first().mapNotNull {
+                            getModMember(it)
+                        }
+                    )
+                },
+                backupManualHistoryGroups = manageHistoryGroups.subscribe().first().map { group ->
+                    BackupManualHistoryGroup(
+                        name = group.name,
+                        members = manageHistoryGroups.subscribeMembers(group.id).first().mapNotNull {
+                            getModMember(it)
+                        }
+                    )
+                },
+                backupUpdateWatch = manageUpdateWatch.subscribeAll().first().mapNotNull {
+                    getModMember(it.mangaId)?.let { member ->
+                        BackupUpdateWatch(member, it.isPaused)
+                    }
                 },
             )
 
@@ -158,6 +190,15 @@ class BackupCreator(
         if (!options.sourceSettings) return emptyList()
 
         return preferenceBackupCreator.createSource(includePrivatePreferences = options.privateSettings)
+    }
+
+    private suspend fun getModMember(mangaId: Long): BackupModMember? {
+        return try {
+            val manga = mangaRepository.getMangaById(mangaId)
+            BackupModMember(manga.source, manga.url)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     companion object {

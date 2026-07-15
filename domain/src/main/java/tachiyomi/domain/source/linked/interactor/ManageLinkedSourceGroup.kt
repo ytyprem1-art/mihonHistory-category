@@ -21,6 +21,10 @@ class ManageLinkedSourceGroup(
         }
     }
 
+    fun subscribeMemberIds(groupId: Long): Flow<List<Long>> {
+        return repository.getMembersByGroupId(groupId)
+    }
+
     suspend fun getGroupById(id: Long): LinkedSourceGroup? {
         return repository.getGroupById(id)
     }

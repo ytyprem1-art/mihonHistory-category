@@ -68,8 +68,8 @@ class MangaRestorer(
         backupManga: BackupManga,
         backupCategories: List<BackupCategory>,
         backupHistoryCategories: List<BackupHistoryCategory> = emptyList(),
-    ) {
-        database.transaction {
+    ): Long {
+        return database.transactionWithResult {
             val dbManga = findExistingManga(backupManga)
             val manga = backupManga.getMangaImpl()
             val restoredManga = if (dbManga == null) {
@@ -89,6 +89,7 @@ class MangaRestorer(
                 tracks = backupManga.tracking,
                 excludedScanlators = backupManga.excludedScanlators,
             )
+            restoredManga.id
         }
     }
 

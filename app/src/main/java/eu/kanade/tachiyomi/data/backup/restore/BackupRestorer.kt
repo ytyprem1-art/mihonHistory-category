@@ -14,6 +14,7 @@ import eu.kanade.tachiyomi.data.backup.restore.restorers.CategoriesRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.ExtensionStoreRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.MangaRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.PreferenceRestorer
+import eu.kanade.tachiyomi.data.backup.restore.restorers.ModRestorer
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.util.system.createFileInCacheDir
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +48,7 @@ class BackupRestorer(
     private val preferenceRestorer: PreferenceRestorer = PreferenceRestorer(context),
     private val extensionStoreRestorer: ExtensionStoreRestorer = ExtensionStoreRestorer(),
     private val mangaRestorer: MangaRestorer = MangaRestorer(),
+    private val modRestorer: ModRestorer = ModRestorer(),
 ) {
 
     private var restoreAmount = 0
@@ -118,12 +120,25 @@ class BackupRestorer(
             if (options.sourceSettings) {
                 restoreSourcePreferences(backup.backupSourcePreferences)
             }
+
+            val mangaUrlToIdMap = mutableMapOf<Pair<Long, String>, Long>()
             if (options.libraryEntries) {
                 restoreManga(
                     backup.backupManga,
                     if (options.categories) backup.backupCategories else emptyList(),
                     backup.backupHistoryCategories,
+                    mangaUrlToIdMap,
+                ).join()
+
+                val skippedCount = modRestorer.restoreGroups(
+                    backup.backupLinkedSourceGroups,
+                    backup.backupManualHistoryGroups,
+                    backup.backupUpdateWatch,
+                    mangaUrlToIdMap,
                 )
+                if (skippedCount > 0) {
+                    errors.add(Date() to "Mod Restoration: Skipped $skippedCount grouped/tracked items (manga not found in backup or device).")
+                }
             }
             if (options.extensionStores) {
                 restoreExtensionStores(backup.backupExtensionStores)
@@ -150,6 +165,7 @@ class BackupRestorer(
         backupMangas: List<BackupManga>,
         backupCategories: List<BackupCategory>,
         backupHistoryCategories: List<BackupHistoryCategory>,
+        mangaUrlToIdMap: MutableMap<Pair<Long, String>, Long>,
     ) = launch {
         mangaRestorer.sortByNew(backupMangas)
             .chunked(100)
@@ -159,7 +175,8 @@ class BackupRestorer(
                         ensureActive()
 
                         try {
-                            mangaRestorer.restore(it, backupCategories, backupHistoryCategories)
+                            val id = mangaRestorer.restore(it, backupCategories, backupHistoryCategories)
+                            mangaUrlToIdMap[it.source to it.url] = id
                         } catch (e: Exception) {
                             val sourceName = sourceMapping[it.source] ?: it.source.toString()
                             errors.add(Date() to "${it.title} [$sourceName]: ${e.message}")
