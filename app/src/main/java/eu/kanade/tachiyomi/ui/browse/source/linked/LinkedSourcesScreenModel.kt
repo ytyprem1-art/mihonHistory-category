@@ -2,12 +2,15 @@ package eu.kanade.tachiyomi.ui.browse.source.linked
 
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import androidx.compose.runtime.getValue
+import eu.kanade.core.preference.asState
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
@@ -19,7 +22,10 @@ import tachiyomi.core.common.util.lang.launchIO
 class LinkedSourcesScreenModel(
     private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
     private val sourceManager: SourceManager = Injekt.get(),
+    private val libraryPreferences: LibraryPreferences = Injekt.get(),
 ) : StateScreenModel<LinkedSourcesScreenModel.State>(State()) {
+
+    val sortMode by libraryPreferences.linkedSourceGroupSort.asState(screenModelScope)
 
     init {
         screenModelScope.launchIO {
@@ -43,12 +49,20 @@ class LinkedSourcesScreenModel(
 
             combine(
                 groupsFlow,
-                state.map { it.searchQuery }.distinctUntilChanged()
-            ) { groups, query ->
+                state.map { it.searchQuery }.distinctUntilChanged(),
+                libraryPreferences.linkedSourceGroupSort.changes(),
+            ) { groups, query, sort ->
                 val q = query
-                if (q.isNullOrBlank()) return@combine groups
+                val sortedGroups = when (sort) {
+                    LibraryPreferences.LinkedSourceGroupSort.Newest -> groups.sortedByDescending { it.group.id }
+                    LibraryPreferences.LinkedSourceGroupSort.Oldest -> groups.sortedBy { it.group.id }
+                    LibraryPreferences.LinkedSourceGroupSort.TitleAZ -> groups.sortedBy { it.group.name.lowercase() }
+                    LibraryPreferences.LinkedSourceGroupSort.TitleZA -> groups.sortedByDescending { it.group.name.lowercase() }
+                }
 
-                groups.filter { group ->
+                if (q.isNullOrBlank()) return@combine sortedGroups
+
+                sortedGroups.filter { group ->
                     group.group.name.contains(q, ignoreCase = true) ||
                         group.sourceNames.any { it.contains(q, ignoreCase = true) } ||
                         group.memberTitles.any { it.contains(q, ignoreCase = true) }
@@ -57,6 +71,10 @@ class LinkedSourcesScreenModel(
                 mutableState.update { it.copy(groups = filteredGroups) }
             }
         }
+    }
+
+    fun setSortMode(mode: LibraryPreferences.LinkedSourceGroupSort) {
+        libraryPreferences.linkedSourceGroupSort.set(mode)
     }
 
     fun updateSearchQuery(query: String?) {

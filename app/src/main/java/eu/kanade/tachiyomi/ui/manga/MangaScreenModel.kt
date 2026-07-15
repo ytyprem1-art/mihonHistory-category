@@ -1340,15 +1340,14 @@ class MangaScreenModel(
         }
     }
 
-    fun renameLinkedGroup(name: String) {
+    suspend fun renameLinkedGroup(name: String) {
         val groupId = successState?.linkedGroup?.id ?: return
-        screenModelScope.launchIO {
-            try {
-                manageLinkedSourceGroup.rename(groupId, name)
-            } catch (e: Exception) {
-                logcat(LogPriority.ERROR, e)
-                snackbarHostState.showSnackbar("Failed to rename group: ${e.message}")
-            }
+        try {
+            manageLinkedSourceGroup.rename(groupId, name)
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR, e)
+            snackbarHostState.showSnackbar("Failed to rename group: ${e.message}")
+            throw e
         }
     }
 

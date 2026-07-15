@@ -196,6 +196,11 @@ class LibraryPreferences(
     )
 
     val linkedSourceWideCompact: Preference<Boolean> = preferenceStore.getBoolean("linked_source_wide_compact", false)
+
+    val linkedSourceGroupSort: Preference<LinkedSourceGroupSort> = preferenceStore.getEnum(
+        "linked_source_group_sort",
+        LinkedSourceGroupSort.Oldest,
+    )
     // endregion
 
     // region Swipe Actions
@@ -224,6 +229,13 @@ class LibraryPreferences(
         ToggleBookmark,
         Download,
         Disabled,
+    }
+
+    enum class LinkedSourceGroupSort {
+        Newest,
+        Oldest,
+        TitleAZ,
+        TitleZA,
     }
 
     companion object {

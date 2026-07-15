@@ -443,6 +443,7 @@ class MangaScreen(
             }
             is MangaScreenModel.Dialog.RenameLinkedGroup -> {
                 var name by remember { mutableStateOf(dialog.group.name) }
+                val scope = rememberCoroutineScope()
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = onDismissRequest,
                     title = { androidx.compose.material3.Text("Rename Group") },
@@ -458,8 +459,14 @@ class MangaScreen(
                         androidx.compose.material3.TextButton(
                             onClick = {
                                 if (name.isNotBlank()) {
-                                    screenModel.renameLinkedGroup(name)
-                                    onDismissRequest()
+                                    scope.launch {
+                                        try {
+                                            screenModel.renameLinkedGroup(name)
+                                            onDismissRequest()
+                                        } catch (e: Exception) {
+                                            // Dialog stays open, error shown in snackbar from screenModel
+                                        }
+                                    }
                                 }
                             },
                         ) {

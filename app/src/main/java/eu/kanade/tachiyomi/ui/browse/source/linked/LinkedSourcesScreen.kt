@@ -35,6 +35,8 @@ class LinkedSourcesScreen : Screen() {
             groups = state.groups,
             searchQuery = state.searchQuery,
             onSearchQueryChange = screenModel::updateSearchQuery,
+            sortMode = screenModel.sortMode,
+            onSortModeChange = screenModel::setSortMode,
             onClickCreate = { showCreateDialog = true },
             onClickRename = { groupToRename = it },
             onClickDelete = { groupToDelete = it },
