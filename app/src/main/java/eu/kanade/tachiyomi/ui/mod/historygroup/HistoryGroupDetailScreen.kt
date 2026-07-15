@@ -3,7 +3,6 @@ package eu.kanade.tachiyomi.ui.mod.historygroup
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
@@ -28,7 +27,6 @@ import eu.kanade.presentation.history.HistoryUiModel
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.animateItemFastScroll
-import eu.kanade.tachiyomi.ui.browse.source.linked.LinkedSourceSearchScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.util.system.toast
@@ -60,9 +58,6 @@ class HistoryGroupDetailScreen(private val groupId: Long) : Screen() {
             onClickCover = { navigator.push(MangaScreen(it)) },
             onClickResume = { mangaId, chapterId ->
                 context.startActivity(ReaderActivity.newIntent(context, mangaId, chapterId))
-            },
-            onClickAdd = {
-                navigator.push(LinkedSourceSearchScreen(groupId, state.groupName))
             },
             onClickEdit = screenModel::toggleSelectionMode,
             onClickRemove = { showRemoveConfirmation = true },
@@ -114,7 +109,6 @@ private fun HistoryGroupDetailScreen(
     selected: Set<Long>,
     onClickCover: (Long) -> Unit,
     onClickResume: (Long, Long) -> Unit,
-    onClickAdd: () -> Unit,
     onClickEdit: () -> Unit,
     onClickRemove: () -> Unit,
     onToggleSelection: (Long) -> Unit,
@@ -152,11 +146,6 @@ private fun HistoryGroupDetailScreen(
                                     title = stringResource(MR.strings.action_edit),
                                     icon = Icons.Outlined.Edit,
                                     onClick = onClickEdit,
-                                ),
-                                AppBar.Action(
-                                    title = stringResource(MR.strings.action_add),
-                                    icon = Icons.Outlined.Add,
-                                    onClick = onClickAdd,
                                 ),
                             ),
                         )
