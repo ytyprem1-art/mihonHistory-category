@@ -112,6 +112,16 @@ class LinkedSourceDetailsScreenModel(
         }
     }
 
+    fun resumeTracking() {
+        screenModelScope.launchIO {
+            try {
+                manageLinkedSourceGroup.updateIsPaused(groupId, false)
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+            }
+        }
+    }
+
     fun updateTrackingSource(mangaId: Long?) {
         screenModelScope.launchIO {
             try {

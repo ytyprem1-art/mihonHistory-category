@@ -54,6 +54,7 @@ class LinkedSourceDetailsScreen(private val groupId: Long) : Screen() {
             },
             onClickCreateHistoryGroup = screenModel::createHistoryGroup,
             onClickSetTrackingSource = screenModel::showTrackingSourcePicker,
+            onClickResumeTracking = screenModel::resumeTracking,
             onRefreshMember = { screenModel.refreshMember(it.manga.id) },
             onDeleteMember = { memberToDelete = it },
             navigateUp = navigator::pop,

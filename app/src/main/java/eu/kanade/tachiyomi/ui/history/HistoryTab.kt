@@ -43,6 +43,7 @@ import eu.kanade.tachiyomi.ui.mod.historygroup.HistoryGroupDetailScreen
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
+import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchScreenModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -83,10 +84,13 @@ data object HistoryTab : Tab {
         val navigator = LocalNavigator.currentOrThrow
         val context = LocalContext.current
         val screenModel = rememberScreenModel { HistoryScreenModel() }
+        val updateWatchScreenModel = rememberScreenModel { UpdateWatchScreenModel() }
         val state by screenModel.state.collectAsState()
+        val updateWatchState by updateWatchScreenModel.state.collectAsState()
 
         HistoryScreen(
             state = state,
+            updateWatchState = updateWatchState,
             snackbarHostState = snackbarHostState,
             onSearchQueryChange = screenModel::updateSearchQuery,
             onClickCover = { navigator.push(MangaScreen(it)) },
@@ -97,6 +101,7 @@ data object HistoryTab : Tab {
             onClickChangeCategory = screenModel::showChangeHistoryCategoryDialog,
             onClickLinkedSourceGroups = { navigator.push(LinkedSourcesScreen()) },
             onClickGroup = { navigator.push(HistoryGroupDetailScreen(it)) },
+            onPauseTracking = updateWatchScreenModel::pauseTracking,
             screenModel = screenModel,
         )
 

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,13 +44,15 @@ fun HistoryItem(
     history: HistoryWithRelations,
     onClickCover: () -> Unit,
     onClickResume: () -> Unit,
-    onClickDelete: () -> Unit,
+    onClickDelete: (() -> Unit)?,
     onClickFavorite: () -> Unit,
     onLongClick: () -> Unit,
     selectionMode: Boolean,
     selected: Boolean,
     modifier: Modifier = Modifier,
     subtitleBadge: @Composable (() -> Unit)? = null,
+    onOverflowClick: (() -> Unit)? = null,
+    overflowContent: (@Composable () -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier
@@ -138,14 +141,29 @@ fun HistoryItem(
                     }
                 }
 
-                IconButton(
-                    onClick = onClickDelete,
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = stringResource(MR.strings.action_delete),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
+                if (onClickDelete != null) {
+                    IconButton(
+                        onClick = onClickDelete,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = stringResource(MR.strings.action_delete),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+
+                if (onOverflowClick != null && overflowContent != null) {
+                    Box {
+                        IconButton(onClick = onOverflowClick) {
+                            Icon(
+                                imageVector = Icons.Outlined.MoreVert,
+                                contentDescription = stringResource(MR.strings.action_menu_overflow_description),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        overflowContent()
+                    }
                 }
             }
         }

@@ -18,4 +18,5 @@ interface LinkedSourceRepository {
     suspend fun removeMember(groupId: Long, mangaId: Long, sourceId: Long)
     suspend fun createAndLink(name: String, mangaId: Long)
     suspend fun updateTrackingMangaId(groupId: Long, mangaId: Long?)
+    suspend fun updateIsPaused(groupId: Long, isPaused: Boolean)
 }

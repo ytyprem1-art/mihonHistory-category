@@ -1,0 +1,126 @@
+package eu.kanade.tachiyomi.ui.mod.updatewatch
+
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.history.components.HistoryItem
+import eu.kanade.presentation.util.animateItemFastScroll
+import tachiyomi.domain.history.model.HistoryWithRelations
+import tachiyomi.domain.manga.model.MangaCover
+import tachiyomi.domain.source.service.SourceManager
+import tachiyomi.presentation.core.components.FastScrollLazyColumn
+import tachiyomi.presentation.core.components.ListGroupHeader
+import tachiyomi.presentation.core.screens.EmptyScreen
+import tachiyomi.presentation.core.screens.LoadingScreen
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
+
+@Composable
+fun UpdateWatchContent(
+    state: UpdateWatchScreenModel.State,
+    contentPadding: PaddingValues,
+    onClickManga: (Long) -> Unit,
+    onPauseTracking: (Long) -> Unit,
+) {
+    val items = state.items
+    if (items == null) {
+        LoadingScreen(Modifier.padding(contentPadding))
+    } else if (items.isEmpty()) {
+        EmptyScreen(
+            message = "Tracked linked-source updates will appear here.",
+            modifier = Modifier.padding(contentPadding),
+        )
+    } else {
+        FastScrollLazyColumn(contentPadding = contentPadding) {
+            items(
+                items = items,
+                key = {
+                    when (it) {
+                        is UpdateWatchUiModel.Header -> "header-${it.title}"
+                        is UpdateWatchUiModel.Item -> "item-${it.group.id}"
+                    }
+                }
+            ) { item ->
+                when (item) {
+                    is UpdateWatchUiModel.Header -> {
+                        ListGroupHeader(
+                            modifier = Modifier.animateItemFastScroll(),
+                            text = item.title,
+                        )
+                    }
+                    is UpdateWatchUiModel.Item -> {
+                        val sourceManager = remember { Injekt.get<SourceManager>() }
+                        val sourceName = remember(item.trackingManga.source) {
+                            sourceManager.getOrStub(item.trackingManga.source).name
+                        }
+
+                        var showMenu by remember { mutableStateOf(false) }
+
+                        HistoryItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItemFastScroll(),
+                            history = HistoryWithRelations(
+                                id = 0,
+                                mangaId = item.trackingManga.id,
+                                chapterId = item.latestChapter.id,
+                                title = item.group.name,
+                                chapterNumber = item.latestChapter.chapterNumber,
+                                readAt = java.util.Date(item.latestChapter.dateUpload),
+                                readDuration = 0,
+                                coverData = MangaCover(
+                                    mangaId = item.trackingManga.id,
+                                    sourceId = item.trackingManga.source,
+                                    isMangaFavorite = item.trackingManga.favorite,
+                                    url = item.trackingManga.thumbnailUrl,
+                                    lastModified = item.trackingManga.coverLastModified,
+                                )
+                            ),
+                            onClickCover = { onClickManga(item.trackingManga.id) },
+                            onClickResume = { onClickManga(item.trackingManga.id) },
+                            onClickDelete = null,
+                            onOverflowClick = { showMenu = true },
+                            overflowContent = {
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Pause tracking") },
+                                        onClick = {
+                                            onPauseTracking(item.group.id)
+                                            showMenu = false
+                                        },
+                                    )
+                                }
+                            },
+                            onClickFavorite = { /* unused */ },
+                            onLongClick = { /* unused */ },
+                            selectionMode = false,
+                            selected = false,
+                            subtitleBadge = {
+                                Text(
+                                    text = "Tracking: $sourceName",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

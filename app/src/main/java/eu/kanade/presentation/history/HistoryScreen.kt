@@ -47,8 +47,14 @@ import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
+import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchContent
+import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchScreenModel
 import tachiyomi.domain.history.model.HistoryWithRelations
+import tachiyomi.domain.manga.model.MangaCover
+import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.i18n.MR
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import tachiyomi.presentation.core.components.FastScrollLazyColumn
 import tachiyomi.presentation.core.components.ListGroupHeader
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -61,6 +67,7 @@ import androidx.compose.material.icons.outlined.Delete
 @Composable
 fun HistoryScreen(
     state: HistoryScreenModel.State,
+    updateWatchState: UpdateWatchScreenModel.State,
     snackbarHostState: SnackbarHostState,
     onSearchQueryChange: (String?) -> Unit,
     onClickCover: (mangaId: Long) -> Unit,
@@ -71,6 +78,7 @@ fun HistoryScreen(
     onClickChangeCategory: (mangaId: Long) -> Unit,
     onClickLinkedSourceGroups: () -> Unit,
     onClickGroup: (groupId: Long) -> Unit,
+    onPauseTracking: (Long) -> Unit,
     screenModel: HistoryScreenModel,
 ) {
     val scrollStates = rememberSaveable(
@@ -313,25 +321,12 @@ fun HistoryScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { contentPadding ->
         if (state.selectedCategoryId == HistoryScreenModel.State.UPDATE_WATCH_TAB_ID) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(contentPadding)
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = "Update Watch",
-                    style = MaterialTheme.typography.titleLarge,
-                )
-                Text(
-                    text = "Tracked linked-source updates will appear here.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 8.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            UpdateWatchContent(
+                state = updateWatchState,
+                contentPadding = contentPadding,
+                onClickManga = onClickCover,
+                onPauseTracking = onPauseTracking,
+            )
             return@Scaffold
         }
         state.list.let {

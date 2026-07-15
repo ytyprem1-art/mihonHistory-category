@@ -1,7 +1,8 @@
 CREATE TABLE linked_source_groups (
     _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    tracking_manga_id INTEGER DEFAULT NULL
+    tracking_manga_id INTEGER DEFAULT NULL,
+    is_paused INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE linked_source_members (
@@ -16,13 +17,14 @@ SELECT
 G._id,
 G.name,
 COUNT(M._id) AS memberCount,
-G.tracking_manga_id
+G.tracking_manga_id,
+G.is_paused
 FROM linked_source_groups G
 LEFT JOIN linked_source_members M ON G._id = M.group_id
 GROUP BY G._id;
 
 getGroupById:
-SELECT *
+SELECT _id, name, tracking_manga_id, is_paused
 FROM linked_source_groups
 WHERE _id = ?;
 
@@ -50,7 +52,8 @@ SELECT
 G._id,
 G.name,
 (SELECT COUNT(*) FROM linked_source_members WHERE group_id = G._id) AS memberCount,
-G.tracking_manga_id
+G.tracking_manga_id,
+G.is_paused
 FROM linked_source_groups G
 JOIN linked_source_members M ON G._id = M.group_id
 WHERE M.manga_id = ? OR M.manga_id = ?;
@@ -76,4 +79,9 @@ WHERE group_id = ?;
 updateTrackingMangaId:
 UPDATE linked_source_groups
 SET tracking_manga_id = ?
+WHERE _id = ?;
+
+updateIsPaused:
+UPDATE linked_source_groups
+SET is_paused = ?
 WHERE _id = ?;

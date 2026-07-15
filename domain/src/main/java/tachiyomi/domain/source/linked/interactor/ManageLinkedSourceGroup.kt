@@ -55,6 +55,10 @@ class ManageLinkedSourceGroup(
         repository.updateTrackingMangaId(groupId, mangaId)
     }
 
+    suspend fun updateIsPaused(groupId: Long, isPaused: Boolean) {
+        repository.updateIsPaused(groupId, isPaused)
+    }
+
     fun subscribeGroupForManga(mangaId: Long, sourceId: Long): Flow<LinkedSourceGroup?> {
         return repository.getGroupForManga(mangaId, sourceId)
     }

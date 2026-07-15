@@ -15,14 +15,14 @@ class LinkedSourceRepositoryImpl(
 ) : LinkedSourceRepository {
 
     override fun getGroups(): Flow<List<LinkedSourceGroup>> {
-        return database.linked_sourcesQueries.getGroups { id, name, memberCount, trackingMangaId ->
-            LinkedSourceGroup(id, name, memberCount, trackingMangaId)
+        return database.linked_sourcesQueries.getGroups { id, name, memberCount, trackingMangaId, isPaused ->
+            LinkedSourceGroup(id, name, memberCount, trackingMangaId, isPaused == 1L)
         }.subscribeToList()
     }
 
     override suspend fun getGroupById(id: Long): LinkedSourceGroup? {
-        return database.linked_sourcesQueries.getGroupById(id) { groupId, name, trackingMangaId ->
-            LinkedSourceGroup(groupId, name, 0L, trackingMangaId)
+        return database.linked_sourcesQueries.getGroupById(id) { groupId, name, trackingMangaId, isPaused ->
+            LinkedSourceGroup(groupId, name, 0L, trackingMangaId, isPaused == 1L)
         }.awaitAsOneOrNull()
     }
 
@@ -50,8 +50,8 @@ class LinkedSourceRepositoryImpl(
     }
 
     override fun getGroupForManga(mangaId: Long, sourceId: Long): Flow<LinkedSourceGroup?> {
-        return database.linked_sourcesQueries.getGroupForManga(mangaId, sourceId) { gId, name, memberCount, trackingMangaId ->
-            LinkedSourceGroup(gId, name, memberCount, trackingMangaId)
+        return database.linked_sourcesQueries.getGroupForManga(mangaId, sourceId) { gId, name, memberCount, trackingMangaId, isPaused ->
+            LinkedSourceGroup(gId, name, memberCount, trackingMangaId, isPaused == 1L)
         }.subscribeToOneOrNull()
     }
 
@@ -96,6 +96,12 @@ class LinkedSourceRepositoryImpl(
     override suspend fun updateTrackingMangaId(groupId: Long, mangaId: Long?) {
         database.transaction {
             database.linked_sourcesQueries.updateTrackingMangaId(mangaId, groupId)
+        }
+    }
+
+    override suspend fun updateIsPaused(groupId: Long, isPaused: Boolean) {
+        database.transaction {
+            database.linked_sourcesQueries.updateIsPaused(if (isPaused) 1L else 0L, groupId)
         }
     }
 }
