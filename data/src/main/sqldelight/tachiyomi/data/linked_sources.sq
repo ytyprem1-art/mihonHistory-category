@@ -1,6 +1,7 @@
 CREATE TABLE linked_source_groups (
     _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    tracking_manga_id INTEGER DEFAULT NULL
 );
 
 CREATE TABLE linked_source_members (
@@ -14,7 +15,8 @@ getGroups:
 SELECT
 G._id,
 G.name,
-COUNT(M._id) AS memberCount
+COUNT(M._id) AS memberCount,
+G.tracking_manga_id
 FROM linked_source_groups G
 LEFT JOIN linked_source_members M ON G._id = M.group_id
 GROUP BY G._id;
@@ -47,7 +49,8 @@ getGroupForManga:
 SELECT
 G._id,
 G.name,
-(SELECT COUNT(*) FROM linked_source_members WHERE group_id = G._id) AS memberCount
+(SELECT COUNT(*) FROM linked_source_members WHERE group_id = G._id) AS memberCount,
+G.tracking_manga_id
 FROM linked_source_groups G
 JOIN linked_source_members M ON G._id = M.group_id
 WHERE M.manga_id = ? OR M.manga_id = ?;
@@ -69,3 +72,8 @@ countMembersInGroup:
 SELECT COUNT(*)
 FROM linked_source_members
 WHERE group_id = ?;
+
+updateTrackingMangaId:
+UPDATE linked_source_groups
+SET tracking_manga_id = ?
+WHERE _id = ?;

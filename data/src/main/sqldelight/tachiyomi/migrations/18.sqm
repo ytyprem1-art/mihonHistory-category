@@ -1,0 +1,1 @@
+ALTER TABLE linked_source_groups ADD COLUMN tracking_manga_id INTEGER DEFAULT NULL;

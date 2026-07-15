@@ -30,6 +30,7 @@ fun LinkedSourceDetailsScreen(
     onClickMember: (LinkedMember) -> Unit,
     onClickAdd: () -> Unit,
     onClickCreateHistoryGroup: () -> Unit,
+    onClickSetTrackingSource: () -> Unit,
     onRefreshMember: (LinkedMember) -> Unit,
     onDeleteMember: (LinkedMember) -> Unit,
     navigateUp: () -> Unit,
@@ -46,6 +47,10 @@ fun LinkedSourceDetailsScreen(
                                 title = stringResource(MR.strings.action_add),
                                 icon = Icons.Outlined.Add,
                                 onClick = onClickAdd,
+                            ),
+                            AppBar.OverflowAction(
+                                title = "Set tracking source",
+                                onClick = onClickSetTrackingSource,
                             ),
                             AppBar.OverflowAction(
                                 title = "Create history group",
@@ -69,6 +74,7 @@ fun LinkedSourceDetailsScreen(
                     modifier = Modifier.animateItemFastScroll(),
                     member = member,
                     isRefreshing = refreshingIds.contains(member.manga.id),
+                    isTracking = group?.trackingMangaId == member.manga.id,
                     onRefresh = { onRefreshMember(member) },
                     onDelete = { onDeleteMember(member) },
                     onClick = { onClickMember(member) },

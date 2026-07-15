@@ -51,6 +51,7 @@ private val MemberItemHeight = 104.dp
 fun LinkedSourceMemberItem(
     member: LinkedMember,
     isRefreshing: Boolean,
+    isTracking: Boolean,
     onRefresh: () -> Unit,
     onDelete: () -> Unit,
     onClick: () -> Unit,
@@ -94,11 +95,28 @@ fun LinkedSourceMemberItem(
                     style = MaterialTheme.typography.bodyMedium,
                 )
 
-                Text(
-                    text = sourceName,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.secondaryItemAlpha(),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = sourceName,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.secondaryItemAlpha(),
+                    )
+
+                    if (isTracking) {
+                        Surface(
+                            modifier = Modifier.padding(start = 8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialTheme.shapes.extraSmall,
+                        ) {
+                            Text(
+                                text = "Tracking",
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    }
+                }
 
                 Row(
                     modifier = Modifier.padding(top = 4.dp),

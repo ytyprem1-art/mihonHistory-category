@@ -112,6 +112,21 @@ class LinkedSourceDetailsScreenModel(
         }
     }
 
+    fun updateTrackingSource(mangaId: Long?) {
+        screenModelScope.launchIO {
+            try {
+                manageLinkedSourceGroup.updateTrackingMangaId(groupId, mangaId)
+                dismissDialog()
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+            }
+        }
+    }
+
+    fun showTrackingSourcePicker() {
+        mutableState.update { it.copy(dialog = Dialog.TrackingSourcePicker(it.members)) }
+    }
+
     fun createHistoryGroup() {
         val members = state.value.members
         val groupName = state.value.group?.name ?: return
@@ -166,6 +181,10 @@ class LinkedSourceDetailsScreenModel(
             val withoutHistory: List<LinkedMember>,
             val inOtherGroup: List<LinkedMember>,
             val eligible: List<LinkedMember>
+        ) : Dialog
+
+        data class TrackingSourcePicker(
+            val members: List<LinkedMember>,
         ) : Dialog
     }
 

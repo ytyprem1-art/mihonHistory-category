@@ -15,14 +15,14 @@ class LinkedSourceRepositoryImpl(
 ) : LinkedSourceRepository {
 
     override fun getGroups(): Flow<List<LinkedSourceGroup>> {
-        return database.linked_sourcesQueries.getGroups { id: Long, name: String, memberCount: Long ->
-            LinkedSourceGroup(id, name, memberCount)
+        return database.linked_sourcesQueries.getGroups { id, name, memberCount, trackingMangaId ->
+            LinkedSourceGroup(id, name, memberCount, trackingMangaId)
         }.subscribeToList()
     }
 
     override suspend fun getGroupById(id: Long): LinkedSourceGroup? {
-        return database.linked_sourcesQueries.getGroupById(id) { groupId: Long, name: String ->
-            LinkedSourceGroup(groupId, name, 0L)
+        return database.linked_sourcesQueries.getGroupById(id) { groupId, name, trackingMangaId ->
+            LinkedSourceGroup(groupId, name, 0L, trackingMangaId)
         }.awaitAsOneOrNull()
     }
 
@@ -50,8 +50,8 @@ class LinkedSourceRepositoryImpl(
     }
 
     override fun getGroupForManga(mangaId: Long, sourceId: Long): Flow<LinkedSourceGroup?> {
-        return database.linked_sourcesQueries.getGroupForManga(mangaId, sourceId) { gId: Long, name: String, memberCount: Long ->
-            LinkedSourceGroup(gId, name, memberCount)
+        return database.linked_sourcesQueries.getGroupForManga(mangaId, sourceId) { gId, name, memberCount, trackingMangaId ->
+            LinkedSourceGroup(gId, name, memberCount, trackingMangaId)
         }.subscribeToOneOrNull()
     }
 
@@ -90,6 +90,12 @@ class LinkedSourceRepositoryImpl(
             database.linked_sourcesQueries.removeMangaFromGroups(mangaId, mangaId) // Use mangaId twice for safety if sourceId is unknown
             val groupId = database.linked_sourcesQueries.insertGroup(name).awaitAsOne()
             database.linked_sourcesQueries.insertMember(groupId, mangaId)
+        }
+    }
+
+    override suspend fun updateTrackingMangaId(groupId: Long, mangaId: Long?) {
+        database.transaction {
+            database.linked_sourcesQueries.updateTrackingMangaId(mangaId, groupId)
         }
     }
 }

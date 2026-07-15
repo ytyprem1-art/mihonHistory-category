@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.ui.browse.source.linked
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,6 +53,7 @@ class LinkedSourceDetailsScreen(private val groupId: Long) : Screen() {
                 }
             },
             onClickCreateHistoryGroup = screenModel::createHistoryGroup,
+            onClickSetTrackingSource = screenModel::showTrackingSourcePicker,
             onRefreshMember = { screenModel.refreshMember(it.manga.id) },
             onDeleteMember = { memberToDelete = it },
             navigateUp = navigator::pop,
@@ -153,6 +156,43 @@ class LinkedSourceDetailsScreen(private val groupId: Long) : Screen() {
                             }
                         }
                     } else null,
+                )
+            }
+            is LinkedSourceDetailsScreenModel.Dialog.TrackingSourcePicker -> {
+                val sourceManager = remember { Injekt.get<SourceManager>() }
+                AlertDialog(
+                    onDismissRequest = screenModel::dismissDialog,
+                    title = { Text("Set tracking source") },
+                    text = {
+                        androidx.compose.foundation.lazy.LazyColumn {
+                            items(dialog.members) { member ->
+                                androidx.compose.material3.ListItem(
+                                    modifier = Modifier.clickable {
+                                        screenModel.updateTrackingSource(member.manga.id)
+                                    },
+                                    headlineContent = { Text(member.manga.title) },
+                                    supportingContent = {
+                                        Text(sourceManager.getOrStub(member.manga.source).name)
+                                    },
+                                    trailingContent = {
+                                        if (state.group?.trackingMangaId == member.manga.id) {
+                                            Text(
+                                                text = "Tracking",
+                                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                                color = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        TextButton(onClick = screenModel::dismissDialog) {
+                            Text(stringResource(MR.strings.action_cancel))
+                        }
+                    },
                 )
             }
             null -> {}
