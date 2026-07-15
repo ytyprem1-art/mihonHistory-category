@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.chapter.repository.ChapterRepository
@@ -19,6 +20,7 @@ import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
 import logcat.LogPriority
 import eu.kanade.tachiyomi.ui.manga.LinkedMember
+import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -29,7 +31,11 @@ class LinkedSourceDetailsScreenModel(
     private val historyRepository: HistoryRepository = Injekt.get(),
     private val updateMangaFromRemote: UpdateMangaFromRemote = Injekt.get(),
     private val sourceManager: SourceManager = Injekt.get(),
+    private val manageHistoryGroups: ManageHistoryGroups = Injekt.get(),
 ) : StateScreenModel<LinkedSourceDetailsScreenModel.State>(State()) {
+
+    private val _events = kotlinx.coroutines.channels.Channel<Event>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+    val events = _events.receiveAsFlow()
 
     init {
         screenModelScope.launchIO {
@@ -106,9 +112,65 @@ class LinkedSourceDetailsScreenModel(
         }
     }
 
+    fun createHistoryGroup() {
+        val members = state.value.members
+        val groupName = state.value.group?.name ?: return
+
+        screenModelScope.launchIO {
+            val memberships = manageHistoryGroups.getAllMemberships()
+
+            val withHistory = members.filter { it.lastRead != null }
+            val withoutHistory = members.filter { it.lastRead == null }
+
+            // Members in another history group
+            val inOtherGroup = withHistory.filter { memberships.containsKey(it.manga.id) }
+            // Members with history and NOT in another group
+            val trulyEligible = withHistory.filter { !memberships.containsKey(it.manga.id) }
+
+            if (withoutHistory.isNotEmpty() || inOtherGroup.isNotEmpty() || trulyEligible.size < 2) {
+                mutableState.update { it.copy(dialog = Dialog.CreateHistoryGroupWarning(withoutHistory, inOtherGroup, trulyEligible)) }
+            } else {
+                performCreateHistoryGroup(groupName, trulyEligible.map { it.manga.id })
+            }
+        }
+    }
+
+    fun performCreateHistoryGroup(name: String, mangaIds: List<Long>) {
+        screenModelScope.launchIO {
+            try {
+                manageHistoryGroups.createGroupWithMembers(name, mangaIds)
+                _events.send(Event.HistoryGroupCreated)
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                _events.send(Event.ShowMessage(e.message ?: "Unknown error"))
+            } finally {
+                dismissDialog()
+            }
+        }
+    }
+
+    fun dismissDialog() {
+        mutableState.update { it.copy(dialog = null) }
+    }
+
+    @androidx.compose.runtime.Immutable
     data class State(
         val group: LinkedSourceGroup? = null,
         val members: List<LinkedMember> = emptyList(),
         val refreshingIds: Set<Long> = emptySet(),
+        val dialog: Dialog? = null,
     )
+
+    sealed interface Dialog {
+        data class CreateHistoryGroupWarning(
+            val withoutHistory: List<LinkedMember>,
+            val inOtherGroup: List<LinkedMember>,
+            val eligible: List<LinkedMember>
+        ) : Dialog
+    }
+
+    sealed interface Event {
+        data object HistoryGroupCreated : Event
+        data class ShowMessage(val message: String) : Event
+    }
 }
