@@ -226,6 +226,8 @@ class MangaScreen(
                 onMemberRefreshClick = { member ->
                     screenModel.refreshLinkedMember(member.id)
                 },
+                onRenameGroupClick = screenModel::showRenameGroupDialog,
+                onDeleteGroupClick = screenModel::showDeleteGroupDialog,
                 isWideCompact = successState.isWideCompact,
                 onToggleWideCompact = screenModel::toggleWideCompact,
                 linkedGroup = successState.linkedGroup,
@@ -430,6 +432,60 @@ class MangaScreen(
                             },
                         ) {
                             androidx.compose.material3.Text(stringResource(MR.strings.action_remove))
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
+                        }
+                    }
+                )
+            }
+            is MangaScreenModel.Dialog.RenameLinkedGroup -> {
+                var name by remember { mutableStateOf(dialog.group.name) }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Rename Group") },
+                    text = {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { androidx.compose.material3.Text("Group Name") },
+                            singleLine = true,
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                if (name.isNotBlank()) {
+                                    screenModel.renameLinkedGroup(name)
+                                    onDismissRequest()
+                                }
+                            },
+                        ) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_ok))
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
+                        }
+                    }
+                )
+            }
+            is MangaScreenModel.Dialog.DeleteLinkedGroup -> {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Delete Group") },
+                    text = { androidx.compose.material3.Text("Are you sure you want to delete '${dialog.group.name}'?") },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                screenModel.deleteLinkedGroup()
+                                onDismissRequest()
+                            },
+                        ) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_ok))
                         }
                     },
                     dismissButton = {

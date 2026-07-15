@@ -26,6 +26,7 @@ fun LinkedSourcesScreen(
     searchQuery: String?,
     onSearchQueryChange: (String?) -> Unit,
     onClickCreate: () -> Unit,
+    onClickRename: (LinkedSourceGroup) -> Unit,
     onClickDelete: (LinkedSourceGroup) -> Unit,
     onClickGroup: (LinkedSourceGroup) -> Unit,
     navigateUp: () -> Unit,
@@ -79,6 +80,8 @@ fun LinkedSourcesScreen(
                     sourceNames = item.sourceNames,
                     onClick = { onClickGroup(item.group) },
                     onLongClick = { onClickDelete(item.group) },
+                    onRename = { onClickRename(item.group) },
+                    onDelete = { onClickDelete(item.group) },
                 )
             }
         }

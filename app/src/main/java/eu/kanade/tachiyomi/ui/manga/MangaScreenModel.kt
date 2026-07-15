@@ -1177,6 +1177,8 @@ class MangaScreenModel(
             val group: LinkedSourceGroup,
             val representativeManga: Manga?,
         )
+        data class RenameLinkedGroup(val group: LinkedSourceGroup) : Dialog
+        data class DeleteLinkedGroup(val group: LinkedSourceGroup) : Dialog
         data class RemoveLinkedMember(val member: Manga, val isLast: Boolean) : Dialog
     }
 
@@ -1225,6 +1227,16 @@ class MangaScreenModel(
             }
             updateSuccessState { it.copy(dialog = Dialog.JoinLinkedGroup(items)) }
         }
+    }
+
+    fun showRenameGroupDialog() {
+        val group = successState?.linkedGroup ?: return
+        updateSuccessState { it.copy(dialog = Dialog.RenameLinkedGroup(group)) }
+    }
+
+    fun showDeleteGroupDialog() {
+        val group = successState?.linkedGroup ?: return
+        updateSuccessState { it.copy(dialog = Dialog.DeleteLinkedGroup(group)) }
     }
 
     fun joinGroup(groupId: Long) {
@@ -1324,6 +1336,30 @@ class MangaScreenModel(
                 }
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
+            }
+        }
+    }
+
+    fun renameLinkedGroup(name: String) {
+        val groupId = successState?.linkedGroup?.id ?: return
+        screenModelScope.launchIO {
+            try {
+                manageLinkedSourceGroup.rename(groupId, name)
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                snackbarHostState.showSnackbar("Failed to rename group: ${e.message}")
+            }
+        }
+    }
+
+    fun deleteLinkedGroup() {
+        val groupId = successState?.linkedGroup?.id ?: return
+        screenModelScope.launchIO {
+            try {
+                manageLinkedSourceGroup.delete(groupId)
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                snackbarHostState.showSnackbar("Failed to delete group: ${e.message}")
             }
         }
     }

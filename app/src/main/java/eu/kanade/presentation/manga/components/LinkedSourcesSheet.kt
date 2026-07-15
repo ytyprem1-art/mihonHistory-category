@@ -74,6 +74,8 @@ fun LinkedSourcesSheet(
     onMemberLatestClick: (mangaId: Long, chapterId: Long) -> Unit,
     onMemberRemoveClick: (Manga) -> Unit,
     onMemberRefreshClick: (Manga) -> Unit,
+    onRenameGroupClick: () -> Unit,
+    onDeleteGroupClick: () -> Unit,
     isWideCompact: Boolean,
     onToggleWideCompact: () -> Unit,
     linkedGroup: LinkedSourceGroup?,
@@ -127,8 +129,8 @@ fun LinkedSourcesSheet(
                     group = linkedGroup,
                     isWideCompact = isWideCompact,
                     onToggleWideCompact = onToggleWideCompact,
-                    onRenameGroup = { /* TODO */ },
-                    onDeleteGroup = { /* TODO */ },
+                    onRenameGroup = onRenameGroupClick,
+                    onDeleteGroup = onDeleteGroupClick,
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
