@@ -6,8 +6,12 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.core.util.insertSeparators
 import eu.kanade.presentation.history.HistoryUiModel
 import eu.kanade.tachiyomi.util.lang.toLocalDate
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
@@ -21,6 +25,9 @@ class HistoryGroupDetailScreenModel(
     private val manageHistoryGroups: ManageHistoryGroups = Injekt.get(),
     private val getHistory: GetHistory = Injekt.get(),
 ) : StateScreenModel<HistoryGroupDetailScreenModel.State>(State()) {
+
+    private val _events = Channel<Event>(Int.MAX_VALUE)
+    val events: Flow<Event> = _events.receiveAsFlow()
 
     init {
         screenModelScope.launchIO {
@@ -73,8 +80,22 @@ class HistoryGroupDetailScreenModel(
             selected.forEach { mangaId ->
                 manageHistoryGroups.removeMangaFromGroup(mangaId)
             }
+
+            val remainingMembers = manageHistoryGroups.subscribeMembers(groupId).first()
+            if (remainingMembers.size <= 1) {
+                if (remainingMembers.size == 1) {
+                    manageHistoryGroups.removeMangaFromGroup(remainingMembers.first())
+                }
+                manageHistoryGroups.deleteGroup(groupId)
+                _events.send(Event.GroupDissolved)
+            }
+
             mutableState.update { it.copy(selectionMode = false, selected = emptySet()) }
         }
+    }
+
+    sealed interface Event {
+        data object GroupDissolved : Event
     }
 
     @Immutable
