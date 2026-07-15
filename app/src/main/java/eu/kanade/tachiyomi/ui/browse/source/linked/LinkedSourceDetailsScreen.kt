@@ -22,6 +22,11 @@ class LinkedSourceDetailsScreen(private val groupId: Long) : Screen() {
             group = state.group,
             members = state.members,
             onClickMember = { navigator.push(MangaScreen(it.manga.id)) },
+            onClickAdd = {
+                state.group?.let {
+                    navigator.push(LinkedSourceSearchScreen(it.id, it.name))
+                }
+            },
             navigateUp = navigator::pop,
         )
     }
