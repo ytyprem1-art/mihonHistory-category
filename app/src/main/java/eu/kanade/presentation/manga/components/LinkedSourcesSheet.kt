@@ -217,13 +217,13 @@ private fun MembersTableHeader() {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Spacer(modifier = Modifier.width(40.dp)) // Cover
-        HeaderCell(text = "Source", width = 140.dp)
+        Spacer(modifier = Modifier.width(40.dp)) // Cover area (32 + 8)
+        HeaderCell(text = "Source", width = 148.dp)
         HeaderCell(text = "Read", width = 90.dp)
         HeaderCell(text = "Latest", width = 80.dp)
-        HeaderCell(text = "Status", width = 150.dp)
-        HeaderCell(text = "Last Check", width = 140.dp)
-        Spacer(modifier = Modifier.width(144.dp)) // Actions (Refresh, Open, Remove)
+        HeaderCell(text = "Status", width = 100.dp)
+        HeaderCell(text = "Last Check", width = 100.dp)
+        Spacer(modifier = Modifier.width(144.dp)) // Actions area
     }
 }
 
@@ -264,7 +264,7 @@ private fun MemberTableRow(
     ) {
         Row(
             modifier = Modifier
-                .width(188.dp) // 32 (cover) + 8 (spacer) + 140 (source) + 8 (trailing spacer)
+                .width(188.dp) // 32 (cover) + 8 (spacer) + 148 (source)
                 .then(
                     if (isCurrentManga) {
                         Modifier
@@ -282,7 +282,7 @@ private fun MemberTableRow(
             Spacer(modifier = Modifier.width(8.dp))
 
             Row(
-                modifier = Modifier.width(140.dp),
+                modifier = Modifier.width(148.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
@@ -296,7 +296,7 @@ private fun MemberTableRow(
                 if (isCurrentManga) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "(Current)",
+                        text = "(Now)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
@@ -403,20 +403,20 @@ private fun MemberTableRow(
         // Status
         val statusText = when {
             member.latestChapter != null && member.lastRead != null && member.latestChapter > member.lastRead ->
-                "+${decimalFormat.format(member.latestChapter - member.lastRead)} from last read"
+                "+${decimalFormat.format(member.latestChapter - member.lastRead)} unread"
             member.latestChapter != null && member.lastRead != null && member.latestChapter == member.lastRead ->
-                "You're up to date"
+                "Up to date"
             else -> ""
         }
-        TextCell(text = statusText, width = 150.dp)
+        TextCell(text = statusText, width = 100.dp)
 
         // Last Check
         val lastCheckText = if (manga.lastUpdate > 0L) {
-            "Refreshed ${formatCompactRelativeTime(manga.lastUpdate)}"
+            formatCompactRelativeTime(manga.lastUpdate)
         } else {
-            "Never refreshed"
+            "Never"
         }
-        TextCell(text = lastCheckText, width = 140.dp)
+        TextCell(text = lastCheckText, width = 100.dp)
 
         // Actions
         Row(
@@ -447,7 +447,7 @@ private fun MemberTableRow(
             }
 
             if (manga.id != currentMangaId) {
-                IconButton(onClick = onOpen) {
+                IconButton(onClick = { onOpen() }) {
                     Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = "Open")
                 }
             } else {
@@ -478,10 +478,10 @@ private fun formatCompactRelativeTime(epochMillis: Long): String {
     val diff = now - epochMillis
 
     return when {
-        diff < TimeUnit.MINUTES.toMillis(1) -> "just now"
+        diff < TimeUnit.MINUTES.toMillis(1) -> "Just now"
         diff < TimeUnit.HOURS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toMinutes(diff)}m ago"
-        DateUtils.isToday(epochMillis) -> "today"
-        isYesterday(epochMillis) -> "yesterday"
+        DateUtils.isToday(epochMillis) -> "Today"
+        isYesterday(epochMillis) -> "Yesterday"
         else -> "${TimeUnit.MILLISECONDS.toDays(diff)}d ago"
     }
 }
