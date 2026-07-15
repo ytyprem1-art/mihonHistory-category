@@ -126,6 +126,7 @@ fun MangaScreen(
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
     onLinkedSourcesClicked: () -> Unit,
+    onUpdateWatchClicked: () -> Unit,
 ) {
     val context = LocalContext.current
     val onCopyTagToClipboard: (tag: String) -> Unit = {
@@ -170,6 +171,7 @@ fun MangaScreen(
             onAllChapterSelected = onAllChapterSelected,
             onInvertSelection = onInvertSelection,
             onLinkedSourcesClicked = onLinkedSourcesClicked,
+            onUpdateWatchClicked = onUpdateWatchClicked,
         )
     } else {
         MangaScreenLargeImpl(
@@ -207,6 +209,7 @@ fun MangaScreen(
             onAllChapterSelected = onAllChapterSelected,
             onInvertSelection = onInvertSelection,
             onLinkedSourcesClicked = onLinkedSourcesClicked,
+            onUpdateWatchClicked = onUpdateWatchClicked,
         )
     }
 }
@@ -260,6 +263,7 @@ private fun MangaScreenSmallImpl(
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
     onLinkedSourcesClicked: () -> Unit,
+    onUpdateWatchClicked: () -> Unit,
 ) {
     val chapterListState = rememberLazyListState()
 
@@ -405,6 +409,8 @@ private fun MangaScreenSmallImpl(
                             onTrackingClicked = onTrackingClicked,
                             onEditIntervalClicked = onEditIntervalClicked,
                             onEditCategory = onEditCategoryClicked,
+                            updateWatchTracked = state.isUpdateWatchTracked,
+                            onUpdateWatchClicked = onUpdateWatchClicked,
                         )
                     }
 
@@ -504,6 +510,7 @@ fun MangaScreenLargeImpl(
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
     onLinkedSourcesClicked: () -> Unit,
+    onUpdateWatchClicked: () -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
@@ -637,6 +644,8 @@ fun MangaScreenLargeImpl(
                             onTrackingClicked = onTrackingClicked,
                             onEditIntervalClicked = onEditIntervalClicked,
                             onEditCategory = onEditCategoryClicked,
+                            updateWatchTracked = state.isUpdateWatchTracked,
+                            onUpdateWatchClicked = onUpdateWatchClicked,
                         )
                         ExpandableMangaDescription(
                             defaultExpandState = true,

@@ -281,6 +281,16 @@ class MangaScreenModel(
         }
 
         screenModelScope.launchIO {
+            manageUpdateWatch.subscribeAll()
+                .flowWithLifecycle(lifecycle)
+                .map { list -> list.fastAny { it.mangaId == mangaId } }
+                .distinctUntilChanged()
+                .collectLatest { isTracked ->
+                    updateSuccessState { it.copy(isUpdateWatchTracked = isTracked) }
+                }
+        }
+
+        screenModelScope.launchIO {
             val manga = getMangaAndChapters.awaitManga(mangaId)
             val chapters = getMangaAndChapters.awaitChapters(mangaId, applyScanlatorFilter = true)
                 .toChapterListItems(manga)
@@ -1303,6 +1313,21 @@ class MangaScreenModel(
         libraryPreferences.linkedSourceWideCompact.set(!isWideCompact)
     }
 
+    fun toggleUpdateWatch() {
+        screenModelScope.launchIO {
+            try {
+                val isTracked = manageUpdateWatch.getById(mangaId) != null
+                if (isTracked) {
+                    manageUpdateWatch.delete(mangaId)
+                } else {
+                    manageUpdateWatch.updatePaused(mangaId, false)
+                }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+            }
+        }
+    }
+
     sealed interface State {
         @Immutable
         data object Loading : State
@@ -1317,6 +1342,7 @@ class MangaScreenModel(
             val excludedScanlators: Set<String>,
             val trackingCount: Int = 0,
             val hasLoggedInTrackers: Boolean = false,
+            val isUpdateWatchTracked: Boolean = false,
             val linkedGroup: LinkedSourceGroup? = null,
             val linkedMembers: List<LinkedMember> = emptyList(),
             val refreshingIds: Set<Long> = emptySet(),

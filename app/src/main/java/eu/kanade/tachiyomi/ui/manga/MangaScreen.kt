@@ -185,6 +185,7 @@ class MangaScreen(
             onAllChapterSelected = screenModel::toggleAllSelection,
             onInvertSelection = screenModel::invertSelection,
             onLinkedSourcesClicked = { showLinkedSourcesSheet = true },
+            onUpdateWatchClicked = screenModel::toggleUpdateWatch,
         )
 
         if (showLinkedSourcesSheet) {

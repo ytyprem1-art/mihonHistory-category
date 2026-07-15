@@ -41,6 +41,7 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -182,6 +183,8 @@ fun MangaActionRow(
     onTrackingClicked: () -> Unit,
     onEditIntervalClicked: (() -> Unit)?,
     onEditCategory: (() -> Unit)?,
+    updateWatchTracked: Boolean = false,
+    onUpdateWatchClicked: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val defaultActionButtonColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_ALPHA)
@@ -232,6 +235,14 @@ fun MangaActionRow(
             color = if (trackingCount == 0) defaultActionButtonColor else MaterialTheme.colorScheme.primary,
             onClick = onTrackingClicked,
         )
+        if (onUpdateWatchClicked != null) {
+            MangaActionButton(
+                title = if (updateWatchTracked) "Tracking" else "Track",
+                icon = Icons.Outlined.Visibility,
+                color = if (updateWatchTracked) MaterialTheme.colorScheme.primary else defaultActionButtonColor,
+                onClick = onUpdateWatchClicked,
+            )
+        }
         if (onWebViewClicked != null) {
             MangaActionButton(
                 title = stringResource(MR.strings.action_web_view),
