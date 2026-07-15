@@ -194,6 +194,8 @@ class LibraryPreferences(
         "pref_hide_missing_chapter_indicators",
         false,
     )
+
+    val linkedSourceWideCompact: Preference<Boolean> = preferenceStore.getBoolean("linked_source_wide_compact", false)
     // endregion
 
     // region Swipe Actions

@@ -10,8 +10,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,12 +72,13 @@ fun LinkedSourcesSheet(
     onMemberLatestClick: (mangaId: Long, chapterId: Long) -> Unit,
     onMemberRemoveClick: (Manga) -> Unit,
     onMemberRefreshClick: (Manga) -> Unit,
+    isWideCompact: Boolean,
+    onToggleWideCompact: () -> Unit,
     linkedGroup: LinkedSourceGroup?,
     linkedMembers: List<LinkedMember>,
     currentMangaId: Long,
     refreshingIds: Set<Long>,
 ) {
-    var isWideCompact by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
 
@@ -121,7 +124,7 @@ fun LinkedSourcesSheet(
                 GroupHeader(
                     group = linkedGroup,
                     isWideCompact = isWideCompact,
-                    onToggleWideCompact = { isWideCompact = !isWideCompact },
+                    onToggleWideCompact = onToggleWideCompact,
                     onRenameGroup = { /* TODO */ },
                     onDeleteGroup = { /* TODO */ },
                 )
@@ -129,12 +132,8 @@ fun LinkedSourcesSheet(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 if (isWideCompact) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                    ) {
-                        MembersTableHeader(isWideCompact)
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        MembersTableHeader(isWideCompact = true)
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         for (member in linkedMembers) {
                             MemberTableRow(
@@ -257,37 +256,38 @@ private fun GroupHeader(
     }
 }
 
+private val coverAreaWidth = 40.dp
+private val actionsAreaWidth = 144.dp
+
+private fun RowScope.sourceModifier(isWideCompact: Boolean) = if (isWideCompact) Modifier.weight(1.5f) else Modifier.width(148.dp + coverAreaWidth)
+private fun RowScope.readModifier(isWideCompact: Boolean) = if (isWideCompact) Modifier.weight(1f) else Modifier.width(90.dp)
+private fun RowScope.latestModifier(isWideCompact: Boolean) = if (isWideCompact) Modifier.weight(1f) else Modifier.width(80.dp)
+private fun RowScope.statusModifier(isWideCompact: Boolean) = if (isWideCompact) Modifier.weight(1.2f) else Modifier.width(100.dp)
+private fun RowScope.lastCheckModifier(isWideCompact: Boolean) = if (isWideCompact) Modifier.weight(1.2f) else Modifier.width(100.dp)
+private fun actionsModifier() = Modifier.width(actionsAreaWidth)
+
 @Composable
 private fun MembersTableHeader(isWideCompact: Boolean) {
     Row(
         modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .then(if (isWideCompact) Modifier.fillMaxWidth() else Modifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val coverWidth = if (isWideCompact) 32.dp else 40.dp
-        Spacer(modifier = Modifier.width(coverWidth))
-
-        HeaderCell(
-            text = "Source",
-            modifier = if (isWideCompact) Modifier.weight(1f) else Modifier.width(148.dp),
-        )
-        HeaderCell(
-            text = "Read",
-            modifier = Modifier.width(90.dp),
-        )
-        HeaderCell(
-            text = "Latest",
-            modifier = Modifier.width(80.dp),
-        )
-        HeaderCell(
-            text = "Status",
-            modifier = if (isWideCompact) Modifier.weight(0.8f) else Modifier.width(100.dp),
-        )
-        HeaderCell(
-            text = "Last Check",
-            modifier = Modifier.width(100.dp),
-        )
-        Spacer(modifier = Modifier.width(144.dp)) // Actions area
+        Box(modifier = sourceModifier(isWideCompact)) {
+            Text(
+                text = "Source",
+                modifier = Modifier.fillMaxWidth().padding(start = coverAreaWidth),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+        }
+        HeaderCell(text = "Read", modifier = readModifier(isWideCompact))
+        HeaderCell(text = "Latest", modifier = latestModifier(isWideCompact))
+        HeaderCell(text = "Status", modifier = statusModifier(isWideCompact))
+        HeaderCell(text = "Last Check", modifier = lastCheckModifier(isWideCompact))
+        Spacer(modifier = actionsModifier())
     }
 }
 
@@ -324,13 +324,12 @@ private fun MemberTableRow(
     Row(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 4.dp)
+            .then(if (isWideCompact) Modifier.fillMaxWidth() else Modifier)
             .height(60.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val coverSize = if (isWideCompact) 24.dp else 32.dp
-
         Row(
-            modifier = (if (isWideCompact) Modifier.weight(1f) else Modifier.width(188.dp))
+            modifier = sourceModifier(isWideCompact)
                 .then(
                     if (isCurrentManga) {
                         Modifier
@@ -342,15 +341,15 @@ private fun MemberTableRow(
         ) {
             MangaCover.Book(
                 data = manga,
-                modifier = Modifier.size(height = 48.dp, width = coverSize),
+                modifier = Modifier.size(height = 48.dp, width = 32.dp),
             )
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Row(
-                modifier = if (isWideCompact) Modifier.weight(1f) else Modifier.width(148.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
             ) {
                 Text(
                     text = sourceName,
@@ -359,22 +358,24 @@ private fun MemberTableRow(
                     maxLines = 1,
                     textAlign = TextAlign.Center,
                 )
-                if (isCurrentManga) {
-                    Spacer(modifier = Modifier.width(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
                     Text(
-                        text = "(Now)",
+                        text = if (isCurrentManga) "(Now)" else "",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                     )
-                } else {
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (!isCurrentManga) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
@@ -382,8 +383,7 @@ private fun MemberTableRow(
         // Read (2 lines)
         val isReadClickable = member.lastReadChapterId != null
         Column(
-            modifier = Modifier
-                .width(90.dp)
+            modifier = readModifier(isWideCompact)
                 .then(
                     if (member.lastReadChapterId != null) {
                         Modifier.clickable { onRead(member.lastReadChapterId) }
@@ -425,8 +425,7 @@ private fun MemberTableRow(
         // Latest (2 lines)
         val isLatestClickable = member.latestChapterId != null
         Column(
-            modifier = Modifier
-                .width(80.dp)
+            modifier = latestModifier(isWideCompact)
                 .then(
                     if (member.latestChapterId != null) {
                         Modifier.clickable { onLatest(member.latestChapterId) }
@@ -474,24 +473,31 @@ private fun MemberTableRow(
                 "Up to date"
             else -> ""
         }
-        val statusModifier = if (isWideCompact) Modifier.weight(0.8f) else Modifier.width(100.dp)
         Text(
             text = statusText,
-            modifier = statusModifier,
+            modifier = statusModifier(isWideCompact),
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
 
         // Last Check
-        TextCell(
-            text = if (manga.lastUpdate > 0L) formatCompactRelativeTime(manga.lastUpdate) else "Never",
-            width = 100.dp
+        val lastCheckText = if (manga.lastUpdate > 0L) {
+            formatCompactRelativeTime(manga.lastUpdate)
+        } else {
+            "Never"
+        }
+        Text(
+            text = lastCheckText,
+            modifier = lastCheckModifier(isWideCompact),
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
         )
 
         // Actions
         Row(
-            modifier = Modifier.width(144.dp),
+            modifier = actionsModifier(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -530,17 +536,6 @@ private fun MemberTableRow(
             }
         }
     }
-}
-
-@Composable
-private fun TextCell(text: String, width: androidx.compose.ui.unit.Dp) {
-    Text(
-        text = text,
-        modifier = Modifier.width(width),
-        style = MaterialTheme.typography.bodySmall,
-        textAlign = TextAlign.Center,
-        maxLines = 1,
-    )
 }
 
 @Composable

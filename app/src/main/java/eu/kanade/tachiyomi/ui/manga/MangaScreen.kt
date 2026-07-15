@@ -220,6 +220,8 @@ class MangaScreen(
                 onMemberRefreshClick = { member ->
                     screenModel.refreshLinkedMember(member.id)
                 },
+                isWideCompact = successState.isWideCompact,
+                onToggleWideCompact = screenModel::toggleWideCompact,
                 linkedGroup = successState.linkedGroup,
                 linkedMembers = successState.linkedMembers,
                 currentMangaId = mangaId,

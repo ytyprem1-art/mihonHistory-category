@@ -156,6 +156,8 @@ class MangaScreenModel(
     val isUpdateIntervalEnabled =
         LibraryPreferences.MANGA_OUTSIDE_RELEASE_PERIOD in libraryPreferences.autoUpdateMangaRestrictions.get()
 
+    val isWideCompact by libraryPreferences.linkedSourceWideCompact.asState(screenModelScope)
+
     private val selectedPositions: Array<Int> = arrayOf(-1, -1) // first and last selected index in list
     private val selectedChapterIds: HashSet<Long> = HashSet()
 
@@ -212,6 +214,14 @@ class MangaScreenModel(
         }
 
         observeDownloads()
+
+        screenModelScope.launchIO {
+            libraryPreferences.linkedSourceWideCompact.changes()
+                .flowWithLifecycle(lifecycle)
+                .collectLatest { value ->
+                    updateSuccessState { it.copy(isWideCompact = value) }
+                }
+        }
 
         screenModelScope.launchIO {
             state
@@ -1257,6 +1267,10 @@ class MangaScreenModel(
         }
     }
 
+    fun toggleWideCompact() {
+        libraryPreferences.linkedSourceWideCompact.set(!isWideCompact)
+    }
+
     sealed interface State {
         @Immutable
         data object Loading : State
@@ -1274,6 +1288,7 @@ class MangaScreenModel(
             val linkedGroup: LinkedSourceGroup? = null,
             val linkedMembers: List<LinkedMember> = emptyList(),
             val refreshingIds: Set<Long> = emptySet(),
+            val isWideCompact: Boolean = false,
             val isRefreshingData: Boolean = false,
             val dialog: Dialog? = null,
             val hasPromptedToAddBefore: Boolean = false,
