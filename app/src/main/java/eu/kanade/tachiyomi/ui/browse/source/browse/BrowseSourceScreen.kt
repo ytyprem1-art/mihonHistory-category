@@ -24,8 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -58,6 +60,13 @@ import mihon.presentation.core.util.collectAsLazyPagingItems
 import tachiyomi.core.common.Constants
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.source.model.StubSource
+import androidx.compose.material.icons.automirrored.outlined.CompareArrows
+import androidx.compose.material3.FloatingActionButton
+import eu.kanade.domain.source.interactor.GetEnabledSources
+import eu.kanade.presentation.browse.components.QuickSourceSwitcherDialog
+import tachiyomi.domain.source.interactor.GetRemoteManga
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.components.material.padding
@@ -85,6 +94,13 @@ data class BrowseSourceScreen(
         val state by screenModel.state.collectAsState()
 
         val navigator = LocalNavigator.currentOrThrow
+
+        // MOD START: Quick Switcher
+        val getEnabledSources: GetEnabledSources = remember { Injekt.get() }
+        val sources by getEnabledSources.subscribe().collectAsState(emptyList())
+        var showSourceSwitcher by remember { mutableStateOf(false) }
+        // MOD END: Quick Switcher
+
         val navigateUp: () -> Unit = {
             when {
                 !state.isUserQuery && state.toolbarQuery != null -> screenModel.setToolbarQuery(null)
@@ -208,6 +224,18 @@ data class BrowseSourceScreen(
                 }
             },
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            floatingActionButton = {
+                // MOD START: Quick Switcher
+                FloatingActionButton(
+                    onClick = { showSourceSwitcher = true },
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.CompareArrows,
+                        contentDescription = "Switch Source",
+                    )
+                }
+                // MOD END: Quick Switcher
+            },
         ) { paddingValues ->
             BrowseSourceContent(
                 source = screenModel.source,
@@ -288,6 +316,24 @@ data class BrowseSourceScreen(
             }
             else -> {}
         }
+
+        // MOD START: Quick Switcher
+        if (showSourceSwitcher) {
+            QuickSourceSwitcherDialog(
+                onDismissRequest = { showSourceSwitcher = false },
+                sources = sources,
+                currentSourceId = sourceId,
+                onSourceSelected = { source ->
+                    val query = if (source.supportsLatest) {
+                        GetRemoteManga.QUERY_LATEST
+                    } else {
+                        GetRemoteManga.QUERY_POPULAR
+                    }
+                    navigator.replace(BrowseSourceScreen(source.id, query))
+                },
+            )
+        }
+        // MOD END: Quick Switcher
 
         LaunchedEffect(Unit) {
             queryEvent.receiveAsFlow()
