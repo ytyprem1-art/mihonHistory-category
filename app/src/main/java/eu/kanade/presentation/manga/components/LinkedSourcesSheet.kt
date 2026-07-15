@@ -494,10 +494,9 @@ private fun MemberTableRow(
                 }
             }
             Text(
-                text = if ((member.latestChapter != null && member.lastRead != null && member.latestChapter > member.lastRead)) "NEW" else "",
+                text = member.latestChapterDateUpload?.let { formatCompactRelativeTime(it) } ?: "",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
         }
@@ -519,8 +518,9 @@ private fun MemberTableRow(
         )
 
         // Last Check
-        val lastCheckText = if (manga.lastUpdate > 0L) {
-            formatCompactRelativeTime(manga.lastUpdate)
+        val lastCheckTimestamp = manga.lastModifiedAt * 1000
+        val lastCheckText = if (lastCheckTimestamp > 0L) {
+            formatCompactRelativeTime(lastCheckTimestamp)
         } else {
             "Never"
         }
