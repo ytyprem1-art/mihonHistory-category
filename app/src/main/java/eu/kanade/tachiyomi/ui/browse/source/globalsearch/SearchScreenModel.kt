@@ -104,7 +104,7 @@ abstract class SearchScreenModel(
             .filter { it in enabledSources }
     }
 
-    fun updateSearchQuery(query: String?) {
+    open fun updateSearchQuery(query: String?) {
         mutableState.update { it.copy(searchQuery = query) }
     }
 
@@ -178,7 +178,7 @@ abstract class SearchScreenModel(
         }
     }
 
-    private fun updateItems(items: Map<Source, SearchItemResult>) {
+    protected open fun updateItems(items: Map<Source, SearchItemResult>) {
         mutableState.update {
             it.copy(
                 items = items
@@ -209,6 +209,7 @@ abstract class SearchScreenModel(
         val sourceFilter: SourceFilter = SourceFilter.PinnedOnly,
         val onlyShowHasResults: Boolean = false,
         val items: Map<Source, SearchItemResult> = mapOf(),
+        val mangaGroupIds: Map<Long, Long?> = emptyMap(),
         val dialog: Dialog? = null,
     ) {
         val progress: Int = items.count { it.value !is SearchItemResult.Loading }

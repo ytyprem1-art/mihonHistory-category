@@ -3,6 +3,7 @@ package eu.kanade.presentation.browse.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -29,6 +30,7 @@ fun GlobalSearchCardRow(
     getManga: @Composable (Manga) -> State<Manga>,
     onClick: (Manga) -> Unit,
     onLongClick: (Manga) -> Unit,
+    itemAction: @Composable (Manga) -> Unit = {},
 ) {
     if (titles.isEmpty()) {
         EmptyResultItem()
@@ -39,14 +41,15 @@ fun GlobalSearchCardRow(
         contentPadding = PaddingValues(MaterialTheme.padding.small),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
     ) {
-        items(titles) {
-            val title by getManga(it)
+        items(titles) { manga ->
+            val title by getManga(manga)
             MangaItem(
                 title = title.title,
                 cover = title.asMangaCover(),
                 isFavorite = title.favorite,
                 onClick = { onClick(title) },
                 onLongClick = { onLongClick(title) },
+                action = { itemAction(title) },
             )
         }
     }
@@ -59,6 +62,7 @@ private fun MangaItem(
     isFavorite: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    action: @Composable (RowScope.() -> Unit)? = null,
 ) {
     Box(modifier = Modifier.width(96.dp)) {
         MangaComfortableGridItem(
@@ -68,6 +72,7 @@ private fun MangaItem(
             coverBadgeStart = {
                 InLibraryBadge(enabled = isFavorite)
             },
+            coverBadgeEnd = action,
             coverAlpha = if (isFavorite) CommonMangaItemDefaults.BrowseFavoriteCoverAlpha else 1f,
             onClick = onClick,
             onLongClick = onLongClick,

@@ -30,6 +30,7 @@ fun GlobalSearchScreen(
     onClickSource: (Source) -> Unit,
     onClickItem: (Manga) -> Unit,
     onLongClickItem: (Manga) -> Unit,
+    itemAction: @Composable (Manga) -> Unit = {},
 ) {
     Scaffold(
         topBar = { scrollBehavior ->
@@ -56,6 +57,7 @@ fun GlobalSearchScreen(
             onClickSource = onClickSource,
             onClickItem = onClickItem,
             onLongClickItem = onLongClickItem,
+            itemAction = itemAction,
         )
     }
 }
@@ -69,6 +71,7 @@ internal fun GlobalSearchContent(
     onClickItem: (Manga) -> Unit,
     onLongClickItem: (Manga) -> Unit,
     fromSourceId: Long? = null,
+    itemAction: @Composable (Manga) -> Unit = {},
 ) {
     LazyColumn(
         contentPadding = contentPadding,
@@ -93,6 +96,7 @@ internal fun GlobalSearchContent(
                                 getManga = getManga,
                                 onClick = onClickItem,
                                 onLongClick = onLongClickItem,
+                                itemAction = itemAction,
                             )
                         }
                         is SearchItemResult.Error -> {

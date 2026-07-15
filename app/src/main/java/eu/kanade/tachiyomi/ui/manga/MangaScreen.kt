@@ -51,6 +51,7 @@ import uy.kohesive.injekt.api.get
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.browse.source.linked.LinkedSourceDetailsScreen
+import eu.kanade.tachiyomi.ui.browse.source.linked.LinkedSourceSearchScreen
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
 import eu.kanade.tachiyomi.ui.manga.notes.MangaNotesScreen
@@ -197,7 +198,9 @@ class MangaScreen(
                 },
                 onAddSourceClick = {
                     showLinkedSourcesSheet = false
-                    context.toast("Add Source coming soon.")
+                    successState.linkedGroup?.let { group ->
+                        navigator.push(LinkedSourceSearchScreen(group.id, group.name))
+                    }
                 },
                 onMemberOpenClick = { member ->
                     showLinkedSourcesSheet = false

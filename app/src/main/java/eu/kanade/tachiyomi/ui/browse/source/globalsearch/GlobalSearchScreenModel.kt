@@ -2,7 +2,7 @@ package eu.kanade.tachiyomi.ui.browse.source.globalsearch
 
 import eu.kanade.tachiyomi.source.Source
 
-class GlobalSearchScreenModel(
+open class GlobalSearchScreenModel(
     initialQuery: String = "",
     initialExtensionFilter: String? = null,
 ) : SearchScreenModel(State(searchQuery = initialQuery)) {
