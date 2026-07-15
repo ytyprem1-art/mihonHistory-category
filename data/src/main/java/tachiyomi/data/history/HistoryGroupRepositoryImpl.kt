@@ -73,6 +73,15 @@ class HistoryGroupRepositoryImpl(
         }
     }
 
+    override suspend fun createGroupWithMembers(name: String, mangaIds: List<Long>) {
+        database.transaction {
+            val groupId = database.history_groupsQueries.insertGroup(name).awaitAsOne()
+            mangaIds.forEach { mangaId ->
+                database.history_groupsQueries.insertMember(mangaId, groupId)
+            }
+        }
+    }
+
     override suspend fun removeMangaFromGroup(mangaId: Long) {
         database.transaction {
             database.history_groupsQueries.removeMember(mangaId)

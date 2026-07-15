@@ -14,5 +14,6 @@ interface HistoryGroupRepository {
     suspend fun updateGroup(id: Long, name: String)
     suspend fun deleteGroup(id: Long)
     suspend fun assignMangaToGroup(mangaId: Long, groupId: Long)
+    suspend fun createGroupWithMembers(name: String, mangaIds: List<Long>)
     suspend fun removeMangaFromGroup(mangaId: Long)
 }

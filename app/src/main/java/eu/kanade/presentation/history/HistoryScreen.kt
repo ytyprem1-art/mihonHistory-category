@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.FlipToBack
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Merge
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ScrollableTabRow
@@ -144,6 +145,30 @@ fun HistoryScreen(
                                             )
                                         },
                                         enabled = state.selected.isNotEmpty(),
+                                    ),
+                                    AppBar.Action(
+                                        title = "Create history group",
+                                        icon = Icons.Outlined.Merge,
+                                        onClick = {
+                                            val selectedItems = state.list?.filterIsInstance<HistoryUiModel.Item>()
+                                                ?.filter { it.item.mangaId in state.selected }
+                                                .orEmpty()
+
+                                            val distinctTitles = selectedItems.map { it.item.title }.distinct()
+                                            val suggestedName = if (distinctTitles.size == 1) {
+                                                distinctTitles.first()
+                                            } else {
+                                                selectedItems.firstOrNull()?.item?.title ?: ""
+                                            }
+
+                                            onDialogChange(
+                                                HistoryScreenModel.Dialog.CreateHistoryGroup(
+                                                    state.selected,
+                                                    suggestedName
+                                                )
+                                            )
+                                        },
+                                        enabled = state.selected.size >= 2,
                                     ),
                                     AppBar.Action(
                                         title = stringResource(MR.strings.action_select_all),

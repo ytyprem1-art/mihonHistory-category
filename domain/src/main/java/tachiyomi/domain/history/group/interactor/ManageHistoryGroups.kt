@@ -35,6 +35,10 @@ class ManageHistoryGroups(
         repository.assignMangaToGroup(mangaId, groupId)
     }
 
+    suspend fun createGroupWithMembers(name: String, mangaIds: List<Long>) {
+        repository.createGroupWithMembers(name, mangaIds)
+    }
+
     suspend fun removeMangaFromGroup(mangaId: Long) {
         repository.removeMangaFromGroup(mangaId)
     }

@@ -338,6 +338,37 @@ data object HistoryTab : Tab {
                     },
                 )
             }
+            is HistoryScreenModel.Dialog.CreateHistoryGroup -> {
+                var groupName by androidx.compose.runtime.remember(dialog) { androidx.compose.runtime.mutableStateOf(dialog.suggestedName) }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onDismissRequest,
+                    title = { androidx.compose.material3.Text("Create History Group") },
+                    text = {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = groupName,
+                            onValueChange = { groupName = it },
+                            label = { androidx.compose.material3.Text("Group Name") },
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                if (groupName.isNotBlank()) {
+                                    screenModel.createHistoryGroup(groupName, dialog.mangaIds)
+                                }
+                            }
+                        ) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_ok))
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                            androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
+                        }
+                    }
+                )
+            }
             is HistoryScreenModel.Dialog.ChangeCategory -> {
                 ChangeCategoryDialog(
                     initialSelection = dialog.initialSelection,
@@ -373,6 +404,10 @@ data object HistoryTab : Tab {
                         snackbarHostState.showSnackbar(context.stringResource(MR.strings.internal_error))
                     HistoryScreenModel.Event.HistoryCleared ->
                         snackbarHostState.showSnackbar(context.stringResource(MR.strings.clear_history_completed))
+                    HistoryScreenModel.Event.HistoryGroupCreated ->
+                        snackbarHostState.showSnackbar("History group created")
+                    is HistoryScreenModel.Event.Error ->
+                        snackbarHostState.showSnackbar(e.message)
                     is HistoryScreenModel.Event.OpenChapter -> openChapter(context, e.chapter)
                 }
             }

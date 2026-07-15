@@ -33,6 +33,7 @@ import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.history.interactor.GetHistory
 import tachiyomi.domain.history.interactor.GetNextChapters
 import tachiyomi.domain.history.interactor.ManageHistoryCategory
+import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
 import tachiyomi.domain.history.interactor.RemoveHistory
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.history.repository.HistoryCategory
@@ -58,6 +59,7 @@ class HistoryScreenModel(
     private val setMangaCategories: SetMangaCategories = Injekt.get(),
     private val updateManga: UpdateManga = Injekt.get(),
     private val manageHistoryCategory: ManageHistoryCategory = Injekt.get(),
+    private val manageHistoryGroups: ManageHistoryGroups = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
     private val sourceManager: SourceManager = Injekt.get(),
 ) : StateScreenModel<HistoryScreenModel.State>(State()) {
@@ -261,6 +263,26 @@ class HistoryScreenModel(
         }
     }
 
+    fun createHistoryGroup(name: String, mangaIds: Set<Long>) {
+        if (name.isBlank()) return
+        screenModelScope.launchIO {
+            try {
+                manageHistoryGroups.createGroupWithMembers(name, mangaIds.toList())
+                mutableState.update { state ->
+                    state.copy(
+                        selectionMode = false,
+                        selected = emptySet(),
+                        dialog = null,
+                    )
+                }
+                _events.send(Event.HistoryGroupCreated)
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                _events.send(Event.Error(e.message ?: "Unknown error"))
+            }
+        }
+    }
+
     fun renameHistoryCategory(id: Long, name: String) {
         screenModelScope.launch {
             manageHistoryCategory.rename(id, name)
@@ -424,6 +446,7 @@ class HistoryScreenModel(
             val mangaIds: Set<Long>,
             val categories: List<HistoryCategory>,
         ) : Dialog
+        data class CreateHistoryGroup(val mangaIds: Set<Long>, val suggestedName: String) : Dialog
         data class DuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
         data class ChangeCategory(
             val manga: Manga,
@@ -436,5 +459,7 @@ class HistoryScreenModel(
         data class OpenChapter(val chapter: Chapter?) : Event
         data object InternalError : Event
         data object HistoryCleared : Event
+        data object HistoryGroupCreated : Event
+        data class Error(val message: String) : Event
     }
 }
