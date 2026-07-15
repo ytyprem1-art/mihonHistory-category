@@ -20,8 +20,11 @@ import tachiyomi.presentation.core.i18n.stringResource
 fun LinkedSourceDetailsScreen(
     group: LinkedSourceGroup?,
     members: List<LinkedMember>,
+    refreshingIds: Set<Long>,
     onClickMember: (LinkedMember) -> Unit,
     onClickAdd: () -> Unit,
+    onRefreshMember: (LinkedMember) -> Unit,
+    onDeleteMember: (LinkedMember) -> Unit,
     navigateUp: () -> Unit,
 ) {
     Scaffold(
@@ -54,6 +57,9 @@ fun LinkedSourceDetailsScreen(
                 LinkedSourceMemberItem(
                     modifier = Modifier.animateItemFastScroll(),
                     member = member,
+                    isRefreshing = refreshingIds.contains(member.manga.id),
+                    onRefresh = { onRefreshMember(member) },
+                    onDelete = { onDeleteMember(member) },
                     onClick = { onClickMember(member) },
                 )
             }
