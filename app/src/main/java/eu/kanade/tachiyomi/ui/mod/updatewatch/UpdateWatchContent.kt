@@ -49,7 +49,7 @@ fun UpdateWatchContent(
                 key = {
                     when (it) {
                         is UpdateWatchUiModel.Header -> "header-${it.title}"
-                        is UpdateWatchUiModel.Item -> "item-${it.group.id}"
+                        is UpdateWatchUiModel.Item -> "item-${it.trackingManga.id}"
                     }
                 }
             ) { item ->
@@ -68,6 +68,12 @@ fun UpdateWatchContent(
 
                         var showMenu by remember { mutableStateOf(false) }
 
+                        val warningText = when {
+                            item.daysSinceRelease == 6L -> "Expected update tomorrow"
+                            item.daysSinceRelease == 7L -> "Expected update around today"
+                            else -> "Update may be delayed"
+                        }
+
                         HistoryItem(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -76,7 +82,7 @@ fun UpdateWatchContent(
                                 id = 0,
                                 mangaId = item.trackingManga.id,
                                 chapterId = item.latestChapter.id,
-                                title = item.group.name,
+                                title = item.group?.name ?: item.trackingManga.title,
                                 chapterNumber = item.latestChapter.chapterNumber,
                                 readAt = java.util.Date(item.latestChapter.dateUpload),
                                 readDuration = 0,
@@ -88,6 +94,7 @@ fun UpdateWatchContent(
                                     lastModified = item.trackingManga.coverLastModified,
                                 )
                             ),
+                            secondaryText = "Ch. ${eu.kanade.presentation.util.formatChapterNumber(item.latestChapter.chapterNumber)} · $sourceName",
                             onClickCover = { onClickManga(item.trackingManga.id) },
                             onClickResume = { onClickManga(item.trackingManga.id) },
                             onClickDelete = null,
@@ -100,7 +107,7 @@ fun UpdateWatchContent(
                                     DropdownMenuItem(
                                         text = { Text("Pause tracking") },
                                         onClick = {
-                                            onPauseTracking(item.group.id)
+                                            onPauseTracking(item.trackingManga.id)
                                             showMenu = false
                                         },
                                     )
@@ -111,11 +118,22 @@ fun UpdateWatchContent(
                             selectionMode = false,
                             selected = false,
                             subtitleBadge = {
-                                Text(
-                                    text = "Tracking: $sourceName",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
+                                androidx.compose.foundation.layout.Column {
+                                    Text(
+                                        text = "${item.daysSinceRelease} days since latest release",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        text = warningText,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = when {
+                                            item.daysSinceRelease == 6L -> MaterialTheme.colorScheme.secondary
+                                            item.daysSinceRelease == 7L -> MaterialTheme.colorScheme.primary
+                                            else -> MaterialTheme.colorScheme.error
+                                        },
+                                    )
+                                }
                             }
                         )
                     }

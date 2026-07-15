@@ -1,0 +1,23 @@
+CREATE TABLE update_watch (
+    manga_id INTEGER NOT NULL PRIMARY KEY,
+    is_paused INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY(manga_id) REFERENCES mangas (_id) ON DELETE CASCADE
+);
+
+INSERT INTO update_watch (manga_id, is_paused)
+SELECT tracking_manga_id, is_paused
+FROM linked_source_groups
+WHERE tracking_manga_id IS NOT NULL;
+
+-- Drop old columns
+CREATE TABLE linked_source_groups_new (
+    _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL
+);
+
+INSERT INTO linked_source_groups_new (_id, name)
+SELECT _id, name FROM linked_source_groups;
+
+DROP TABLE linked_source_groups;
+
+ALTER TABLE linked_source_groups_new RENAME TO linked_source_groups;

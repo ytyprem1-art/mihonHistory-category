@@ -4,6 +4,4 @@ data class LinkedSourceGroup(
     val id: Long,
     val name: String,
     val memberCount: Long,
-    val trackingMangaId: Long? = null,
-    val isPaused: Boolean = false,
 )

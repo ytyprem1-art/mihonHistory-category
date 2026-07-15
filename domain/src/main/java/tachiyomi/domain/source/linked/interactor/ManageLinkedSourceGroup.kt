@@ -2,7 +2,6 @@ package tachiyomi.domain.source.linked.interactor
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.manga.repository.MangaRepository
 import tachiyomi.domain.source.linked.model.LinkedSourceGroup
@@ -49,14 +48,6 @@ class ManageLinkedSourceGroup(
 
     suspend fun removeMember(groupId: Long, mangaId: Long, sourceId: Long) {
         repository.removeMember(groupId, mangaId, sourceId)
-    }
-
-    suspend fun updateTrackingMangaId(groupId: Long, mangaId: Long?) {
-        repository.updateTrackingMangaId(groupId, mangaId)
-    }
-
-    suspend fun updateIsPaused(groupId: Long, isPaused: Boolean) {
-        repository.updateIsPaused(groupId, isPaused)
     }
 
     fun subscribeGroupForManga(mangaId: Long, sourceId: Long): Flow<LinkedSourceGroup?> {

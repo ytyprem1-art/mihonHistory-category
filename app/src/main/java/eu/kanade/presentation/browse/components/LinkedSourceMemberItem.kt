@@ -51,7 +51,6 @@ private val MemberItemHeight = 104.dp
 fun LinkedSourceMemberItem(
     member: LinkedMember,
     isRefreshing: Boolean,
-    isTracking: Boolean,
     onRefresh: () -> Unit,
     onDelete: () -> Unit,
     onClick: () -> Unit,
@@ -102,14 +101,14 @@ fun LinkedSourceMemberItem(
                         modifier = Modifier.secondaryItemAlpha(),
                     )
 
-                    if (isTracking) {
+                    if (member.isTracking) {
                         Surface(
                             modifier = Modifier.padding(start = 8.dp),
                             color = MaterialTheme.colorScheme.primaryContainer,
                             shape = MaterialTheme.shapes.extraSmall,
                         ) {
                             Text(
-                                text = "Tracking",
+                                text = if (member.isPaused) "Tracking (Paused)" else "Tracking",
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,

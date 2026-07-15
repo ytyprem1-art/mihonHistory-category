@@ -70,7 +70,10 @@ import tachiyomi.domain.history.interactor.GetNextChapters
 import tachiyomi.domain.history.interactor.GetTotalReadDuration
 import tachiyomi.domain.history.interactor.RemoveHistory
 import tachiyomi.domain.history.interactor.UpsertHistory
+import tachiyomi.domain.history.interactor.ManageUpdateWatch
 import tachiyomi.domain.history.repository.HistoryRepository
+import tachiyomi.domain.history.repository.UpdateWatchRepository
+import tachiyomi.data.history.UpdateWatchRepositoryImpl
 import tachiyomi.domain.history.group.repository.HistoryGroupRepository
 import tachiyomi.data.history.HistoryGroupRepositoryImpl
 import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
@@ -178,8 +181,10 @@ class DomainModule : InjektModule {
         addFactory { FilterChaptersForDownload(get(), get(), get()) }
 
         addSingletonFactory<HistoryRepository> { HistoryRepositoryImpl(get()) }
+        addSingletonFactory<UpdateWatchRepository> { UpdateWatchRepositoryImpl(get()) }
         addSingletonFactory<HistoryGroupRepository> { HistoryGroupRepositoryImpl(get()) }
         addSingletonFactory<HistoryCategoryRepository> { HistoryCategoryRepositoryImpl(get()) }
+        addFactory { ManageUpdateWatch(get()) }
         addFactory { ManageHistoryGroups(get()) }
         addFactory { ManageHistoryCategory(get()) }
         addFactory { GetHistory(get()) }

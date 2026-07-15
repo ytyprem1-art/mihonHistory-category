@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,7 +55,6 @@ class LinkedSourceDetailsScreen(private val groupId: Long) : Screen() {
             },
             onClickCreateHistoryGroup = screenModel::createHistoryGroup,
             onClickSetTrackingSource = screenModel::showTrackingSourcePicker,
-            onClickResumeTracking = screenModel::resumeTracking,
             onRefreshMember = { screenModel.refreshMember(it.manga.id) },
             onDeleteMember = { memberToDelete = it },
             navigateUp = navigator::pop,
@@ -147,7 +147,7 @@ class LinkedSourceDetailsScreen(private val groupId: Long) : Screen() {
                                 }
                             },
                         ) {
-                            Text(stringResource(if (isEligible) MR.strings.action_ok else MR.strings.action_ok))
+                            Text(stringResource(MR.strings.action_ok))
                         }
                     },
                     dismissButton = if (isEligible) {
@@ -163,35 +163,34 @@ class LinkedSourceDetailsScreen(private val groupId: Long) : Screen() {
                 val sourceManager = remember { Injekt.get<SourceManager>() }
                 AlertDialog(
                     onDismissRequest = screenModel::dismissDialog,
-                    title = { Text("Set tracking source") },
+                    title = { Text("Manage tracking") },
                     text = {
                         androidx.compose.foundation.lazy.LazyColumn {
-                            items(dialog.members) { member ->
+                            items(
+                                items = state.members,
+                                key = { it.manga.id }
+                            ) { member ->
                                 androidx.compose.material3.ListItem(
                                     modifier = Modifier.clickable {
-                                        screenModel.updateTrackingSource(member.manga.id)
+                                        screenModel.toggleTracking(member.manga.id)
                                     },
                                     headlineContent = { Text(member.manga.title) },
                                     supportingContent = {
                                         Text(sourceManager.getOrStub(member.manga.source).name)
                                     },
                                     trailingContent = {
-                                        if (state.group?.trackingMangaId == member.manga.id) {
-                                            Text(
-                                                text = "Tracking",
-                                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                                                color = androidx.compose.material3.MaterialTheme.colorScheme.primary
-                                            )
-                                        }
+                                        Checkbox(
+                                            checked = member.isTracking,
+                                            onCheckedChange = null
+                                        )
                                     }
                                 )
                             }
                         }
                     },
-                    confirmButton = {},
-                    dismissButton = {
+                    confirmButton = {
                         TextButton(onClick = screenModel::dismissDialog) {
-                            Text(stringResource(MR.strings.action_cancel))
+                            Text(stringResource(MR.strings.action_ok))
                         }
                     },
                 )

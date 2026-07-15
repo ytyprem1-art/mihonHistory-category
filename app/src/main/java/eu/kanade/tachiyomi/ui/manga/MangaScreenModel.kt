@@ -75,6 +75,7 @@ import tachiyomi.domain.chapter.model.NoChaptersException
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.chapter.service.calculateChapterGap
 import tachiyomi.domain.chapter.service.getChapterSort
+import tachiyomi.domain.history.interactor.ManageUpdateWatch
 import tachiyomi.domain.history.repository.HistoryRepository
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetDuplicateLibraryManga
@@ -124,6 +125,7 @@ class MangaScreenModel(
     private val filterChaptersForDownload: FilterChaptersForDownload = Injekt.get(),
     private val updateMangaFromRemote: UpdateMangaFromRemote = Injekt.get(),
     private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
+    private val manageUpdateWatch: ManageUpdateWatch = Injekt.get(),
     private val chapterRepository: ChapterRepository = Injekt.get(),
     private val historyRepository: HistoryRepository = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
@@ -241,9 +243,14 @@ class MangaScreenModel(
                 .mapNotNull { (it as? State.Success)?.linkedGroup?.id }
                 .distinctUntilChanged()
                 .flatMapLatest { groupId ->
-                    manageLinkedSourceGroup.subscribeMembers(groupId)
+                    combine(
+                        manageLinkedSourceGroup.subscribeMembers(groupId),
+                        manageUpdateWatch.subscribeAll(),
+                    ) { members, trackedList ->
+                        members to trackedList.associateBy { it.mangaId }
+                    }
                 }
-                .flatMapLatest { members ->
+                .flatMapLatest { (members, trackingMap) ->
                     if (members.isEmpty()) return@flatMapLatest flowOf(emptyList())
 
                     val memberFlows = members.map { member ->
@@ -260,6 +267,8 @@ class MangaScreenModel(
                                 lastRead = history?.chapterNumber,
                                 lastReadChapterId = history?.chapterId,
                                 readAt = history?.readAt?.time,
+                                isTracking = trackingMap.containsKey(member.id),
+                                isPaused = trackingMap[member.id]?.isPaused ?: false,
                             )
                         }
                     }
@@ -284,6 +293,7 @@ class MangaScreenModel(
             val needRefreshChapter = chapters.isEmpty()
 
             val linkedGroup = manageLinkedSourceGroup.getGroupForManga(mangaId, manga.source)
+            val trackingState = manageUpdateWatch.getById(mangaId)
 
             // Show what we have earlier
             mutableState.update {
@@ -295,6 +305,19 @@ class MangaScreenModel(
                     availableScanlators = getAvailableScanlators.await(mangaId),
                     excludedScanlators = getExcludedScanlators.await(mangaId),
                     linkedGroup = linkedGroup,
+                    linkedMembers = listOf(
+                        LinkedMember(
+                            manga = manga,
+                            latestChapter = chapters.firstOrNull()?.chapter?.chapterNumber,
+                            latestChapterId = chapters.firstOrNull()?.id,
+                            latestChapterDateUpload = chapters.firstOrNull()?.chapter?.dateUpload,
+                            lastRead = null, // Will be updated by flow
+                            lastReadChapterId = null,
+                            readAt = null,
+                            isTracking = trackingState != null,
+                            isPaused = trackingState?.isPaused ?: false,
+                        )
+                    ),
                     isRefreshingData = needRefreshInfo || needRefreshChapter,
                     dialog = null,
                     hideMissingChapters = libraryPreferences.hideMissingChapters.get(),
@@ -1376,6 +1399,8 @@ data class LinkedMember(
     val lastRead: Double?,
     val lastReadChapterId: Long?,
     val readAt: Long?,
+    val isTracking: Boolean = false,
+    val isPaused: Boolean = false,
 )
 
 @Immutable

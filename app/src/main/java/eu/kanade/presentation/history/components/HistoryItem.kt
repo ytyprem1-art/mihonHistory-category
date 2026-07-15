@@ -53,6 +53,7 @@ fun HistoryItem(
     subtitleBadge: @Composable (() -> Unit)? = null,
     onOverflowClick: (() -> Unit)? = null,
     overflowContent: (@Composable () -> Unit)? = null,
+    secondaryText: String? = null,
 ) {
     Surface(
         modifier = modifier
@@ -107,19 +108,23 @@ fun HistoryItem(
                     history.readAt?.toTimestampString() ?: ""
                 }
 
-                Text(
-                    text = if (history.chapterNumber > -1) {
-                        stringResource(
-                            MR.strings.recent_manga_time,
-                            formatChapterNumber(history.chapterNumber),
-                            readAt,
-                        )
-                    } else {
-                        readAt
-                    },
-                    modifier = Modifier.padding(top = 4.dp),
-                    style = textStyle,
-                )
+                val finalSecondaryText = secondaryText ?: if (history.chapterNumber > -1) {
+                    stringResource(
+                        MR.strings.recent_manga_time,
+                        formatChapterNumber(history.chapterNumber),
+                        readAt,
+                    )
+                } else {
+                    readAt
+                }
+
+                if (finalSecondaryText.isNotEmpty()) {
+                    Text(
+                        text = finalSecondaryText,
+                        modifier = Modifier.padding(top = 4.dp),
+                        style = textStyle,
+                    )
+                }
 
                 if (subtitleBadge != null) {
                     Box(modifier = Modifier.padding(top = 4.dp)) {

@@ -1,7 +1,6 @@
 package tachiyomi.domain.source.linked.repository
 
 import kotlinx.coroutines.flow.Flow
-import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.linked.model.LinkedSourceGroup
 
 interface LinkedSourceRepository {
@@ -17,6 +16,4 @@ interface LinkedSourceRepository {
     suspend fun removeMangaFromGroups(mangaId: Long, sourceId: Long)
     suspend fun removeMember(groupId: Long, mangaId: Long, sourceId: Long)
     suspend fun createAndLink(name: String, mangaId: Long)
-    suspend fun updateTrackingMangaId(groupId: Long, mangaId: Long?)
-    suspend fun updateIsPaused(groupId: Long, isPaused: Boolean)
 }

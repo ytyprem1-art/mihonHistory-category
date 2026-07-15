@@ -40,7 +40,6 @@ fun LinkedSourceDetailsScreen(
     onClickAdd: () -> Unit,
     onClickCreateHistoryGroup: () -> Unit,
     onClickSetTrackingSource: () -> Unit,
-    onClickResumeTracking: () -> Unit,
     onRefreshMember: (LinkedMember) -> Unit,
     onDeleteMember: (LinkedMember) -> Unit,
     navigateUp: () -> Unit,
@@ -66,14 +65,6 @@ fun LinkedSourceDetailsScreen(
                                     onClick = onClickSetTrackingSource,
                                 )
                             )
-                            if (group?.isPaused == true) {
-                                add(
-                                    AppBar.OverflowAction(
-                                        title = "Resume tracking",
-                                        onClick = onClickResumeTracking,
-                                    )
-                                )
-                            }
                             add(
                                 AppBar.OverflowAction(
                                     title = "Create history group",
@@ -91,22 +82,26 @@ fun LinkedSourceDetailsScreen(
         FastScrollLazyColumn(
             contentPadding = contentPadding,
         ) {
-            if (group?.trackingMangaId != null) {
+            val trackingMembers = members.filter { it.isTracking }
+            if (trackingMembers.isNotEmpty()) {
                 item {
-                    val trackingMember = members.find { it.manga.id == group.trackingMangaId }
-                    val sourceName = trackingMember?.let { sourceManager.getOrStub(it.manga.source).name } ?: "Unknown"
-                    val statusText = if (group.isPaused) " (Paused)" else " · Every 7 days"
-
                     androidx.compose.material3.Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     ) {
-                        Text(
-                            text = "Tracking: $sourceName$statusText",
-                            modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium, vertical = 8.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        androidx.compose.foundation.layout.Column(
+                            modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium, vertical = 8.dp)
+                        ) {
+                            trackingMembers.forEach { member ->
+                                val sourceName = sourceManager.getOrStub(member.manga.source).name
+                                val statusText = if (member.isPaused) " (Paused)" else ""
+                                Text(
+                                    text = "Tracking: $sourceName$statusText",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -118,7 +113,6 @@ fun LinkedSourceDetailsScreen(
                     modifier = Modifier.animateItemFastScroll(),
                     member = member,
                     isRefreshing = refreshingIds.contains(member.manga.id),
-                    isTracking = group?.trackingMangaId == member.manga.id,
                     onRefresh = { onRefreshMember(member) },
                     onDelete = { onDeleteMember(member) },
                     onClick = { onClickMember(member) },

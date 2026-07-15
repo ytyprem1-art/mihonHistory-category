@@ -16,11 +16,11 @@ import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
 import tachiyomi.domain.source.linked.model.LinkedSourceGroup
 import mihon.domain.source.interactor.UpdateMangaFromRemote
 import tachiyomi.domain.source.service.SourceManager
-import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
 import logcat.LogPriority
 import eu.kanade.tachiyomi.ui.manga.LinkedMember
 import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
+import tachiyomi.domain.history.interactor.ManageUpdateWatch
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -32,6 +32,7 @@ class LinkedSourceDetailsScreenModel(
     private val updateMangaFromRemote: UpdateMangaFromRemote = Injekt.get(),
     private val sourceManager: SourceManager = Injekt.get(),
     private val manageHistoryGroups: ManageHistoryGroups = Injekt.get(),
+    private val manageUpdateWatch: ManageUpdateWatch = Injekt.get(),
 ) : StateScreenModel<LinkedSourceDetailsScreenModel.State>(State()) {
 
     private val _events = kotlinx.coroutines.channels.Channel<Event>(kotlinx.coroutines.channels.Channel.UNLIMITED)
@@ -44,32 +45,37 @@ class LinkedSourceDetailsScreenModel(
         }
 
         screenModelScope.launchIO {
-            manageLinkedSourceGroup.subscribeMembers(groupId)
-                .flatMapLatest { members ->
-                    if (members.isEmpty()) return@flatMapLatest kotlinx.coroutines.flow.flowOf(emptyList<LinkedMember>())
+            combine(
+                manageLinkedSourceGroup.subscribeMembers(groupId),
+                manageUpdateWatch.subscribeAll(),
+            ) { members, trackedList ->
+                members to trackedList.associateBy { it.mangaId }
+            }.flatMapLatest { (members, trackingMap) ->
+                if (members.isEmpty()) return@flatMapLatest kotlinx.coroutines.flow.flowOf(emptyList<LinkedMember>())
 
-                    val flows = members.map { member ->
-                        combine(
-                            chapterRepository.getChapterByMangaIdAsFlow(member.id),
-                            historyRepository.getLatestHistoryByMangaIdAsFlow(member.id),
-                        ) { chapters, history ->
-                            val latestChapter = chapters.maxByOrNull { it.chapterNumber }
-                            LinkedMember(
-                                manga = member,
-                                latestChapter = latestChapter?.chapterNumber,
-                                latestChapterId = latestChapter?.id,
-                                latestChapterDateUpload = latestChapter?.dateUpload?.takeIf { it > 0 },
-                                lastRead = history?.chapterNumber,
-                                lastReadChapterId = history?.chapterId,
-                                readAt = history?.readAt?.time,
-                            )
-                        }
+                val flows = members.map { member ->
+                    combine(
+                        chapterRepository.getChapterByMangaIdAsFlow(member.id),
+                        historyRepository.getLatestHistoryByMangaIdAsFlow(member.id),
+                    ) { chapters, history ->
+                        val latestChapter = chapters.maxByOrNull { it.chapterNumber }
+                        LinkedMember(
+                            manga = member,
+                            latestChapter = latestChapter?.chapterNumber,
+                            latestChapterId = latestChapter?.id,
+                            latestChapterDateUpload = latestChapter?.dateUpload?.takeIf { it > 0 },
+                            lastRead = history?.chapterNumber,
+                            lastReadChapterId = history?.chapterId,
+                            readAt = history?.readAt?.time,
+                            isTracking = trackingMap.containsKey(member.id),
+                            isPaused = trackingMap[member.id]?.isPaused ?: false,
+                        )
                     }
-                    combine(flows) { it.toList() }
                 }
-                .collectLatest { members ->
-                    mutableState.update { it.copy(members = members) }
-                }
+                combine(flows) { it.toList() }
+            }.collectLatest { members ->
+                mutableState.update { it.copy(members = members) }
+            }
         }
     }
 
@@ -106,35 +112,60 @@ class LinkedSourceDetailsScreenModel(
         screenModelScope.launchIO {
             try {
                 manageLinkedSourceGroup.removeMember(groupId, mangaId, sourceId)
+                manageUpdateWatch.delete(mangaId)
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
             }
         }
     }
 
-    fun resumeTracking() {
+    fun toggleTracking(mangaId: Long) {
+        // Optimistic update
+        mutableState.update { state ->
+            state.copy(
+                members = state.members.map {
+                    if (it.manga.id == mangaId) it.copy(isTracking = !it.isTracking) else it
+                }
+            )
+        }
+
         screenModelScope.launchIO {
             try {
-                manageLinkedSourceGroup.updateIsPaused(groupId, false)
+                val current = manageUpdateWatch.getById(mangaId)
+                if (current != null) {
+                    manageUpdateWatch.delete(mangaId)
+                } else {
+                    manageUpdateWatch.updatePaused(mangaId, false)
+                }
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
+                _events.send(Event.ShowMessage(e.message ?: "Unknown error"))
+                // Revert optimistic update
+                mutableState.update { state ->
+                    state.copy(
+                        members = state.members.map {
+                            if (it.manga.id == mangaId) it.copy(isTracking = !it.isTracking) else it
+                        }
+                    )
+                }
             }
+        }
+    }
+
+    fun togglePaused(mangaId: Long) {
+        screenModelScope.launchIO {
+            val current = manageUpdateWatch.getById(mangaId) ?: return@launchIO
+            manageUpdateWatch.updatePaused(mangaId, !current.isPaused)
         }
     }
 
     fun updateTrackingSource(mangaId: Long?) {
-        screenModelScope.launchIO {
-            try {
-                manageLinkedSourceGroup.updateTrackingMangaId(groupId, mangaId)
-                dismissDialog()
-            } catch (e: Exception) {
-                logcat(LogPriority.ERROR, e)
-            }
-        }
+        if (mangaId == null) return
+        toggleTracking(mangaId)
     }
 
     fun showTrackingSourcePicker() {
-        mutableState.update { it.copy(dialog = Dialog.TrackingSourcePicker(it.members)) }
+        mutableState.update { it.copy(dialog = Dialog.TrackingSourcePicker) }
     }
 
     fun createHistoryGroup() {
@@ -193,9 +224,7 @@ class LinkedSourceDetailsScreenModel(
             val eligible: List<LinkedMember>
         ) : Dialog
 
-        data class TrackingSourcePicker(
-            val members: List<LinkedMember>,
-        ) : Dialog
+        data object TrackingSourcePicker : Dialog
     }
 
     sealed interface Event {
