@@ -186,6 +186,16 @@ class MangaScreen(
             onInvertSelection = screenModel::invertSelection,
             onLinkedSourcesClicked = { showLinkedSourcesSheet = true },
             onUpdateWatchClicked = screenModel::toggleUpdateWatch,
+            onOpenSource = { sourceId, query ->
+                navigator.push(
+                    BrowseSourceScreen(
+                        sourceId,
+                        query,
+                        successState.manga.title,
+                        java.util.UUID.randomUUID().toString()
+                    )
+                )
+            },
         )
 
         if (showLinkedSourcesSheet) {

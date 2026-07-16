@@ -22,6 +22,8 @@ fun QuickSourceSwitcherDialog(
     sources: List<Source>,
     currentSourceId: Long,
     onSourceSelected: (Source) -> Unit,
+    excludeCurrentSource: Boolean = true,
+    title: String = "Switch Source",
 ) {
     AdaptiveSheet(onDismissRequest = onDismissRequest) {
         Column(
@@ -30,7 +32,7 @@ fun QuickSourceSwitcherDialog(
                 .padding(vertical = 16.dp),
         ) {
             Text(
-                text = "Switch Source",
+                text = title,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.titleLarge,
             )
@@ -41,7 +43,7 @@ fun QuickSourceSwitcherDialog(
                     .weight(1f, fill = false),
             ) {
                 items(
-                    items = sources.filter { it.id != currentSourceId && !it.isUsedLast },
+                    items = sources.filter { (!excludeCurrentSource || it.id != currentSourceId) && !it.isUsedLast },
                     key = { it.id },
                 ) { source ->
                     BaseSourceItem(

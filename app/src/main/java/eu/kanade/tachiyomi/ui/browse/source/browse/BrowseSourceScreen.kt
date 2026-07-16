@@ -51,7 +51,13 @@ import eu.kanade.tachiyomi.ui.browse.extension.details.SourcePreferencesScreen
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreenModel.Listing
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
+import tachiyomi.domain.manga.model.Manga
+import androidx.paging.LoadState
+import androidx.compose.runtime.saveable.rememberSaveable
 import eu.kanade.tachiyomi.ui.webview.WebViewScreen
+import eu.kanade.tachiyomi.ui.mod.helper.TitleMatchHelper
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -77,6 +83,8 @@ import tachiyomi.source.local.LocalSource
 data class BrowseSourceScreen(
     val sourceId: Long,
     private val listingQuery: String?,
+    private val smartJumpTitle: String? = null,
+    private val smartJumpSessionId: String? = null,
 ) : Screen(), AssistContentScreen {
 
     private var assistUrl: String? = null
@@ -99,6 +107,33 @@ data class BrowseSourceScreen(
         val getEnabledSources: GetEnabledSources = remember { Injekt.get() }
         val sources by getEnabledSources.subscribe().collectAsState(emptyList())
         var showSourceSwitcher by remember { mutableStateOf(false) }
+
+        var hasAutoOpened by rememberSaveable(smartJumpSessionId) { mutableStateOf(false) }
+        val mangaLazyPagingItems = screenModel.mangaPagerFlowFlow.collectAsLazyPagingItems()
+
+        LaunchedEffect(mangaLazyPagingItems.loadState.refresh, smartJumpTitle) {
+            if (smartJumpTitle == null || hasAutoOpened) return@LaunchedEffect
+            if (mangaLazyPagingItems.loadState.refresh !is LoadState.NotLoading) return@LaunchedEffect
+
+            val matchesByLevel = mutableMapOf<TitleMatchHelper.MatchType, MutableList<Manga>>()
+            for (i in 0 until mangaLazyPagingItems.itemCount) {
+                val mangaFlow = mangaLazyPagingItems[i] ?: continue
+                val manga = mangaFlow.first()
+                val matchType = TitleMatchHelper.getMatchType(smartJumpTitle, manga.title)
+                if (matchType != TitleMatchHelper.MatchType.NONE) {
+                    matchesByLevel.getOrPut(matchType) { mutableListOf() }.add(manga)
+                }
+            }
+
+            // Priority: EXACT_MATCH > TITLE_MATCH
+            val bestMatches = matchesByLevel[TitleMatchHelper.MatchType.EXACT_MATCH]
+                ?: matchesByLevel[TitleMatchHelper.MatchType.TITLE_MATCH]
+
+            if (bestMatches != null && bestMatches.size == 1) {
+                hasAutoOpened = true
+                navigator.push(MangaScreen(bestMatches.first().id, true))
+            }
+        }
         // MOD END: Quick Switcher
 
         val navigateUp: () -> Unit = {
@@ -239,7 +274,7 @@ data class BrowseSourceScreen(
         ) { paddingValues ->
             BrowseSourceContent(
                 source = screenModel.source,
-                mangaList = screenModel.mangaPagerFlowFlow.collectAsLazyPagingItems(),
+                mangaList = mangaLazyPagingItems,
                 columns = screenModel.getColumnsPreference(LocalConfiguration.current.orientation),
                 displayMode = screenModel.displayMode,
                 snackbarHostState = snackbarHostState,
@@ -261,6 +296,7 @@ data class BrowseSourceScreen(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 },
+                smartJumpTitle = smartJumpTitle,
             )
         }
 
