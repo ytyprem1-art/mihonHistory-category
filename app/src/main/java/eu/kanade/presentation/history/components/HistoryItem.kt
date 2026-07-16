@@ -3,9 +3,11 @@ package eu.kanade.presentation.history.components
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
@@ -66,7 +68,8 @@ fun HistoryItem(
     ) {
         Row(
             modifier = Modifier
-                .height(HistoryItemHeight)
+                .height(IntrinsicSize.Min)
+                .heightIn(min = HistoryItemHeight)
                 .padding(
                     horizontal = MaterialTheme.padding.medium,
                     vertical = MaterialTheme.padding.small,
@@ -82,7 +85,7 @@ fun HistoryItem(
             }
 
             MangaCover.Book(
-                modifier = Modifier.fillMaxHeight(),
+                modifier = Modifier.height(HistoryItemHeight - 16.dp), // Fixed height to match normal rows
                 data = history.coverData,
                 onClick = onClickCover.takeIf { !selectionMode },
             )

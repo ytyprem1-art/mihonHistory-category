@@ -187,18 +187,30 @@ class MangaScreen(
             onLinkedSourcesClicked = { showLinkedSourcesSheet = true },
             onUpdateWatchClicked = screenModel::toggleUpdateWatch,
             onOpenSource = { sourceId, query ->
-                navigator.push(
-                    BrowseSourceScreen(
+                val currentSourceId = successState.source.id
+                if (sourceId != currentSourceId) {
+                    val title = successState.manga.title
+                    val sessionId = java.util.UUID.randomUUID().toString()
+                    val nextScreen = BrowseSourceScreen(
                         sourceId,
                         query,
-                        successState.manga.title,
-                        java.util.UUID.randomUUID().toString()
+                        title,
+                        sessionId
                     )
-                )
+                    if (fromSource) {
+                        navigator.popUntil { it is MangaScreen && !it.fromSource }
+                        navigator.push(nextScreen)
+                    } else {
+                        navigator.push(nextScreen)
+                    }
+                }
             },
         )
 
         if (showLinkedSourcesSheet) {
+            LaunchedEffect(Unit) {
+                screenModel.refreshAllLinkedSources(manual = false)
+            }
             LinkedSourcesSheet(
                 onDismissRequest = { showLinkedSourcesSheet = false },
                 onSearchSourcesClick = {
@@ -236,6 +248,7 @@ class MangaScreen(
                 onMemberRefreshClick = { member ->
                     screenModel.refreshLinkedMember(member.id)
                 },
+                onRefreshAllClick = screenModel::refreshAllLinkedSources,
                 onRenameGroupClick = screenModel::showRenameGroupDialog,
                 onDeleteGroupClick = screenModel::showDeleteGroupDialog,
                 isWideCompact = successState.isWideCompact,

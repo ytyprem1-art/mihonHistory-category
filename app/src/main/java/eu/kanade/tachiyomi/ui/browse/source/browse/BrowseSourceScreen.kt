@@ -131,7 +131,7 @@ data class BrowseSourceScreen(
 
             if (bestMatches != null && bestMatches.size == 1) {
                 hasAutoOpened = true
-                navigator.push(MangaScreen(bestMatches.first().id, true))
+                navigator.replace(MangaScreen(bestMatches.first().id, true))
             }
         }
         // MOD END: Quick Switcher

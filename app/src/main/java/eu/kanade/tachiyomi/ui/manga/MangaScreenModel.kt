@@ -1276,6 +1276,64 @@ class MangaScreenModel(
 
     private var isCreatingGroup = false
 
+    private var refreshAllJob: kotlinx.coroutines.Job? = null
+
+    fun refreshAllLinkedSources(manual: Boolean = true) {
+        val state = successState ?: return
+        val groupId = state.linkedGroup?.id ?: return
+        if (state.linkedMembers.isEmpty()) return
+        if (refreshAllJob?.isActive == true) return
+
+        if (!manual) {
+            val lastRefresh = libraryPreferences.lastLinkedSourceGroupRefresh(groupId).get()
+            val now = System.currentTimeMillis()
+            if (now - lastRefresh < 10 * 60 * 1000) return
+        }
+
+        refreshAllJob = screenModelScope.launchIO {
+            var refreshedCount = 0
+            var failedCount = 0
+
+            state.linkedMembers.forEach { member ->
+                val memberMangaId = member.manga.id
+                if (!state.refreshingIds.contains(memberMangaId)) {
+                    updateSuccessState { it.copy(refreshingIds = it.refreshingIds + memberMangaId) }
+                    try {
+                        val manga = mangaRepository.getMangaById(memberMangaId)
+                        val source = Injekt.get<SourceManager>().getOrStub(manga.source)
+                        updateMangaFromRemote(
+                            source = source,
+                            manga = manga,
+                            fetchDetails = true,
+                            fetchChapters = true,
+                            manualFetch = true,
+                        ).getOrThrow()
+                        refreshedCount++
+                    } catch (e: Exception) {
+                        logcat(LogPriority.ERROR, e)
+                        failedCount++
+                    } finally {
+                        updateSuccessState { it.copy(refreshingIds = it.refreshingIds - memberMangaId) }
+                    }
+                }
+            }
+
+            if (refreshedCount > 0) {
+                libraryPreferences.lastLinkedSourceGroupRefresh(groupId).set(System.currentTimeMillis())
+            }
+
+            val message = if (failedCount == 0) {
+                if (refreshedCount > 0) "Refreshed $refreshedCount sources" else null
+            } else {
+                "Refreshed $refreshedCount sources, $failedCount failed"
+            }
+
+            if (message != null) {
+                snackbarHostState.showSnackbar(message)
+            }
+        }
+    }
+
     fun createGroup(name: String) {
         if (isCreatingGroup) return
         isCreatingGroup = true

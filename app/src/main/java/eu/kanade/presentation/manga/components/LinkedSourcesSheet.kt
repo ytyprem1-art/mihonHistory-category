@@ -74,6 +74,7 @@ fun LinkedSourcesSheet(
     onMemberLatestClick: (mangaId: Long, chapterId: Long) -> Unit,
     onMemberRemoveClick: (Manga) -> Unit,
     onMemberRefreshClick: (Manga) -> Unit,
+    onRefreshAllClick: () -> Unit,
     onRenameGroupClick: () -> Unit,
     onDeleteGroupClick: () -> Unit,
     isWideCompact: Boolean,
@@ -129,8 +130,10 @@ fun LinkedSourcesSheet(
                     group = linkedGroup,
                     isWideCompact = isWideCompact,
                     onToggleWideCompact = onToggleWideCompact,
+                    onRefreshAll = onRefreshAllClick,
                     onRenameGroup = onRenameGroupClick,
                     onDeleteGroup = onDeleteGroupClick,
+                    isRefreshingAny = refreshingIds.isNotEmpty(),
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -203,8 +206,10 @@ private fun GroupHeader(
     group: LinkedSourceGroup,
     isWideCompact: Boolean,
     onToggleWideCompact: () -> Unit,
+    onRefreshAll: () -> Unit,
     onRenameGroup: () -> Unit,
     onDeleteGroup: () -> Unit,
+    isRefreshingAny: Boolean,
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var isExpanded by remember { mutableStateOf(false) }
@@ -251,6 +256,28 @@ private fun GroupHeader(
             modifier = Modifier.padding(start = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val infiniteTransition = rememberInfiniteTransition(label = "infinite")
+            val rotation by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart,
+                ),
+                label = "rotation",
+            )
+
+            IconButton(
+                onClick = onRefreshAll,
+                enabled = !isRefreshingAny,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = "Refresh all",
+                    modifier = if (isRefreshingAny) Modifier.rotate(rotation) else Modifier,
+                )
+            }
+
             IconButton(onClick = onToggleWideCompact) {
                 Icon(
                     imageVector = Icons.Outlined.DensityMedium,

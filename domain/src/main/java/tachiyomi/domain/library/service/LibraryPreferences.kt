@@ -206,6 +206,11 @@ class LibraryPreferences(
         "tracked_manga_sort",
         TrackedMangaSort.NewestRelease,
     )
+
+    fun lastLinkedSourceGroupRefresh(groupId: Long): Preference<Long> = preferenceStore.getLong(
+        Preference.appStateKey("last_linked_source_group_refresh_$groupId"),
+        0L,
+    )
     // endregion
 
     // region Swipe Actions
