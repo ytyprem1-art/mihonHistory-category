@@ -68,7 +68,6 @@ fun HistoryItem(
     ) {
         Row(
             modifier = Modifier
-                .height(IntrinsicSize.Min)
                 .heightIn(min = HistoryItemHeight)
                 .padding(
                     horizontal = MaterialTheme.padding.medium,

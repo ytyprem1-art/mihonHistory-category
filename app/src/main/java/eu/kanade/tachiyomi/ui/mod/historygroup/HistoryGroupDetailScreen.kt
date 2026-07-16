@@ -168,7 +168,20 @@ private fun HistoryGroupDetailScreen(
             ) {
                 items(
                     items = list,
-                    key = { "history-${it.hashCode()}" },
+                    key = { item ->
+                        when (item) {
+                            is HistoryUiModel.Header -> "header-${item.date}"
+                            is HistoryUiModel.Item -> "item-${item.item.id}"
+                            is HistoryUiModel.Group -> "group-${item.group.id}"
+                        }
+                    },
+                    contentType = { item ->
+                        when (item) {
+                            is HistoryUiModel.Header -> "header"
+                            is HistoryUiModel.Item -> "item"
+                            is HistoryUiModel.Group -> "group"
+                        }
+                    },
                 ) { item ->
                     when (item) {
                         is HistoryUiModel.Header -> {
