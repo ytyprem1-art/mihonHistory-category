@@ -8,6 +8,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.workDataOf
 import eu.kanade.tachiyomi.util.system.workManager
 import java.util.concurrent.TimeUnit
 
@@ -37,9 +38,10 @@ object UpdateWatchRefreshScheduler {
         )
     }
 
-    fun runNow(context: Context) {
+    fun runNow(context: Context, simulationMode: Int = UpdateWatchRefreshWorker.SIM_NONE) {
         val request = OneTimeWorkRequestBuilder<UpdateWatchRefreshWorker>()
             .addTag(MANUAL_WORK_NAME)
+            .setInputData(workDataOf(UpdateWatchRefreshWorker.KEY_SIMULATION_MODE to simulationMode))
             .build()
 
         context.workManager.enqueueUniqueWork(

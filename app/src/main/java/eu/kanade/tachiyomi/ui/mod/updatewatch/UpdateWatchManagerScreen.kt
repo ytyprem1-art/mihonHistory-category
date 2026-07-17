@@ -26,6 +26,7 @@ import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.presentation.util.relativeTimeSpanString
 import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
 import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshScheduler
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshWorker
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import kotlinx.coroutines.launch
 import tachiyomi.domain.history.model.HistoryWithRelations
@@ -91,12 +92,52 @@ class UpdateWatchManagerScreen : Screen() {
                                     onDismissRequest = { showDebugMenu = false },
                                 ) {
                                     DropdownMenuItem(
-                                        text = { Text("Run background refresh dry run") },
+                                        text = { Text("Run normally (dry run)") },
                                         onClick = {
-                                            UpdateWatchRefreshScheduler.runNow(context)
+                                            UpdateWatchRefreshScheduler.runNow(context, UpdateWatchRefreshWorker.SIM_NONE)
                                             showDebugMenu = false
                                             scope.launch {
                                                 screenModel.snackbarHostState.showSnackbar("Background refresh dry run started")
+                                            }
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Simulate HTTP 429") },
+                                        onClick = {
+                                            UpdateWatchRefreshScheduler.runNow(context, UpdateWatchRefreshWorker.SIM_HTTP_429)
+                                            showDebugMenu = false
+                                            scope.launch {
+                                                screenModel.snackbarHostState.showSnackbar("Simulating HTTP 429")
+                                            }
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Simulate HTTP 403 / Cloudflare") },
+                                        onClick = {
+                                            UpdateWatchRefreshScheduler.runNow(context, UpdateWatchRefreshWorker.SIM_HTTP_403)
+                                            showDebugMenu = false
+                                            scope.launch {
+                                                screenModel.snackbarHostState.showSnackbar("Simulating HTTP 403")
+                                            }
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Simulate Transient Failure") },
+                                        onClick = {
+                                            UpdateWatchRefreshScheduler.runNow(context, UpdateWatchRefreshWorker.SIM_TRANSIENT)
+                                            showDebugMenu = false
+                                            scope.launch {
+                                                screenModel.snackbarHostState.showSnackbar("Simulating Transient Failure")
+                                            }
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Simulate Ordinary Failure") },
+                                        onClick = {
+                                            UpdateWatchRefreshScheduler.runNow(context, UpdateWatchRefreshWorker.SIM_ORDINARY)
+                                            showDebugMenu = false
+                                            scope.launch {
+                                                screenModel.snackbarHostState.showSnackbar("Simulating Ordinary Failure")
                                             }
                                         },
                                     )
