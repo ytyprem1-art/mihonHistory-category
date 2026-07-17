@@ -73,7 +73,9 @@ class UpdateWatchManagerScreenModel(
                                 group = group,
                                 trackingManga = manga,
                                 latestChapter = latestChapter ?: Chapter.create().copy(chapterNumber = -1.0),
-                                daysSinceRelease = daysSinceRelease
+                                daysSinceRelease = daysSinceRelease,
+                                backgroundRefreshEnabled = tracking.backgroundRefreshEnabled,
+                                expectedIntervalDays = tracking.expectedIntervalDays,
                             )
                         }
                     }
@@ -117,6 +119,16 @@ class UpdateWatchManagerScreenModel(
         screenModelScope.launchIO {
             try {
                 manageUpdateWatch.delete(mangaId)
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+            }
+        }
+    }
+
+    fun updateBackgroundRefresh(mangaId: Long, enabled: Boolean, interval: Int) {
+        screenModelScope.launchIO {
+            try {
+                manageUpdateWatch.updateBackgroundRefresh(mangaId, enabled, interval)
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
             }

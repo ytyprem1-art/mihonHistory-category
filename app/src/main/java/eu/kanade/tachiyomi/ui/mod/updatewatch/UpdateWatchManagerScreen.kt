@@ -1,9 +1,7 @@
 package eu.kanade.tachiyomi.ui.mod.updatewatch
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -24,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -48,6 +47,15 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
+import androidx.compose.material.icons.outlined.SettingsBackupRestore
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+
 class UpdateWatchManagerScreen : Screen() {
 
     @Composable
@@ -57,6 +65,8 @@ class UpdateWatchManagerScreen : Screen() {
         val state by screenModel.state.collectAsState()
 
         val scrollState = rememberLazyListState()
+
+        var editItem by remember { mutableStateOf<UpdateWatchUiModel.Item?>(null) }
 
         LaunchedEffect(screenModel.sortMode) {
             scrollState.scrollToItem(0)
@@ -123,7 +133,19 @@ class UpdateWatchManagerScreen : Screen() {
                 scrollState = scrollState,
                 onClickManga = { navigator.push(MangaScreen(it)) },
                 onUntrack = screenModel::untrack,
+                onEditBackgroundRefresh = { editItem = it },
             )
+
+            if (editItem != null) {
+                BackgroundRefreshEditDialog(
+                    item = editItem!!,
+                    onDismissRequest = { editItem = null },
+                    onSave = { enabled, interval ->
+                        screenModel.updateBackgroundRefresh(editItem!!.trackingManga.id, enabled, interval)
+                        editItem = null
+                    }
+                )
+            }
         }
     }
 }
@@ -135,6 +157,7 @@ private fun UpdateWatchManagerContent(
     scrollState: androidx.compose.foundation.lazy.LazyListState,
     onClickManga: (Long) -> Unit,
     onUntrack: (Long) -> Unit,
+    onEditBackgroundRefresh: (UpdateWatchUiModel.Item) -> Unit,
 ) {
     val items = state.items
     if (items == null) {
@@ -203,6 +226,20 @@ private fun UpdateWatchManagerContent(
                             onDismissRequest = { showMenu = false },
                         ) {
                             DropdownMenuItem(
+                                text = { Text("Edit background refresh") },
+                                onClick = {
+                                    onEditBackgroundRefresh(item)
+                                    showMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.SettingsBackupRestore,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+
+                            DropdownMenuItem(
                                 text = { Text("Untrack") },
                                 onClick = {
                                     onUntrack(item.trackingManga.id)
@@ -222,19 +259,121 @@ private fun UpdateWatchManagerContent(
                     selectionMode = false,
                     selected = false,
                     subtitleBadge = {
-                        val ageText = if (item.daysSinceRelease >= 0) {
-                            "${item.daysSinceRelease} days since latest release"
-                        } else {
-                            "Unknown release date"
+                        Column {
+                            val ageText = if (item.daysSinceRelease >= 0) {
+                                "${item.daysSinceRelease} days since latest release"
+                            } else {
+                                "Unknown release date"
+                            }
+                            Text(
+                                text = ageText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+
+                            if (item.backgroundRefreshEnabled) {
+                                Text(
+                                    text = "Auto refresh · every ${item.expectedIntervalDays} days",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
-                        Text(
-                            text = ageText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                 )
             }
         }
     }
+}
+
+@Composable
+private fun BackgroundRefreshEditDialog(
+    item: UpdateWatchUiModel.Item,
+    onDismissRequest: () -> Unit,
+    onSave: (Boolean, Int) -> Unit,
+) {
+    var enabled by remember { mutableStateOf(item.backgroundRefreshEnabled) }
+    var interval by remember { mutableIntStateOf(item.expectedIntervalDays) }
+    var customInterval by remember { mutableStateOf(if (interval !in listOf(7, 14, 30)) interval.toString() else "") }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text("Background Refresh Settings") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("Enable background refresh")
+                    Switch(checked = enabled, onCheckedChange = { enabled = it })
+                }
+
+                if (enabled) {
+                    Text(
+                        text = "Expected update interval (days)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+
+                    listOf(7, 14, 30).forEach { preset ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    interval = preset
+                                    customInterval = ""
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = interval == preset && customInterval.isEmpty(),
+                                onClick = null
+                            )
+                            Text(
+                                text = "$preset days",
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = customInterval.isNotEmpty() || (interval !in listOf(7, 14, 30)),
+                            onClick = { if (customInterval.isEmpty()) customInterval = interval.toString() }
+                        )
+                        OutlinedTextField(
+                            value = customInterval,
+                            onValueChange = {
+                                customInterval = it.filter { c -> c.isDigit() }
+                                val newVal = customInterval.toIntOrNull()
+                                if (newVal != null && newVal > 0) {
+                                    interval = newVal
+                                }
+                            },
+                            label = { Text("Custom days") },
+                            modifier = Modifier.padding(start = 8.dp).weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onSave(enabled, interval) }) {
+                Text(stringResource(MR.strings.action_ok))
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                Text(stringResource(MR.strings.action_cancel))
+            }
+        }
+    )
 }

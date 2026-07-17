@@ -27,4 +27,8 @@ class ManageUpdateWatch(
     suspend fun delete(mangaId: Long) {
         repository.delete(mangaId)
     }
+
+    suspend fun updateBackgroundRefresh(mangaId: Long, enabled: Boolean, interval: Int) {
+        repository.updateBackgroundRefresh(mangaId, enabled, interval)
+    }
 }

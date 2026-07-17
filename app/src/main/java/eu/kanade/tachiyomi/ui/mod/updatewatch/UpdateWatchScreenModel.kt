@@ -119,5 +119,7 @@ sealed interface UpdateWatchUiModel {
         val trackingManga: Manga,
         val latestChapter: Chapter,
         val daysSinceRelease: Long,
+        val backgroundRefreshEnabled: Boolean = false,
+        val expectedIntervalDays: Int = 7,
     ) : UpdateWatchUiModel
 }
