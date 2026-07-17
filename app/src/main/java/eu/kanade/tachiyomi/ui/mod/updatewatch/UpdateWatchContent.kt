@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.util.animateItemFastScroll
 import tachiyomi.domain.history.model.HistoryWithRelations
+import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.manga.model.MangaCover
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.presentation.core.components.FastScrollLazyColumn
@@ -133,6 +134,35 @@ fun UpdateWatchContent(
                                             else -> MaterialTheme.colorScheme.error
                                         },
                                     )
+
+                                    if (item.backgroundRefreshEnabled) {
+                                        val isDue = item.daysSinceRelease >= item.expectedIntervalDays
+                                        val refreshStatus = if (!isDue) {
+                                            "Auto refresh enabled · starts in ${item.expectedIntervalDays - item.daysSinceRelease} days"
+                                        } else {
+                                            "Auto refresh active"
+                                        }
+                                        Text(
+                                            text = refreshStatus,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+
+                                        if (isDue) {
+                                            val cadence = getPlannedCadence(item.refreshProfile, item.daysSinceRelease, item.expectedIntervalDays.toLong())
+                                            Text(
+                                                text = cadence,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        } else {
+                                            Text(
+                                                text = "Expected every ${item.expectedIntervalDays} days",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         )
@@ -140,5 +170,19 @@ fun UpdateWatchContent(
                 }
             }
         }
+    }
+}
+
+private fun getPlannedCadence(profile: UpdateWatch.RefreshProfile, ageDays: Long, expectedDays: Long): String {
+    return when (profile) {
+        UpdateWatch.RefreshProfile.WEEKLY_STABLE -> {
+            if (ageDays <= expectedDays + 1) {
+                "Planned check every 1.5–2 hours"
+            } else {
+                "Planned check frequency reduced"
+            }
+        }
+        UpdateWatch.RefreshProfile.SLOW_PERIODIC -> "Planned check about twice daily"
+        UpdateWatch.RefreshProfile.RAPID_IRREGULAR -> "Planned check every 3–4 hours"
     }
 }

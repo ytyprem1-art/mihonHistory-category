@@ -18,6 +18,7 @@ import logcat.LogPriority
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
+import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
@@ -46,7 +47,7 @@ class UpdateWatchScreenModel(
                         combine(
                             getManga.subscribe(mangaId),
                             chapterRepository.getChapterByMangaIdAsFlow(mangaId),
-                            manageLinkedSourceGroup.subscribeGroupForManga(mangaId, 0L), // sourceId doesn't matter for group lookup by mangaId in this interactor's implementation usually, let's check
+                            manageLinkedSourceGroup.subscribeGroupForManga(mangaId, 0L),
                         ) { manga, chapters, group ->
                             if (manga == null || chapters.isEmpty()) return@combine null
 
@@ -62,7 +63,10 @@ class UpdateWatchScreenModel(
                                     group = group,
                                     trackingManga = manga,
                                     latestChapter = latestChapter,
-                                    daysSinceRelease = daysSinceRelease
+                                    daysSinceRelease = daysSinceRelease,
+                                    backgroundRefreshEnabled = tracking.backgroundRefreshEnabled,
+                                    expectedIntervalDays = tracking.expectedIntervalDays,
+                                    refreshProfile = tracking.refreshProfile,
                                 )
                             } else {
                                 null
@@ -121,5 +125,6 @@ sealed interface UpdateWatchUiModel {
         val daysSinceRelease: Long,
         val backgroundRefreshEnabled: Boolean = false,
         val expectedIntervalDays: Int = 7,
+        val refreshProfile: UpdateWatch.RefreshProfile = UpdateWatch.RefreshProfile.WEEKLY_STABLE,
     ) : UpdateWatchUiModel
 }

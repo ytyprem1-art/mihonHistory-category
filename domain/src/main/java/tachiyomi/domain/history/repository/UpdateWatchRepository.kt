@@ -10,5 +10,10 @@ interface UpdateWatchRepository {
     suspend fun insert(updateWatch: UpdateWatch)
     suspend fun delete(mangaId: Long)
     suspend fun updatePaused(mangaId: Long, isPaused: Boolean)
-    suspend fun updateBackgroundRefresh(mangaId: Long, enabled: Boolean, interval: Int)
+    suspend fun updateBackgroundRefresh(
+        mangaId: Long,
+        enabled: Boolean,
+        interval: Int,
+        profile: UpdateWatch.RefreshProfile
+    )
 }

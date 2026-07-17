@@ -35,6 +35,7 @@ import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import tachiyomi.domain.history.model.HistoryWithRelations
+import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.model.MangaCover
 import tachiyomi.domain.source.service.SourceManager
@@ -140,8 +141,8 @@ class UpdateWatchManagerScreen : Screen() {
                 BackgroundRefreshEditDialog(
                     item = editItem!!,
                     onDismissRequest = { editItem = null },
-                    onSave = { enabled, interval ->
-                        screenModel.updateBackgroundRefresh(editItem!!.trackingManga.id, enabled, interval)
+                    onSave = { enabled, interval, profile ->
+                        screenModel.updateBackgroundRefresh(editItem!!.trackingManga.id, enabled, interval, profile)
                         editItem = null
                     }
                 )
@@ -277,6 +278,11 @@ private fun UpdateWatchManagerContent(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
+                                Text(
+                                    text = "Profile: ${item.refreshProfile.name.replace("_", " ").lowercase().capitalize()}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     }
@@ -290,10 +296,11 @@ private fun UpdateWatchManagerContent(
 private fun BackgroundRefreshEditDialog(
     item: UpdateWatchUiModel.Item,
     onDismissRequest: () -> Unit,
-    onSave: (Boolean, Int) -> Unit,
+    onSave: (Boolean, Int, UpdateWatch.RefreshProfile) -> Unit,
 ) {
     var enabled by remember { mutableStateOf(item.backgroundRefreshEnabled) }
     var interval by remember { mutableIntStateOf(item.expectedIntervalDays) }
+    var profile by remember { mutableStateOf(item.refreshProfile) }
     var customInterval by remember { mutableStateOf(if (interval !in listOf(7, 14, 30)) interval.toString() else "") }
 
     androidx.compose.material3.AlertDialog(
@@ -325,6 +332,7 @@ private fun BackgroundRefreshEditDialog(
                                 .clickable {
                                     interval = preset
                                     customInterval = ""
+                                    profile = UpdateWatch.RefreshProfile.fromInterval(preset)
                                 },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -354,6 +362,7 @@ private fun BackgroundRefreshEditDialog(
                                 val newVal = customInterval.toIntOrNull()
                                 if (newVal != null && newVal > 0) {
                                     interval = newVal
+                                    profile = UpdateWatch.RefreshProfile.fromInterval(newVal)
                                 }
                             },
                             label = { Text("Custom days") },
@@ -362,11 +371,41 @@ private fun BackgroundRefreshEditDialog(
                             singleLine = true,
                         )
                     }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    Text(
+                        text = "Refresh Profile",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+
+                    UpdateWatch.RefreshProfile.entries.forEach { p ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { profile = p },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = profile == p,
+                                onClick = null
+                            )
+                            Text(
+                                text = when (p) {
+                                    UpdateWatch.RefreshProfile.WEEKLY_STABLE -> "Weekly stable"
+                                    UpdateWatch.RefreshProfile.SLOW_PERIODIC -> "Slow periodic"
+                                    UpdateWatch.RefreshProfile.RAPID_IRREGULAR -> "Rapid / irregular"
+                                },
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
                 }
             }
         },
         confirmButton = {
-            androidx.compose.material3.TextButton(onClick = { onSave(enabled, interval) }) {
+            androidx.compose.material3.TextButton(onClick = { onSave(enabled, interval, profile) }) {
                 Text(stringResource(MR.strings.action_ok))
             }
         },
@@ -376,4 +415,8 @@ private fun BackgroundRefreshEditDialog(
             }
         }
     )
+}
+
+private fun String.capitalize(): String {
+    return this.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
 }

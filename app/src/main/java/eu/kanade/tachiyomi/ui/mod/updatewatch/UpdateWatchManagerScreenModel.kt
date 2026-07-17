@@ -19,6 +19,7 @@ import logcat.LogPriority
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
+import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
@@ -76,6 +77,7 @@ class UpdateWatchManagerScreenModel(
                                 daysSinceRelease = daysSinceRelease,
                                 backgroundRefreshEnabled = tracking.backgroundRefreshEnabled,
                                 expectedIntervalDays = tracking.expectedIntervalDays,
+                                refreshProfile = tracking.refreshProfile,
                             )
                         }
                     }
@@ -125,10 +127,10 @@ class UpdateWatchManagerScreenModel(
         }
     }
 
-    fun updateBackgroundRefresh(mangaId: Long, enabled: Boolean, interval: Int) {
+    fun updateBackgroundRefresh(mangaId: Long, enabled: Boolean, interval: Int, profile: UpdateWatch.RefreshProfile) {
         screenModelScope.launchIO {
             try {
-                manageUpdateWatch.updateBackgroundRefresh(mangaId, enabled, interval)
+                manageUpdateWatch.updateBackgroundRefresh(mangaId, enabled, interval, profile)
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
             }

@@ -1,0 +1,6 @@
+ALTER TABLE update_watch ADD COLUMN refresh_profile TEXT NOT NULL DEFAULT 'WEEKLY_STABLE';
+
+-- Update existing rows based on expectedIntervalDays
+UPDATE update_watch SET refresh_profile = 'RAPID_IRREGULAR' WHERE expected_interval_days <= 3;
+UPDATE update_watch SET refresh_profile = 'WEEKLY_STABLE' WHERE expected_interval_days > 3 AND expected_interval_days <= 14;
+UPDATE update_watch SET refresh_profile = 'SLOW_PERIODIC' WHERE expected_interval_days > 14;
