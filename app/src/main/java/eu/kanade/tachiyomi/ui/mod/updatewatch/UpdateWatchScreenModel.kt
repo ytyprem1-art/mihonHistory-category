@@ -74,11 +74,23 @@ class UpdateWatchScreenModel(
                 .collectLatest { enrichedItems ->
                     mutableState.update { it.copy(enrichedInboxItems = enrichedItems) }
 
-                    // Auto-cleanup: remove item if all chapters are read
+                    // Auto-cleanup: remove item if all TRACKED chapters are read
                     enrichedItems.forEach { enriched ->
-                        val mangaId = enriched.item.mangaId
+                        val item = enriched.item
+                        val mangaId = item.mangaId
                         val allChapters = getChaptersByMangaId.await(mangaId)
-                        if (allChapters.isNotEmpty() && allChapters.all { it.read }) {
+
+                        // Check only the chapters that were marked as new in the inbox
+                        val trackedChapters = allChapters.filter { it.id in item.chapterIds }
+
+                        // If we have no info on tracked chapters (they might have been deleted from DB),
+                        // we'll keep it or delete if all remaining are read.
+                        // Requirement: "remove the record only after all merged detected chapters are read"
+                        // If some chapters are missing from DB, we treat them as "not unread".
+                        if (trackedChapters.isNotEmpty() && trackedChapters.all { it.read }) {
+                            manageUpdateWatchInbox.delete(mangaId)
+                        } else if (trackedChapters.isEmpty() && allChapters.isNotEmpty() && allChapters.all { it.read }) {
+                            // Fallback if tracked chapters are gone from DB but everything else is read
                             manageUpdateWatchInbox.delete(mangaId)
                         }
                     }

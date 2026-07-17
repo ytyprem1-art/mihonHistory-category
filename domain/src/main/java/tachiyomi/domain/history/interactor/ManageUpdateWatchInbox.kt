@@ -11,12 +11,15 @@ class ManageUpdateWatchInbox(
         if (existing == null) {
             repository.insert(item)
         } else {
+            val mergedChapterIds = (existing.chapterIds + item.chapterIds).distinct()
             val merged = existing.copy(
-                chapterCount = existing.chapterCount + item.chapterCount,
+                chapterCount = mergedChapterIds.size,
                 chapterRange = mergeRanges(existing.chapterRange, item.chapterRange),
                 lastFoundAt = item.lastFoundAt,
                 latestChapterId = item.latestChapterId,
                 latestChapterNumber = item.latestChapterNumber,
+                chapterIds = mergedChapterIds,
+                latestChapterUploadAt = item.latestChapterUploadAt,
             )
             repository.insert(merged)
         }
@@ -32,9 +35,7 @@ class ManageUpdateWatchInbox(
 
     private fun mergeRanges(old: String, new: String): String {
         if (old == new) return old
-        // Simple merge: "Ch. 1" + "Ch. 2" -> "Ch. 1 - 2"
-        // For now just keep it simple or use a better representation if needed.
-        // The requirement is "detected chapter count/range".
+        // Simple merge: "Ch. 1" + "Ch. 2" -> "Ch. 1, Ch. 2"
         return "$old, $new"
     }
 }

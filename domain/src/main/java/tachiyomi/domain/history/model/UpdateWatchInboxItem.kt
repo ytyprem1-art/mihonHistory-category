@@ -11,5 +11,6 @@ data class UpdateWatchInboxItem(
     val lastFoundAt: Long,
     val latestChapterId: Long,
     val latestChapterNumber: Double,
+    val chapterIds: List<Long>,
     val latestChapterUploadAt: Long = 0L,
 )

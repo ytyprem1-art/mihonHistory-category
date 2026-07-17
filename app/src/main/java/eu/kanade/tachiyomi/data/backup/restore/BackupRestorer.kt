@@ -134,6 +134,7 @@ class BackupRestorer(
                     backup.backupLinkedSourceGroups,
                     backup.backupManualHistoryGroups,
                     backup.backupUpdateWatch,
+                    backup.backupUpdateWatchInbox,
                     mangaUrlToIdMap,
                 )
                 if (skippedCount > 0) {

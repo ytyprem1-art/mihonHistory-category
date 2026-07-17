@@ -1,6 +1,9 @@
 package eu.kanade.tachiyomi.ui.mod.updatewatch.worker
 
+import android.app.ActivityManager
+import android.app.Application
 import android.content.Context
+import android.os.Build
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -17,6 +20,8 @@ object UpdateWatchRefreshScheduler {
     private const val MANUAL_WORK_NAME = "UpdateWatchRefreshManual"
 
     fun setupTask(context: Context) {
+        if (!isMainProcess(context)) return
+
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .setRequiresBatteryNotLow(true)
@@ -49,5 +54,15 @@ object UpdateWatchRefreshScheduler {
             ExistingWorkPolicy.REPLACE,
             request,
         )
+    }
+
+    private fun isMainProcess(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            context.packageName == Application.getProcessName()
+        } else {
+            val pid = android.os.Process.myPid()
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            am?.runningAppProcesses?.any { it.pid == pid && it.processName == context.packageName } == true
+        }
     }
 }

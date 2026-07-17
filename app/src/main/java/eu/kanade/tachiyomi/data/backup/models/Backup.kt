@@ -18,6 +18,7 @@ data class Backup(
     @ProtoNumber(601) var backupLinkedSourceGroups: List<BackupLinkedSourceGroup> = emptyList(),
     @ProtoNumber(602) var backupManualHistoryGroups: List<BackupManualHistoryGroup> = emptyList(),
     @ProtoNumber(603) var backupUpdateWatch: List<BackupUpdateWatch> = emptyList(),
+    @ProtoNumber(604) var backupUpdateWatchInbox: List<BackupUpdateWatchInboxItem> = emptyList(),
 )
 
 @Serializable
@@ -43,6 +44,25 @@ data class BackupManualHistoryGroup(
 data class BackupUpdateWatch(
     @ProtoNumber(1) var member: BackupModMember,
     @ProtoNumber(2) var isPaused: Boolean = false,
+    @ProtoNumber(3) var backgroundRefreshEnabled: Boolean = false,
+    @ProtoNumber(4) var expectedIntervalDays: Int = 7,
+    @ProtoNumber(5) var refreshProfile: Int = 0,
+    @ProtoNumber(6) var lastBackgroundCheckAt: Long? = null,
+)
+
+@Serializable
+data class BackupUpdateWatchInboxItem(
+    @ProtoNumber(1) var member: BackupModMember,
+    @ProtoNumber(2) var mangaTitle: String,
+    @ProtoNumber(3) var sourceName: String,
+    @ProtoNumber(4) var chapterCount: Int,
+    @ProtoNumber(5) var chapterRange: String,
+    @ProtoNumber(6) var firstFoundAt: Long,
+    @ProtoNumber(7) var lastFoundAt: Long,
+    @ProtoNumber(8) var latestChapterUrl: String,
+    @ProtoNumber(9) var latestChapterNumber: Double,
+    @ProtoNumber(10) var chapterUrls: List<String> = emptyList(),
+    @ProtoNumber(11) var latestChapterUploadAt: Long = 0L,
 )
 
 @Serializable

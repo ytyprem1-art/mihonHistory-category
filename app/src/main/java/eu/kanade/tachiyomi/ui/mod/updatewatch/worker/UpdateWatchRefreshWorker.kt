@@ -277,6 +277,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                         lastFoundAt = startTime,
                         latestChapterId = newLatest.id,
                         latestChapterNumber = newLatest.chapterNumber,
+                        chapterIds = newChapters.map { it.id }.ifEmpty { listOf(newLatest.id) },
                         latestChapterUploadAt = newLatest.dateUpload,
                     )
                     manageUpdateWatchInbox.insertOrMerge(item)

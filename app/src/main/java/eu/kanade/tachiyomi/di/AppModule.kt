@@ -35,10 +35,12 @@ import tachiyomi.data.Chapters
 import tachiyomi.data.Database
 import tachiyomi.data.DateColumnAdapter
 import tachiyomi.data.History
+import tachiyomi.data.LongListColumnAdapter
 import tachiyomi.data.Mangas
 import tachiyomi.data.MemoColumnAdapter
 import tachiyomi.data.StringListColumnAdapter
 import tachiyomi.data.UpdateStrategyColumnAdapter
+import tachiyomi.data.Update_watch_inbox
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.storage.service.StorageManager
 import tachiyomi.source.local.image.LocalCoverManager
@@ -128,6 +130,9 @@ class AppModule(val app: Application) : InjektModule {
                 ),
                 chaptersAdapter = Chapters.Adapter(
                     memoAdapter = MemoColumnAdapter,
+                ),
+                update_watch_inboxAdapter = Update_watch_inbox.Adapter(
+                    chapter_idsAdapter = LongListColumnAdapter,
                 ),
             )
         }

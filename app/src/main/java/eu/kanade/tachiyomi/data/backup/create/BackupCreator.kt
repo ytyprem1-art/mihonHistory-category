@@ -16,8 +16,9 @@ import eu.kanade.tachiyomi.data.backup.models.BackupExtensionStore
 import eu.kanade.tachiyomi.data.backup.models.BackupHistoryCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupLinkedSourceGroup
 import eu.kanade.tachiyomi.data.backup.models.BackupManualHistoryGroup
-import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatch
 import eu.kanade.tachiyomi.data.backup.models.BackupModMember
+import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatch
+import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatchInboxItem
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
 import eu.kanade.tachiyomi.data.backup.models.BackupSource
@@ -29,6 +30,8 @@ import tachiyomi.domain.history.interactor.ManageHistoryCategory
 import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
 import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
+import tachiyomi.domain.history.interactor.GetUpdateWatchInbox
+import tachiyomi.domain.chapter.repository.ChapterRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import okio.gzip
@@ -60,6 +63,8 @@ class BackupCreator(
     private val manageHistoryGroups: ManageHistoryGroups = Injekt.get(),
     private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
     private val manageUpdateWatch: ManageUpdateWatch = Injekt.get(),
+    private val getUpdateWatchInbox: GetUpdateWatchInbox = Injekt.get(),
+    private val chapterRepository: ChapterRepository = Injekt.get(),
 
     private val categoriesBackupCreator: CategoriesBackupCreator = CategoriesBackupCreator(),
     private val mangaBackupCreator: MangaBackupCreator = MangaBackupCreator(),
@@ -123,7 +128,34 @@ class BackupCreator(
                 },
                 backupUpdateWatch = manageUpdateWatch.subscribeAll().first().mapNotNull {
                     getModMember(it.mangaId)?.let { member ->
-                        BackupUpdateWatch(member, it.isPaused)
+                        BackupUpdateWatch(
+                            member = member,
+                            isPaused = it.isPaused,
+                            backgroundRefreshEnabled = it.backgroundRefreshEnabled,
+                            expectedIntervalDays = it.expectedIntervalDays,
+                            refreshProfile = it.refreshProfile.ordinal,
+                            lastBackgroundCheckAt = it.lastBackgroundCheckAt,
+                        )
+                    }
+                },
+                backupUpdateWatchInbox = getUpdateWatchInbox.subscribe().first().mapNotNull { item ->
+                    getModMember(item.mangaId)?.let { member ->
+                        val latestChapterUrl = chapterRepository.getChapterById(item.latestChapterId)?.url ?: return@mapNotNull null
+                        val chapterUrls = item.chapterIds.mapNotNull { id -> chapterRepository.getChapterById(id)?.url }
+
+                        BackupUpdateWatchInboxItem(
+                            member = member,
+                            mangaTitle = item.mangaTitle,
+                            sourceName = item.sourceName,
+                            chapterCount = item.chapterCount,
+                            chapterRange = item.chapterRange,
+                            firstFoundAt = item.firstFoundAt,
+                            lastFoundAt = item.lastFoundAt,
+                            latestChapterUrl = latestChapterUrl,
+                            latestChapterNumber = item.latestChapterNumber,
+                            chapterUrls = chapterUrls,
+                            latestChapterUploadAt = item.latestChapterUploadAt,
+                        )
                     }
                 },
             )

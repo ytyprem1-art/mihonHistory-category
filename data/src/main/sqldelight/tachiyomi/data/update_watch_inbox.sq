@@ -1,3 +1,6 @@
+import kotlin.collections.List;
+import kotlin.Long;
+
 CREATE TABLE update_watch_inbox (
     manga_id INTEGER NOT NULL PRIMARY KEY,
     manga_title TEXT NOT NULL,
@@ -9,6 +12,8 @@ CREATE TABLE update_watch_inbox (
     last_found_at INTEGER NOT NULL,
     latest_chapter_id INTEGER NOT NULL,
     latest_chapter_number REAL NOT NULL,
+    latest_chapter_upload_at INTEGER NOT NULL,
+    chapter_ids TEXT AS List<Long> NOT NULL,
     FOREIGN KEY(manga_id) REFERENCES mangas (_id) ON DELETE CASCADE
 );
 
@@ -22,12 +27,12 @@ insert:
 INSERT OR REPLACE INTO update_watch_inbox (
     manga_id, manga_title, source_id, source_name,
     chapter_count, chapter_range, first_found_at, last_found_at,
-    latest_chapter_id, latest_chapter_number
+    latest_chapter_id, latest_chapter_number, latest_chapter_upload_at, chapter_ids
 )
 VALUES (
     :mangaId, :mangaTitle, :sourceId, :sourceName,
     :chapterCount, :chapterRange, :firstFoundAt, :lastFoundAt,
-    :latestChapterId, :latestChapterNumber
+    :latestChapterId, :latestChapterNumber, :latestChapterUploadAt, :chapterIds
 );
 
 delete:

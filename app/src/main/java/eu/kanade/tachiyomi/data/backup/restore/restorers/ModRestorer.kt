@@ -3,8 +3,13 @@ package eu.kanade.tachiyomi.data.backup.restore.restorers
 import eu.kanade.tachiyomi.data.backup.models.BackupLinkedSourceGroup
 import eu.kanade.tachiyomi.data.backup.models.BackupManualHistoryGroup
 import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatch
+import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatchInboxItem
+import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
+import tachiyomi.domain.history.interactor.ManageUpdateWatchInbox
+import tachiyomi.domain.history.model.UpdateWatch
+import tachiyomi.domain.history.model.UpdateWatchInboxItem
 import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
 import tachiyomi.domain.source.linked.repository.LinkedSourceRepository
 import uy.kohesive.injekt.Injekt
@@ -15,6 +20,8 @@ class ModRestorer(
     private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
     private val manageHistoryGroups: ManageHistoryGroups = Injekt.get(),
     private val manageUpdateWatch: ManageUpdateWatch = Injekt.get(),
+    private val manageUpdateWatchInbox: ManageUpdateWatchInbox = Injekt.get(),
+    private val chapterRepository: ChapterRepository = Injekt.get(),
     private val linkedSourceRepository: LinkedSourceRepository = Injekt.get(),
 ) {
 
@@ -22,6 +29,7 @@ class ModRestorer(
         backupLinkedSourceGroups: List<BackupLinkedSourceGroup>,
         backupManualHistoryGroups: List<BackupManualHistoryGroup>,
         backupUpdateWatch: List<BackupUpdateWatch>,
+        backupUpdateWatchInbox: List<BackupUpdateWatchInboxItem>,
         mangaUrlToIdMap: Map<Pair<Long, String>, Long>,
     ): Int {
         var skippedCount = 0
@@ -73,8 +81,49 @@ class ModRestorer(
             val mangaId = mangaUrlToIdMap[watch.member.source to watch.member.url]
             if (mangaId != null) {
                 manageUpdateWatch.updatePaused(mangaId, watch.isPaused)
+
+                // Restore new fields
+                manageUpdateWatch.updateBackgroundRefresh(
+                    mangaId = mangaId,
+                    enabled = watch.backgroundRefreshEnabled,
+                    interval = watch.expectedIntervalDays,
+                    profile = UpdateWatch.RefreshProfile.entries.getOrElse(watch.refreshProfile) { UpdateWatch.RefreshProfile.WEEKLY_STABLE }
+                )
+                watch.lastBackgroundCheckAt?.let {
+                    manageUpdateWatch.updateLastBackgroundCheckAt(mangaId, it)
+                }
             } else {
                 skippedCount++
+            }
+        }
+
+        // 4. Update Watch Inbox
+        backupUpdateWatchInbox.forEach { backupItem ->
+            val mangaId = mangaUrlToIdMap[backupItem.member.source to backupItem.member.url]
+            if (mangaId != null) {
+                val latestChapterId = chapterRepository.getChapterByUrlAndMangaId(backupItem.latestChapterUrl, mangaId)?.id
+                if (latestChapterId != null) {
+                    val chapterIds = backupItem.chapterUrls.mapNotNull { url ->
+                        chapterRepository.getChapterByUrlAndMangaId(url, mangaId)?.id
+                    }
+
+                    manageUpdateWatchInbox.insertOrMerge(
+                        UpdateWatchInboxItem(
+                            mangaId = mangaId,
+                            mangaTitle = backupItem.mangaTitle,
+                            sourceId = backupItem.member.source,
+                            sourceName = backupItem.sourceName,
+                            chapterCount = backupItem.chapterCount,
+                            chapterRange = backupItem.chapterRange,
+                            firstFoundAt = backupItem.firstFoundAt,
+                            lastFoundAt = backupItem.lastFoundAt,
+                            latestChapterId = latestChapterId,
+                            latestChapterNumber = backupItem.latestChapterNumber,
+                            chapterIds = chapterIds,
+                            latestChapterUploadAt = backupItem.latestChapterUploadAt,
+                        )
+                    )
+                }
             }
         }
 

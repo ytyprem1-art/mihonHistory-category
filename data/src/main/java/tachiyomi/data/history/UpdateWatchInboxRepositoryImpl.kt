@@ -37,6 +37,8 @@ class UpdateWatchInboxRepositoryImpl(
                 lastFoundAt = item.lastFoundAt,
                 latestChapterId = item.latestChapterId,
                 latestChapterNumber = item.latestChapterNumber,
+                latestChapterUploadAt = item.latestChapterUploadAt,
+                chapterIds = item.chapterIds,
             )
         }
     }
@@ -64,6 +66,8 @@ class UpdateWatchInboxRepositoryImpl(
         lastFoundAt: Long,
         latestChapterId: Long,
         latestChapterNumber: Double,
+        latestChapterUploadAt: Long,
+        chapterIds: List<Long>,
     ): UpdateWatchInboxItem {
         return UpdateWatchInboxItem(
             mangaId = mangaId,
@@ -76,6 +80,8 @@ class UpdateWatchInboxRepositoryImpl(
             lastFoundAt = lastFoundAt,
             latestChapterId = latestChapterId,
             latestChapterNumber = latestChapterNumber,
+            latestChapterUploadAt = latestChapterUploadAt,
+            chapterIds = chapterIds,
         )
     }
 }
