@@ -79,6 +79,8 @@ import tachiyomi.presentation.core.i18n.stringResource
 class MangaScreen(
     private val mangaId: Long,
     val fromSource: Boolean = false,
+    val smartJumpSessionId: String? = null,
+    val smartJumpAnchorSourceId: Long? = null,
 ) : Screen(), AssistContentScreen {
 
     private var assistUrl: String? = null
@@ -188,21 +190,40 @@ class MangaScreen(
             onUpdateWatchClicked = screenModel::toggleUpdateWatch,
             onOpenSource = { sourceId, query ->
                 val currentSourceId = successState.source.id
-                if (sourceId != currentSourceId) {
+
+                var shouldPerformJump = true
+
+                // Handle jumping back to the original source
+                if (smartJumpSessionId != null && sourceId == smartJumpAnchorSourceId) {
+                    navigator.popUntil { it is MangaScreen && it.smartJumpSessionId == null }
+                    shouldPerformJump = false
+                }
+
+                // Handle same-source selection as no-op
+                if (shouldPerformJump && sourceId == currentSourceId) {
+                    shouldPerformJump = false
+                }
+
+                if (shouldPerformJump) {
                     val title = successState.manga.title
-                    val sessionId = java.util.UUID.randomUUID().toString()
-                    val nextScreen = BrowseSourceScreen(
-                        sourceId,
-                        query,
-                        title,
-                        sessionId
-                    )
-                    if (fromSource) {
-                        navigator.popUntil { it is MangaScreen && !it.fromSource }
-                        navigator.push(nextScreen)
-                    } else {
-                        navigator.push(nextScreen)
+                    val nextSessionId = java.util.UUID.randomUUID().toString()
+
+                    // If we are already a jump target, pop back to the anchor before pushing new jump
+                    if (smartJumpSessionId != null) {
+                        navigator.popUntil { it is MangaScreen && it.smartJumpSessionId == null }
                     }
+
+                    val anchorSourceId = if (smartJumpSessionId == null) currentSourceId else smartJumpAnchorSourceId
+
+                    navigator.push(
+                        BrowseSourceScreen(
+                            sourceId,
+                            query,
+                            title,
+                            nextSessionId,
+                            anchorSourceId
+                        )
+                    )
                 }
             },
         )

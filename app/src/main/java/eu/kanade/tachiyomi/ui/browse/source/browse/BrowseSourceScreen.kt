@@ -85,6 +85,7 @@ data class BrowseSourceScreen(
     private val listingQuery: String?,
     private val smartJumpTitle: String? = null,
     private val smartJumpSessionId: String? = null,
+    private val smartJumpAnchorSourceId: Long? = null,
 ) : Screen(), AssistContentScreen {
 
     private var assistUrl: String? = null
@@ -131,7 +132,14 @@ data class BrowseSourceScreen(
 
             if (bestMatches != null && bestMatches.size == 1) {
                 hasAutoOpened = true
-                navigator.replace(MangaScreen(bestMatches.first().id, true))
+                navigator.replace(
+                    MangaScreen(
+                        bestMatches.first().id,
+                        true,
+                        smartJumpSessionId,
+                        smartJumpAnchorSourceId
+                    )
+                )
             }
         }
         // MOD END: Quick Switcher
@@ -282,7 +290,16 @@ data class BrowseSourceScreen(
                 onWebViewClick = onWebViewClick,
                 onHelpClick = { uriHandler.openUri(Constants.URL_HELP) },
                 onLocalSourceHelpClick = onHelpClick,
-                onMangaClick = { navigator.push((MangaScreen(it.id, true))) },
+                onMangaClick = {
+                    navigator.push(
+                        MangaScreen(
+                            it.id,
+                            true,
+                            smartJumpSessionId,
+                            smartJumpAnchorSourceId
+                        )
+                    )
+                },
                 onMangaLongClick = { manga ->
                     scope.launchIO {
                         val duplicates = screenModel.getDuplicateLibraryManga(manga)
