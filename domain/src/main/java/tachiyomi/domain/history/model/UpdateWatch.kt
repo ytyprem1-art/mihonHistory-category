@@ -6,6 +6,7 @@ data class UpdateWatch(
     val backgroundRefreshEnabled: Boolean = false,
     val expectedIntervalDays: Int = 7,
     val refreshProfile: RefreshProfile = RefreshProfile.WEEKLY_STABLE,
+    val lastBackgroundCheckAt: Long? = null,
 ) {
     enum class RefreshProfile {
         WEEKLY_STABLE,

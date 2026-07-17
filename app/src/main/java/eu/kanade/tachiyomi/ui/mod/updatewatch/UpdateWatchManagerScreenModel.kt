@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.mod.updatewatch
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Immutable
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
@@ -41,6 +42,7 @@ class UpdateWatchManagerScreenModel(
 ) : StateScreenModel<UpdateWatchManagerScreenModel.State>(State()) {
 
     val sortMode by libraryPreferences.trackedMangaSort.asState(screenModelScope)
+    val snackbarHostState = SnackbarHostState()
 
     init {
         screenModelScope.launchIO {
@@ -78,6 +80,7 @@ class UpdateWatchManagerScreenModel(
                                 backgroundRefreshEnabled = tracking.backgroundRefreshEnabled,
                                 expectedIntervalDays = tracking.expectedIntervalDays,
                                 refreshProfile = tracking.refreshProfile,
+                                lastBackgroundCheckAt = tracking.lastBackgroundCheckAt,
                             )
                         }
                     }

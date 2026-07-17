@@ -75,6 +75,7 @@ class UpdateWatchScreenModel(
                                     backgroundRefreshEnabled = tracking.backgroundRefreshEnabled,
                                     expectedIntervalDays = tracking.expectedIntervalDays,
                                     refreshProfile = tracking.refreshProfile,
+                                    lastBackgroundCheckAt = tracking.lastBackgroundCheckAt,
                                 )
                             } else {
                                 null
@@ -146,5 +147,6 @@ sealed interface UpdateWatchUiModel {
         val backgroundRefreshEnabled: Boolean = false,
         val expectedIntervalDays: Int = 7,
         val refreshProfile: UpdateWatch.RefreshProfile = UpdateWatch.RefreshProfile.WEEKLY_STABLE,
+        val lastBackgroundCheckAt: Long? = null,
     ) : UpdateWatchUiModel
 }

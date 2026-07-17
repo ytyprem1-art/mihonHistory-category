@@ -4,6 +4,7 @@ CREATE TABLE update_watch (
     background_refresh_enabled INTEGER NOT NULL DEFAULT 0,
     expected_interval_days INTEGER NOT NULL DEFAULT 7,
     refresh_profile TEXT NOT NULL DEFAULT 'WEEKLY_STABLE',
+    last_background_check_at INTEGER,
     FOREIGN KEY(manga_id) REFERENCES mangas (_id) ON DELETE CASCADE
 );
 
@@ -17,8 +18,8 @@ getTrackingState:
 SELECT * FROM update_watch WHERE manga_id = :mangaId;
 
 insert:
-INSERT OR REPLACE INTO update_watch (manga_id, is_paused, background_refresh_enabled, expected_interval_days, refresh_profile)
-VALUES (:mangaId, :isPaused, :backgroundRefreshEnabled, :expectedIntervalDays, :refreshProfile);
+INSERT OR REPLACE INTO update_watch (manga_id, is_paused, background_refresh_enabled, expected_interval_days, refresh_profile, last_background_check_at)
+VALUES (:mangaId, :isPaused, :backgroundRefreshEnabled, :expectedIntervalDays, :refreshProfile, :lastBackgroundCheckAt);
 
 delete:
 DELETE FROM update_watch WHERE manga_id = :mangaId;
@@ -29,4 +30,9 @@ UPDATE update_watch SET is_paused = :isPaused WHERE manga_id = :mangaId;
 updateBackgroundRefresh:
 UPDATE update_watch
 SET background_refresh_enabled = :enabled, expected_interval_days = :interval, refresh_profile = :refreshProfile
+WHERE manga_id = :mangaId;
+
+updateLastBackgroundCheckAt:
+UPDATE update_watch
+SET last_background_check_at = :lastBackgroundCheckAt
 WHERE manga_id = :mangaId;

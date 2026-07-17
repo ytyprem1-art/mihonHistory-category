@@ -16,4 +16,5 @@ interface UpdateWatchRepository {
         interval: Int,
         profile: UpdateWatch.RefreshProfile
     )
+    suspend fun updateLastBackgroundCheckAt(mangaId: Long, timestamp: Long)
 }

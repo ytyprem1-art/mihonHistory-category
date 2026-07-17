@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.util.animateItemFastScroll
+import eu.kanade.presentation.util.relativeTimeSpanString
 import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.history.model.UpdateWatch
@@ -175,6 +176,15 @@ fun UpdateWatchContent(
                                                 text = refreshStatus,
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.primary,
+                                            )
+
+                                            val lastCheckText = item.lastBackgroundCheckAt?.let {
+                                                "Last checked ${relativeTimeSpanString(it)}"
+                                            } ?: "Not checked yet"
+                                            Text(
+                                                text = lastCheckText,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
 
                                             val cadence = eligibility.plannedCadenceLabel ?: "Expected every ${item.expectedIntervalDays} days"

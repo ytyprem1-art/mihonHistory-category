@@ -7,21 +7,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -33,8 +23,11 @@ import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.animateItemFastScroll
+import eu.kanade.presentation.util.relativeTimeSpanString
 import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshScheduler
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
+import kotlinx.coroutines.launch
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.library.service.LibraryPreferences
@@ -82,6 +75,35 @@ class UpdateWatchManagerScreen : Screen() {
                     titleContent = { Text("Tracked manga") },
                     navigateUp = navigator::pop,
                     actions = {
+                        val scope = rememberCoroutineScope()
+                        val context = LocalContext.current
+                        if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
+                            var showDebugMenu by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { showDebugMenu = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "Debug",
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showDebugMenu,
+                                    onDismissRequest = { showDebugMenu = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Run background refresh dry run") },
+                                        onClick = {
+                                            UpdateWatchRefreshScheduler.runNow(context)
+                                            showDebugMenu = false
+                                            scope.launch {
+                                                screenModel.snackbarHostState.showSnackbar("Background refresh dry run started")
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+
                         var showSortMenu by remember { mutableStateOf(false) }
                         Box {
                             IconButton(onClick = { showSortMenu = true }) {
@@ -128,6 +150,7 @@ class UpdateWatchManagerScreen : Screen() {
                     scrollBehavior = scrollBehavior,
                 )
             },
+            snackbarHost = { SnackbarHost(hostState = screenModel.snackbarHostState) },
         ) { contentPadding ->
             UpdateWatchManagerContent(
                 state = state,
@@ -288,6 +311,15 @@ private fun UpdateWatchManagerContent(
                                 )
                                 Text(
                                     text = "Profile: ${item.refreshProfile.name.replace("_", " ").lowercase().capitalize()}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+
+                                val lastCheckText = item.lastBackgroundCheckAt?.let {
+                                    "Last checked ${relativeTimeSpanString(it)}"
+                                } ?: "Not checked yet"
+                                Text(
+                                    text = lastCheckText,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

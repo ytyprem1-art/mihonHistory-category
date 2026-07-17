@@ -36,4 +36,8 @@ class ManageUpdateWatch(
     ) {
         repository.updateBackgroundRefresh(mangaId, enabled, interval, profile)
     }
+
+    suspend fun updateLastBackgroundCheckAt(mangaId: Long, timestamp: Long) {
+        repository.updateLastBackgroundCheckAt(mangaId, timestamp)
+    }
 }
