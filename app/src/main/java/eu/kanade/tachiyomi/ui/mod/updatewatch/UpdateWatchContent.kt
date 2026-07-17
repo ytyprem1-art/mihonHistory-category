@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.util.animateItemFastScroll
+import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.manga.model.MangaCover
@@ -69,10 +70,32 @@ fun UpdateWatchContent(
 
                         var showMenu by remember { mutableStateOf(false) }
 
-                        val warningText = when {
-                            item.daysSinceRelease == 6L -> "Expected update tomorrow"
-                            item.daysSinceRelease == 7L -> "Expected update around today"
-                            else -> "Update may be delayed"
+                        val warningText = if (item.backgroundRefreshEnabled) {
+                            if (item.daysSinceRelease == item.expectedIntervalDays.toLong()) {
+                                "Expected update around today"
+                            } else {
+                                "Update may be delayed"
+                            }
+                        } else {
+                            when {
+                                item.daysSinceRelease == 6L -> "Expected update tomorrow"
+                                item.daysSinceRelease == 7L -> "Expected update around today"
+                                else -> "Update may be delayed"
+                            }
+                        }
+
+                        val warningColor = if (item.backgroundRefreshEnabled) {
+                            if (item.daysSinceRelease == item.expectedIntervalDays.toLong()) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            }
+                        } else {
+                            when {
+                                item.daysSinceRelease == 6L -> MaterialTheme.colorScheme.secondary
+                                item.daysSinceRelease == 7L -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.error
+                            }
                         }
 
                         HistoryItem(
@@ -128,36 +151,36 @@ fun UpdateWatchContent(
                                     Text(
                                         text = warningText,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = when {
-                                            item.daysSinceRelease == 6L -> MaterialTheme.colorScheme.secondary
-                                            item.daysSinceRelease == 7L -> MaterialTheme.colorScheme.primary
-                                            else -> MaterialTheme.colorScheme.error
-                                        },
+                                        color = warningColor,
                                     )
 
                                     if (item.backgroundRefreshEnabled) {
-                                        val isDue = item.daysSinceRelease >= item.expectedIntervalDays
-                                        val refreshStatus = if (!isDue) {
-                                            "Auto refresh enabled · starts in ${item.expectedIntervalDays - item.daysSinceRelease} days"
-                                        } else {
-                                            "Auto refresh active"
-                                        }
-                                        Text(
-                                            text = refreshStatus,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary,
+                                        val eligibility = UpdateWatchRefreshHelper.getEligibility(
+                                            enabled = item.backgroundRefreshEnabled,
+                                            expectedIntervalDays = item.expectedIntervalDays,
+                                            refreshProfile = item.refreshProfile,
+                                            latestChapterUploadDate = item.latestChapter.dateUpload,
                                         )
 
-                                        if (isDue) {
-                                            val cadence = getPlannedCadence(item.refreshProfile, item.daysSinceRelease, item.expectedIntervalDays.toLong())
+                                        val refreshStatus = when (eligibility.status) {
+                                            UpdateWatchRefreshHelper.RefreshStatus.WAITING ->
+                                                "Auto refresh enabled · starts in ${eligibility.daysUntilDue} days"
+                                            UpdateWatchRefreshHelper.RefreshStatus.ACTIVE ->
+                                                "Auto refresh active"
+                                            else -> null
+                                        }
+
+                                        if (refreshStatus != null) {
+                                            Text(
+                                                text = refreshStatus,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+
+                                            val cadence = eligibility.plannedCadenceLabel ?: "Expected every ${item.expectedIntervalDays} days"
+
                                             Text(
                                                 text = cadence,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        } else {
-                                            Text(
-                                                text = "Expected every ${item.expectedIntervalDays} days",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
@@ -170,19 +193,5 @@ fun UpdateWatchContent(
                 }
             }
         }
-    }
-}
-
-private fun getPlannedCadence(profile: UpdateWatch.RefreshProfile, ageDays: Long, expectedDays: Long): String {
-    return when (profile) {
-        UpdateWatch.RefreshProfile.WEEKLY_STABLE -> {
-            if (ageDays <= expectedDays + 1) {
-                "Planned check every 1.5–2 hours"
-            } else {
-                "Planned check frequency reduced"
-            }
-        }
-        UpdateWatch.RefreshProfile.SLOW_PERIODIC -> "Planned check about twice daily"
-        UpdateWatch.RefreshProfile.RAPID_IRREGULAR -> "Planned check every 3–4 hours"
     }
 }

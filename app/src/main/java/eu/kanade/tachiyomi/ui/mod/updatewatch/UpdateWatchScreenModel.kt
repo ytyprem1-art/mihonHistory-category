@@ -3,11 +3,9 @@ package eu.kanade.tachiyomi.ui.mod.updatewatch
 import androidx.compose.runtime.Immutable
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import eu.kanade.tachiyomi.util.lang.toLocalDate
-import kotlinx.coroutines.flow.Flow
+import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -54,16 +52,26 @@ class UpdateWatchScreenModel(
                             val latestChapter = chapters.filter { it.dateUpload > 0 }
                                 .maxByOrNull { it.dateUpload } ?: return@combine null
 
-                            val today = LocalDate.now()
-                            val releaseDate = latestChapter.dateUpload.toLocalDate()
-                            val daysSinceRelease = ChronoUnit.DAYS.between(releaseDate, today)
+                            val eligibility = UpdateWatchRefreshHelper.getEligibility(
+                                enabled = tracking.backgroundRefreshEnabled,
+                                expectedIntervalDays = tracking.expectedIntervalDays,
+                                refreshProfile = tracking.refreshProfile,
+                                latestChapterUploadDate = latestChapter.dateUpload,
+                                today = LocalDate.now(),
+                            )
 
-                            if (daysSinceRelease >= 6) {
+                            val isVisible = if (tracking.backgroundRefreshEnabled) {
+                                eligibility.status != UpdateWatchRefreshHelper.RefreshStatus.WAITING
+                            } else {
+                                eligibility.ageDays >= 6
+                            }
+
+                            if (isVisible) {
                                 UpdateWatchUiModel.Item(
                                     group = group,
                                     trackingManga = manga,
                                     latestChapter = latestChapter,
-                                    daysSinceRelease = daysSinceRelease,
+                                    daysSinceRelease = eligibility.ageDays,
                                     backgroundRefreshEnabled = tracking.backgroundRefreshEnabled,
                                     expectedIntervalDays = tracking.expectedIntervalDays,
                                     refreshProfile = tracking.refreshProfile,
@@ -74,9 +82,21 @@ class UpdateWatchScreenModel(
                         }
                     }
                     combine(flows) { it.filterNotNull() }.map { items ->
-                        val upcoming = items.filter { it.daysSinceRelease == 6L }
-                        val dueToday = items.filter { it.daysSinceRelease == 7L }
-                        val overdue = items.filter { it.daysSinceRelease > 7L }
+                        val upcoming = items.filter { !it.backgroundRefreshEnabled && it.daysSinceRelease == 6L }
+                        val dueToday = items.filter {
+                            if (it.backgroundRefreshEnabled) {
+                                it.daysSinceRelease == it.expectedIntervalDays.toLong()
+                            } else {
+                                it.daysSinceRelease == 7L
+                            }
+                        }
+                        val overdue = items.filter {
+                            if (it.backgroundRefreshEnabled) {
+                                it.daysSinceRelease > it.expectedIntervalDays
+                            } else {
+                                it.daysSinceRelease > 7
+                            }
+                        }
 
                         mutableListOf<UpdateWatchUiModel>().apply {
                             if (upcoming.isNotEmpty()) {

@@ -33,6 +33,7 @@ import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.animateItemFastScroll
+import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.history.model.UpdateWatch
@@ -273,10 +274,17 @@ private fun UpdateWatchManagerContent(
                             )
 
                             if (item.backgroundRefreshEnabled) {
+                                val eligibility = UpdateWatchRefreshHelper.getEligibility(
+                                    enabled = item.backgroundRefreshEnabled,
+                                    expectedIntervalDays = item.expectedIntervalDays,
+                                    refreshProfile = item.refreshProfile,
+                                    latestChapterUploadDate = item.latestChapter.dateUpload,
+                                )
                                 Text(
                                     text = "Auto refresh · every ${item.expectedIntervalDays} days",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    color = if (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE)
+                                        MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
                                     text = "Profile: ${item.refreshProfile.name.replace("_", " ").lowercase().capitalize()}",
