@@ -1,0 +1,13 @@
+CREATE TABLE update_watch_inbox (
+    manga_id INTEGER NOT NULL PRIMARY KEY,
+    manga_title TEXT NOT NULL,
+    source_id INTEGER NOT NULL,
+    source_name TEXT NOT NULL,
+    chapter_count INTEGER NOT NULL,
+    chapter_range TEXT NOT NULL,
+    first_found_at INTEGER NOT NULL,
+    last_found_at INTEGER NOT NULL,
+    latest_chapter_id INTEGER NOT NULL,
+    latest_chapter_number REAL NOT NULL,
+    FOREIGN KEY(manga_id) REFERENCES mangas (_id) ON DELETE CASCADE
+);

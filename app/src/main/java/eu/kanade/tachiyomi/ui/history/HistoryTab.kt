@@ -60,6 +60,8 @@ import androidx.compose.runtime.setValue
 
 data object HistoryTab : Tab {
 
+    var openInboxOnLoad = false
+
     private val snackbarHostState = SnackbarHostState()
 
     private val resumeLastChapterReadEvent = Channel<Unit>()
@@ -89,6 +91,17 @@ data object HistoryTab : Tab {
         val state by screenModel.state.collectAsState()
         val updateWatchState by updateWatchScreenModel.state.collectAsState()
 
+        LaunchedEffect(Unit) {
+            if (openInboxOnLoad) {
+                openInboxOnLoad = false
+                screenModel.updateSelectedCategory(HistoryScreenModel.State.UPDATE_WATCH_TAB_ID)
+                // We'll need a way to trigger the sheet in HistoryScreen.
+                // I'll add a flag to HistoryScreen Model or just use the static flag again.
+                // Better: add a trigger to updateWatchScreenModel
+                updateWatchScreenModel.triggerInboxSheet()
+            }
+        }
+
         HistoryScreen(
             state = state,
             updateWatchState = updateWatchState,
@@ -103,6 +116,9 @@ data object HistoryTab : Tab {
             onClickLinkedSourceGroups = { navigator.push(LinkedSourcesScreen()) },
             onClickGroup = { navigator.push(HistoryGroupDetailScreen(it)) },
             onPauseTracking = updateWatchScreenModel::pauseTracking,
+            onDismissInboxItem = updateWatchScreenModel::dismissInboxItem,
+            onClearInboxLoadTrigger = updateWatchScreenModel::clearInboxLoadTrigger,
+            onToggleNotifications = updateWatchScreenModel::toggleNotifications,
             onClickTrackedManga = { navigator.push(UpdateWatchManagerScreen()) },
             screenModel = screenModel,
         )

@@ -74,6 +74,10 @@ import tachiyomi.domain.history.interactor.ManageUpdateWatch
 import tachiyomi.domain.history.repository.HistoryRepository
 import tachiyomi.domain.history.repository.UpdateWatchRepository
 import tachiyomi.data.history.UpdateWatchRepositoryImpl
+import tachiyomi.domain.history.repository.UpdateWatchInboxRepository
+import tachiyomi.data.history.UpdateWatchInboxRepositoryImpl
+import tachiyomi.domain.history.interactor.GetUpdateWatchInbox
+import tachiyomi.domain.history.interactor.ManageUpdateWatchInbox
 import tachiyomi.domain.history.group.repository.HistoryGroupRepository
 import tachiyomi.data.history.HistoryGroupRepositoryImpl
 import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
@@ -182,9 +186,12 @@ class DomainModule : InjektModule {
 
         addSingletonFactory<HistoryRepository> { HistoryRepositoryImpl(get()) }
         addSingletonFactory<UpdateWatchRepository> { UpdateWatchRepositoryImpl(get()) }
+        addSingletonFactory<UpdateWatchInboxRepository> { UpdateWatchInboxRepositoryImpl(get()) }
         addSingletonFactory<HistoryGroupRepository> { HistoryGroupRepositoryImpl(get()) }
         addSingletonFactory<HistoryCategoryRepository> { HistoryCategoryRepositoryImpl(get()) }
         addFactory { ManageUpdateWatch(get()) }
+        addFactory { ManageUpdateWatchInbox(get()) }
+        addFactory { GetUpdateWatchInbox(get()) }
         addFactory { ManageHistoryGroups(get()) }
         addFactory { ManageHistoryCategory(get()) }
         addFactory { GetHistory(get()) }

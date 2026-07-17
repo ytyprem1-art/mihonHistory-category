@@ -1,0 +1,37 @@
+CREATE TABLE update_watch_inbox (
+    manga_id INTEGER NOT NULL PRIMARY KEY,
+    manga_title TEXT NOT NULL,
+    source_id INTEGER NOT NULL,
+    source_name TEXT NOT NULL,
+    chapter_count INTEGER NOT NULL,
+    chapter_range TEXT NOT NULL,
+    first_found_at INTEGER NOT NULL,
+    last_found_at INTEGER NOT NULL,
+    latest_chapter_id INTEGER NOT NULL,
+    latest_chapter_number REAL NOT NULL,
+    FOREIGN KEY(manga_id) REFERENCES mangas (_id) ON DELETE CASCADE
+);
+
+getInboxItems:
+SELECT * FROM update_watch_inbox ORDER BY last_found_at DESC;
+
+getInboxItemById:
+SELECT * FROM update_watch_inbox WHERE manga_id = :mangaId;
+
+insert:
+INSERT OR REPLACE INTO update_watch_inbox (
+    manga_id, manga_title, source_id, source_name,
+    chapter_count, chapter_range, first_found_at, last_found_at,
+    latest_chapter_id, latest_chapter_number
+)
+VALUES (
+    :mangaId, :mangaTitle, :sourceId, :sourceName,
+    :chapterCount, :chapterRange, :firstFoundAt, :lastFoundAt,
+    :latestChapterId, :latestChapterNumber
+);
+
+delete:
+DELETE FROM update_watch_inbox WHERE manga_id = :mangaId;
+
+deleteAll:
+DELETE FROM update_watch_inbox;

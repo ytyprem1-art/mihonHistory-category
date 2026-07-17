@@ -155,7 +155,7 @@ object HomeScreen : Screen() {
                         tabNavigator.current = when (it) {
                             is Tab.Library -> LibraryTab
                             Tab.Updates -> UpdatesTab
-                            Tab.History -> HistoryTab
+                            is Tab.History -> HistoryTab
                             is Tab.Browse -> {
                                 if (it.toExtensions) {
                                     BrowseTab.showExtension()
@@ -167,6 +167,11 @@ object HomeScreen : Screen() {
 
                         if (it is Tab.Library && it.mangaIdToOpen != null) {
                             navigator.push(MangaScreen(it.mangaIdToOpen))
+                        }
+                        if (it is Tab.History && it.openUpdateWatchInbox) {
+                            // Logic to open inbox will be handled in HistoryTab/Screen via shared state or similar
+                            // For now, I'll use a static flag in HistoryTab to keep it simple and minimal
+                            eu.kanade.tachiyomi.ui.history.HistoryTab.openInboxOnLoad = true
                         }
                         if (it is Tab.More && it.toDownloads) {
                             navigator.push(DownloadQueueScreen)
@@ -305,7 +310,7 @@ object HomeScreen : Screen() {
     sealed interface Tab {
         data class Library(val mangaIdToOpen: Long? = null) : Tab
         data object Updates : Tab
-        data object History : Tab
+        data class History(val openUpdateWatchInbox: Boolean = false) : Tab
         data class Browse(val toExtensions: Boolean = false) : Tab
         data class More(val toDownloads: Boolean) : Tab
     }

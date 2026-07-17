@@ -207,6 +207,8 @@ class LibraryPreferences(
         TrackedMangaSort.NewestRelease,
     )
 
+    val notifyTrackedUpdates: Preference<Boolean> = preferenceStore.getBoolean("notify_tracked_updates", false)
+
     fun lastLinkedSourceGroupRefresh(groupId: Long): Preference<Long> = preferenceStore.getLong(
         Preference.appStateKey("last_linked_source_group_refresh_$groupId"),
         0L,

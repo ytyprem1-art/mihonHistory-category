@@ -9,6 +9,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.first
 import logcat.LogPriority
 import mihon.domain.source.interactor.UpdateMangaFromRemote
@@ -17,7 +19,10 @@ import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
+import tachiyomi.domain.history.interactor.ManageUpdateWatchInbox
 import tachiyomi.domain.history.model.UpdateWatch
+import tachiyomi.domain.history.model.UpdateWatchInboxItem
+import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
@@ -36,8 +41,11 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
     private val chapterRepository: ChapterRepository = Injekt.get()
     private val sourceManager: SourceManager = Injekt.get()
     private val updateMangaFromRemote: UpdateMangaFromRemote = Injekt.get()
+    private val manageUpdateWatchInbox: ManageUpdateWatchInbox = Injekt.get()
+    private val libraryPreferences: LibraryPreferences = Injekt.get()
 
     private val simulationTriggered = AtomicBoolean(false)
+    private val newlyFoundInboxItems = mutableListOf<UpdateWatchInboxItem>()
 
     override suspend fun doWork(): Result = withIOContext {
         try {
@@ -47,6 +55,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                 SIM_NONE
             }
             simulationTriggered.set(false)
+            newlyFoundInboxItems.clear()
 
             val trackedManga: List<UpdateWatch> = manageUpdateWatch.subscribeAll().first()
             val allCandidates = mutableListOf<RefreshCandidate>()
@@ -91,76 +100,79 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                 return@withIOContext Result.success()
             }
 
-            // Group by source and prioritize internally
-            val groupedBySource = allCandidates.groupBy { it.sourceId }
-                .mapValues { (_, list) -> list.sortedBy { it.lastCheckAt }.take(10) }
-                .toList()
-                .sortedBy { it.second.first().lastCheckAt } // Sources that have waited longest
+            logcat(LogPriority.INFO) { "Background refresh: Total eligible candidates found: ${allCandidates.size}" }
 
-            // Interleave sources to select up to 3 total candidates
-            val workQueue = mutableListOf<RefreshCandidate>()
-            val sourceIterators = groupedBySource.map { it.second.iterator() }
-            while (workQueue.size < 3) {
-                var addedAny = false
-                for (iterator in sourceIterators) {
-                    if (iterator.hasNext()) {
-                        workQueue.add(iterator.next())
-                        addedAny = true
-                        if (workQueue.size >= 3) break
+            // GROUP AND CAP PER SOURCE (Max 8 per source)
+            val workBySource = allCandidates.groupBy { it.sourceId }
+                .mapValues { (sourceId, list) ->
+                    val sourceName = sourceManager.getOrStub(sourceId).name
+                    val ordered = list.sortedBy { it.lastCheckAt }
+                    val capped = ordered.take(8)
+                    val deferred = if (ordered.size > 8) ordered.size - 8 else 0
+
+                    logcat(LogPriority.INFO) {
+                        "Source $sourceName: Selected ${capped.size} candidates" + (if (deferred > 0) ", deferred $deferred due to cap" else "")
                     }
+                    capped
                 }
-                if (!addedAny) break
-            }
 
-            logcat(LogPriority.INFO) { "Background refresh: Identified ${workQueue.size} candidates across ${workQueue.map { it.sourceId }.distinct().size} sources." }
+            // ORDER SOURCE QUEUES BY FAIRNESS (Source that has waited longest starts first)
+            val sortedSourceQueues = workBySource.toList()
+                .sortedBy { (_, queue) -> queue.first().lastCheckAt }
 
             val processedCount = AtomicInteger(0)
             val updatedCount = AtomicInteger(0)
             val failedCount = AtomicInteger(0)
             val stoppedQueuesCount = AtomicInteger(0)
 
-            // Process by source queue
-            val workBySource = workQueue.groupBy { it.sourceId }
+            // GLOBAL SOURCE CONCURRENCY: MAX 2
+            val sourceSemaphore = Semaphore(2)
+
             coroutineScope {
-                workBySource.values.map { sourceQueue ->
+                sortedSourceQueues.map { (sourceId, sourceQueue) ->
                     async {
-                        // Sequential processing for same source
-                        for (index in sourceQueue.indices) {
-                            val candidate = sourceQueue[index]
-                            if (index > 0) {
-                                val delayMillis = if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
-                                    Random.nextLong(5, 11) * 1000
-                                } else {
-                                    Random.nextLong(120, 301) * 1000
-                                }
-                                val sourceName = sourceManager.getOrStub(candidate.sourceId).name
-                                logcat(LogPriority.INFO) {
-                                    "Waiting ${delayMillis / 1000} seconds before next $sourceName refresh"
-                                }
-                                delay(delayMillis)
-                            }
+                        val sourceName = sourceManager.getOrStub(sourceId).name
+                        sourceSemaphore.withPermit {
+                            logcat(LogPriority.INFO) { "Source queue $sourceName acquired global concurrency slot" }
+                            try {
+                                // Sequential processing within source queue
+                                for (index in sourceQueue.indices) {
+                                    val candidate = sourceQueue[index]
+                                    if (index > 0) {
+                                        val delayMillis = if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
+                                            Random.nextLong(5, 11) * 1000
+                                        } else {
+                                            Random.nextLong(120, 301) * 1000
+                                        }
+                                        logcat(LogPriority.INFO) {
+                                            "Waiting ${delayMillis / 1000} seconds before next $sourceName refresh"
+                                        }
+                                        delay(delayMillis)
+                                    }
 
-                            val status = processCandidate(candidate, simulationMode)
-                            processedCount.incrementAndGet()
+                                    val status = processCandidate(candidate, simulationMode)
+                                    processedCount.incrementAndGet()
 
-                            when (status) {
-                                RefreshStatus.UPDATED -> updatedCount.incrementAndGet()
-                                RefreshStatus.FAILED_ORDINARY, RefreshStatus.FAILED_TRANSIENT -> failedCount.incrementAndGet()
-                                RefreshStatus.FAILED_RATE_LIMITED -> {
-                                    failedCount.incrementAndGet()
-                                    val sourceName = sourceManager.getOrStub(candidate.sourceId).name
-                                    logcat(LogPriority.WARN) { "Source $sourceName queue stopped due to rate limiting (429)." }
-                                    stoppedQueuesCount.incrementAndGet()
-                                    break // Stop this source queue
+                                    when (status) {
+                                        RefreshStatus.UPDATED -> updatedCount.incrementAndGet()
+                                        RefreshStatus.FAILED_ORDINARY, RefreshStatus.FAILED_TRANSIENT -> failedCount.incrementAndGet()
+                                        RefreshStatus.FAILED_RATE_LIMITED -> {
+                                            failedCount.incrementAndGet()
+                                            logcat(LogPriority.WARN) { "Source $sourceName queue stopped due to rate limiting (429)." }
+                                            stoppedQueuesCount.incrementAndGet()
+                                            return@withPermit // Release slot and stop this source
+                                        }
+                                        RefreshStatus.FAILED_BLOCKED -> {
+                                            failedCount.incrementAndGet()
+                                            logcat(LogPriority.WARN) { "Source $sourceName queue stopped due to protection/blocking (403/Cloudflare)." }
+                                            stoppedQueuesCount.incrementAndGet()
+                                            return@withPermit // Release slot and stop this source
+                                        }
+                                        else -> {}
+                                    }
                                 }
-                                RefreshStatus.FAILED_BLOCKED -> {
-                                    failedCount.incrementAndGet()
-                                    val sourceName = sourceManager.getOrStub(candidate.sourceId).name
-                                    logcat(LogPriority.WARN) { "Source $sourceName queue stopped due to protection/blocking (403/Cloudflare)." }
-                                    stoppedQueuesCount.incrementAndGet()
-                                    break // Stop this source queue
-                                }
-                                else -> {}
+                            } finally {
+                                logcat(LogPriority.INFO) { "Source queue $sourceName released global concurrency slot" }
                             }
                         }
                     }
@@ -169,6 +181,10 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
 
             logcat(LogPriority.INFO) {
                 "Background refresh summary: Processed ${processedCount.get()}, Updated ${updatedCount.get()}, Failed ${failedCount.get()}, Source queues stopped: ${stoppedQueuesCount.get()}"
+            }
+
+            if (newlyFoundInboxItems.isNotEmpty() && libraryPreferences.notifyTrackedUpdates.get()) {
+                UpdateWatchNotifier(applicationContext).showUpdateNotification(newlyFoundInboxItems)
             }
 
             Result.success()
@@ -229,6 +245,46 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
 
                 val foundNew = newChapters.isNotEmpty() || (newLatest != null && newLatest.id != oldLatest?.id)
 
+                if (foundNew && newLatest != null) {
+                    val range = if (newChapters.size > 1) {
+                        val sorted = newChapters.sortedBy { it.chapterNumber }
+                        val min = sorted.first().chapterNumber
+                        val max = sorted.last().chapterNumber
+
+                        val isContiguous = (max - min).toInt() == newChapters.size - 1
+                        if (isContiguous) {
+                            "Ch. ${formatChapterNumber(min)}–${formatChapterNumber(max)}"
+                        } else {
+                            // Compact list if too many
+                            if (newChapters.size > 3) {
+                                "Ch. ${formatChapterNumber(min)}, ..., ${formatChapterNumber(max)}"
+                            } else {
+                                "Ch. " + sorted.joinToString(", ") { formatChapterNumber(it.chapterNumber) }
+                            }
+                        }
+                    } else {
+                        "Ch. ${formatChapterNumber(newLatest.chapterNumber)}"
+                    }
+
+                    val item = UpdateWatchInboxItem(
+                        mangaId = manga.id,
+                        mangaTitle = manga.title,
+                        sourceId = source.id,
+                        sourceName = source.name,
+                        chapterCount = newChapters.size.coerceAtLeast(1),
+                        chapterRange = range,
+                        firstFoundAt = startTime,
+                        lastFoundAt = startTime,
+                        latestChapterId = newLatest.id,
+                        latestChapterNumber = newLatest.chapterNumber,
+                        latestChapterUploadAt = newLatest.dateUpload,
+                    )
+                    manageUpdateWatchInbox.insertOrMerge(item)
+                    synchronized(newlyFoundInboxItems) {
+                        newlyFoundInboxItems.add(item)
+                    }
+                }
+
                 logcat(LogPriority.INFO) {
                     "Refresh SUCCESS for ${candidate.title}. " +
                     "Old latest: ${oldLatest?.chapterNumber ?: "None"}, " +
@@ -282,6 +338,10 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
         }
 
         return FailureType.ORDINARY
+    }
+
+    private fun formatChapterNumber(number: Double): String {
+        return if (number % 1 == 0.0) number.toInt().toString() else number.toString()
     }
 
     private enum class RefreshStatus {

@@ -11,12 +11,17 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.core.common.util.system.logcat
 import logcat.LogPriority
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
+import tachiyomi.domain.history.interactor.GetUpdateWatchInbox
+import tachiyomi.domain.history.interactor.ManageUpdateWatchInbox
 import tachiyomi.domain.history.model.UpdateWatch
+import tachiyomi.domain.history.model.UpdateWatchInboxItem
+import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
@@ -31,9 +36,54 @@ class UpdateWatchScreenModel(
     private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
     private val getManga: GetManga = Injekt.get(),
     private val chapterRepository: ChapterRepository = Injekt.get(),
+    private val getUpdateWatchInbox: GetUpdateWatchInbox = Injekt.get(),
+    private val manageUpdateWatchInbox: ManageUpdateWatchInbox = Injekt.get(),
+    private val getChaptersByMangaId: GetChaptersByMangaId = Injekt.get(),
+    private val libraryPreferences: LibraryPreferences = Injekt.get(),
 ) : StateScreenModel<UpdateWatchScreenModel.State>(State()) {
 
     init {
+        screenModelScope.launchIO {
+            libraryPreferences.notifyTrackedUpdates.changes()
+                .collectLatest { enabled ->
+                    mutableState.update { it.copy(notificationsEnabled = enabled) }
+                }
+        }
+        screenModelScope.launchIO {
+            getUpdateWatchInbox.subscribe()
+                .flatMapLatest { inboxItems ->
+                    if (inboxItems.isEmpty()) return@flatMapLatest flowOf(emptyList<EnrichedUpdateWatchInboxItem>())
+
+                    val flows = inboxItems.map { item ->
+                        combine(
+                            getManga.subscribe(item.mangaId),
+                            chapterRepository.getChapterByMangaIdAsFlow(item.mangaId),
+                        ) { manga, chapters ->
+                            val latestChapter = chapters.find { it.id == item.latestChapterId }
+                                ?: chapters.filter { it.dateUpload > 0 }.maxByOrNull { it.dateUpload }
+
+                            EnrichedUpdateWatchInboxItem(
+                                item = item,
+                                manga = manga,
+                                latestChapter = latestChapter,
+                            )
+                        }
+                    }
+                    combine(flows) { it.toList() }
+                }
+                .collectLatest { enrichedItems ->
+                    mutableState.update { it.copy(enrichedInboxItems = enrichedItems) }
+
+                    // Auto-cleanup: remove item if all chapters are read
+                    enrichedItems.forEach { enriched ->
+                        val mangaId = enriched.item.mangaId
+                        val allChapters = getChaptersByMangaId.await(mangaId)
+                        if (allChapters.isNotEmpty() && allChapters.all { it.read }) {
+                            manageUpdateWatchInbox.delete(mangaId)
+                        }
+                    }
+                }
+        }
         screenModelScope.launchIO {
             manageUpdateWatch.subscribeAll()
                 .flatMapLatest { trackedList ->
@@ -131,11 +181,38 @@ class UpdateWatchScreenModel(
         }
     }
 
+    fun dismissInboxItem(mangaId: Long) {
+        screenModelScope.launchIO {
+            manageUpdateWatchInbox.delete(mangaId)
+        }
+    }
+
+    fun toggleNotifications(enabled: Boolean) {
+        libraryPreferences.notifyTrackedUpdates.set(enabled)
+    }
+
+    fun triggerInboxSheet() {
+        mutableState.update { it.copy(showInboxOnLoad = true) }
+    }
+
+    fun clearInboxLoadTrigger() {
+        mutableState.update { it.copy(showInboxOnLoad = false) }
+    }
+
     @Immutable
     data class State(
         val items: List<UpdateWatchUiModel>? = null,
+        val enrichedInboxItems: List<EnrichedUpdateWatchInboxItem> = emptyList(),
+        val notificationsEnabled: Boolean = false,
+        val showInboxOnLoad: Boolean = false,
     )
 }
+
+data class EnrichedUpdateWatchInboxItem(
+    val item: UpdateWatchInboxItem,
+    val manga: Manga?,
+    val latestChapter: Chapter?,
+)
 
 sealed interface UpdateWatchUiModel {
     data class Header(val title: String) : UpdateWatchUiModel

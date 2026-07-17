@@ -59,6 +59,7 @@ import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
 import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchContent
 import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchScreenModel
+import eu.kanade.tachiyomi.ui.mod.updatewatch.components.UpdateWatchInboxSheet
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.manga.model.MangaCover
 import tachiyomi.domain.source.service.SourceManager
@@ -73,6 +74,14 @@ import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
 import java.time.LocalDate
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun HistoryScreen(
@@ -89,6 +98,9 @@ fun HistoryScreen(
     onClickLinkedSourceGroups: () -> Unit,
     onClickGroup: (groupId: Long) -> Unit,
     onPauseTracking: (Long) -> Unit,
+    onDismissInboxItem: (Long) -> Unit,
+    onClearInboxLoadTrigger: () -> Unit,
+    onToggleNotifications: (Boolean) -> Unit,
     onClickTrackedManga: () -> Unit,
     screenModel: HistoryScreenModel,
 ) {
@@ -114,6 +126,16 @@ fun HistoryScreen(
         mutableMapOf()
     }
     val scrollState = scrollStates.getOrPut(state.selectedCategoryId) { LazyListState() }
+
+    var showInboxSheet by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(updateWatchState.showInboxOnLoad) {
+        if (updateWatchState.showInboxOnLoad) {
+            showInboxSheet = true
+            screenModel.updateSelectedCategory(HistoryScreenModel.State.UPDATE_WATCH_TAB_ID)
+            onClearInboxLoadTrigger()
+        }
+    }
 
     val filteredHistory = remember(state.list, state.selectedCategoryId, state.mangaToCategoryMap) {
         val history = state.list ?: emptyList()
@@ -340,6 +362,26 @@ fun HistoryScreen(
             }
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        floatingActionButton = {
+            if (state.selectedCategoryId == HistoryScreenModel.State.UPDATE_WATCH_TAB_ID) {
+                val inboxCount = updateWatchState.enrichedInboxItems.size
+                if (inboxCount > 0) {
+                    ExtendedFloatingActionButton(
+                        text = { Text("$inboxCount tracked manga found updates") },
+                        icon = { Icon(Icons.Outlined.NotificationsActive, contentDescription = null) },
+                        onClick = { showInboxSheet = true },
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                } else {
+                    FloatingActionButton(
+                        onClick = { showInboxSheet = true },
+                    ) {
+                        Icon(Icons.Outlined.Notifications, contentDescription = "Updates Inbox")
+                    }
+                }
+            }
+        }
     ) { contentPadding ->
         if (state.selectedCategoryId == HistoryScreenModel.State.UPDATE_WATCH_TAB_ID) {
             UpdateWatchContent(
@@ -348,8 +390,20 @@ fun HistoryScreen(
                 onClickManga = onClickCover,
                 onPauseTracking = onPauseTracking,
             )
+
+            if (showInboxSheet) {
+                UpdateWatchInboxSheet(
+                    items = updateWatchState.enrichedInboxItems,
+                    notificationsEnabled = updateWatchState.notificationsEnabled,
+                    onDismissRequest = { showInboxSheet = false },
+                    onClickItem = onClickCover,
+                    onDeleteItem = onDismissInboxItem,
+                    onToggleNotifications = onToggleNotifications,
+                )
+            }
             return@Scaffold
         }
+
         state.list.let {
             if (it == null) {
                 LoadingScreen(Modifier.padding(contentPadding))

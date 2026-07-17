@@ -81,6 +81,7 @@ import eu.kanade.presentation.util.DefaultNavigatorScreenTransition
 import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchNotifier
 import eu.kanade.tachiyomi.data.updater.AppUpdateChecker
 import eu.kanade.tachiyomi.extension.api.ExtensionApi
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
@@ -522,7 +523,7 @@ class MainActivity : BaseActivity() {
             )
         }
 
-        val tabToOpen = when (intent.action) {
+        val tabToOpen: HomeScreen.Tab? = when (intent.action) {
             Constants.SHORTCUT_LIBRARY -> HomeScreen.Tab.Library()
             Constants.SHORTCUT_MANGA -> {
                 val idToOpen = intent.extras?.getLong(Constants.MANGA_EXTRA) ?: return false
@@ -530,12 +531,16 @@ class MainActivity : BaseActivity() {
                 HomeScreen.Tab.Library(idToOpen)
             }
             Constants.SHORTCUT_UPDATES -> HomeScreen.Tab.Updates
-            Constants.SHORTCUT_HISTORY -> HomeScreen.Tab.History
+            Constants.SHORTCUT_HISTORY -> HomeScreen.Tab.History()
             Constants.SHORTCUT_SOURCES -> HomeScreen.Tab.Browse(false)
             Constants.SHORTCUT_EXTENSIONS -> HomeScreen.Tab.Browse(true)
             Constants.SHORTCUT_DOWNLOADS -> {
                 navigator.popUntilRoot()
                 HomeScreen.Tab.More(toDownloads = true)
+            }
+            UpdateWatchNotifier.SHORTCUT_UPDATE_WATCH -> {
+                navigator.popUntilRoot()
+                HomeScreen.Tab.History(openUpdateWatchInbox = true)
             }
             Intent.ACTION_APPLICATION_PREFERENCES -> {
                 navigator.popUntilRoot()
