@@ -80,18 +80,35 @@ private fun PageOne(onNext: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
     ) {
         Text(
-            text = "Auto Refresh checks tracked manga around the time they are expected to update.",
+            text = "What Auto Refresh does",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = "Auto Refresh checks selected tracked manga around the time they are expected to update.",
             style = MaterialTheme.typography.bodyLarge
         )
 
         BulletItem("Upcoming manga are not checked yet.")
-        BulletItem("Manga near their expected update day are checked more often.")
+        BulletItem("Manga close to their expected update day are checked more often.")
         BulletItem("If no update is found, checks gradually slow down.")
         BulletItem("Weekly manga enter a faster checking window again during the next weekly cycle.")
         BulletItem("Rapid-update series use a faster schedule.")
         BulletItem("Older inactive series are checked less often.")
-        BulletItem("You may enable Auto Refresh for as many manga as you want.")
-        BulletItem("Some manga may wait for a later background run when many titles from one source are due together.")
+        BulletItem("Users may track as many manga as they want.")
+        BulletItem("When many titles from one source are eligible together, some may wait for a later background run.")
+
+        Text(
+            text = "How this differs from standard Mihon",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = "Standard Mihon does not perform this per-manga Auto Refresh behavior in the background.\n\nNormally, chapter updates are found when you manually refresh or when Mihon performs its regular update flow.\n\nUpdate Watch Auto Refresh adds optional background checks for selected manga based on their expected update timing.",
+            style = MaterialTheme.typography.bodyMedium
+        )
 
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -143,7 +160,7 @@ private fun PageOne(onNext: () -> Unit) {
                         modifier = Modifier.padding(top = 4.dp)
                     )
                     Text(
-                        text = "Learn why some manga are checked first and why others may wait.",
+                        text = "Learn why some manga are checked first, why others may wait, and how Auto Refresh can affect battery usage.",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -164,8 +181,9 @@ private fun PageTwo() {
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
     ) {
         Text(
-            text = "To keep background activity light and avoid being blocked by sources, the following limits are applied per background run:",
-            style = MaterialTheme.typography.bodyLarge
+            text = "Check priority",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
         )
 
         PriorityBucketItem(
@@ -175,7 +193,7 @@ private fun PageTwo() {
         )
         PriorityBucketItem(
             name = "WARM",
-            description = "Manga slightly past the expected update window. Checked after HOT manga.",
+            description = "Manga slightly past its most likely update window. Checked after HOT manga.",
             limit = UpdateWatchRefreshHelper.CAP_WARM
         )
         PriorityBucketItem(
@@ -185,14 +203,14 @@ private fun PageTwo() {
         )
         PriorityBucketItem(
             name = "STALE",
-            description = "Manga with no update for a long time. Lowest queue priority. Reaching a stale age does not disable Auto Refresh automatically.",
+            description = "Manga with no update for a long time. Lowest queue priority outside its recurring fast window. Auto Refresh is not disabled automatically. You may receive an inbox warning asking whether Auto Refresh should continue.",
             limit = UpdateWatchRefreshHelper.CAP_STALE
         )
 
         HorizontalDivider()
 
         Text(
-            text = "Source Limits",
+            text = "Per-source limits",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
@@ -200,18 +218,56 @@ private fun PageTwo() {
         BulletItem("Maximum per source: ${UpdateWatchRefreshHelper.CAP_TOTAL} manga per run")
         BulletItem("Maximum active sources: ${UpdateWatchRefreshHelper.GLOBAL_CONCURRENCY} at the same time")
 
-        Spacer(modifier = Modifier.height(8.dp))
-
         Text(
-            text = "These limits are not a limit on how many manga you may track. Manga that do not fit in the current run remain eligible and will be reconsidered later.",
+            text = "These limits are not a limit on how many manga you can track. Manga that do not fit in the current run remain eligible and will be reconsidered during a later background run.",
             style = MaterialTheme.typography.bodyMedium
         )
 
         Text(
-            text = "Limits reduce rate limiting, temporary blocks, and protection errors. HOT manga are always prioritized before WARM, COLD, and STALE manga.",
+            text = "HOT candidates are always selected before WARM, COLD, and STALE candidates. Manga from the same source are checked one by one. Different sources may run concurrently, with staggered starts to avoid a sudden burst of requests.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        Text(
+            text = "Limits help reduce rate limits, temporary blocks, and protection errors.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        HorizontalDivider()
+
+        Text(
+            text = "Battery and background activity",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = "Standard Mihon does not perform this per-manga background checking behavior.\n\nWhen Auto Refresh is enabled, this mod may wake in the background, connect to sources, and check chapter lists even when the app is not open.\n\nEnabling Auto Refresh for more manga may increase background activity, network usage, and battery consumption—especially when many manga become eligible at the same time.",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Text(
+            text = "Recommendations:",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        BulletItem("Enable Auto Refresh only for manga you actively follow.")
+        BulletItem("Use slower profiles for manga that update infrequently.")
+        BulletItem("Disable Auto Refresh for completed or inactive series.")
+
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Auto Refresh uses cooldowns, priority limits, staggered source starts, and per-source queues to reduce unnecessary activity.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(MaterialTheme.padding.medium)
+            )
+        }
     }
 }
 
