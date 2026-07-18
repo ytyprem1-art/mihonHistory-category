@@ -15,40 +15,43 @@ class UpdateWatchRepositoryImpl(
 ) : UpdateWatchRepository {
 
     override fun subscribeAll(): Flow<List<UpdateWatch>> {
-        return database.update_watchQueries.getTrackedManga { mangaId, isPaused, enabled, interval, profile, lastCheck ->
+        return database.update_watchQueries.getTrackedManga { mangaId, isPaused, enabled, interval, profile, lastCheck, lastMilestone ->
             UpdateWatch(
                 mangaId = mangaId,
                 isPaused = isPaused == 1L,
                 backgroundRefreshEnabled = enabled == 1L,
                 expectedIntervalDays = interval.toInt(),
                 refreshProfile = UpdateWatch.RefreshProfile.valueOf(profile),
-                lastBackgroundCheckAt = lastCheck
+                lastBackgroundCheckAt = lastCheck,
+                lastWarnedMilestone = lastMilestone.toInt()
             )
         }.subscribeToList()
     }
 
     override suspend fun getAll(): List<UpdateWatch> {
-        return database.update_watchQueries.getTrackedManga { mangaId, isPaused, enabled, interval, profile, lastCheck ->
+        return database.update_watchQueries.getTrackedManga { mangaId, isPaused, enabled, interval, profile, lastCheck, lastMilestone ->
             UpdateWatch(
                 mangaId = mangaId,
                 isPaused = isPaused == 1L,
                 backgroundRefreshEnabled = enabled == 1L,
                 expectedIntervalDays = interval.toInt(),
                 refreshProfile = UpdateWatch.RefreshProfile.valueOf(profile),
-                lastBackgroundCheckAt = lastCheck
+                lastBackgroundCheckAt = lastCheck,
+                lastWarnedMilestone = lastMilestone.toInt()
             )
         }.awaitAsList()
     }
 
     override suspend fun getById(mangaId: Long): UpdateWatch? {
-        return database.update_watchQueries.getTrackingState(mangaId) { mId, isPaused, enabled, interval, profile, lastCheck ->
+        return database.update_watchQueries.getTrackingState(mangaId) { mId, isPaused, enabled, interval, profile, lastCheck, lastMilestone ->
             UpdateWatch(
                 mangaId = mId,
                 isPaused = isPaused == 1L,
                 backgroundRefreshEnabled = enabled == 1L,
                 expectedIntervalDays = interval.toInt(),
                 refreshProfile = UpdateWatch.RefreshProfile.valueOf(profile),
-                lastBackgroundCheckAt = lastCheck
+                lastBackgroundCheckAt = lastCheck,
+                lastWarnedMilestone = lastMilestone.toInt()
             )
         }.awaitAsOneOrNull()
     }
@@ -61,7 +64,8 @@ class UpdateWatchRepositoryImpl(
                 if (updateWatch.backgroundRefreshEnabled) 1L else 0L,
                 updateWatch.expectedIntervalDays.toLong(),
                 updateWatch.refreshProfile.name,
-                updateWatch.lastBackgroundCheckAt
+                updateWatch.lastBackgroundCheckAt,
+                updateWatch.lastWarnedMilestone.toLong()
             )
         }
     }
@@ -97,6 +101,18 @@ class UpdateWatchRepositoryImpl(
     override suspend fun updateLastBackgroundCheckAt(mangaId: Long, timestamp: Long) {
         database.transaction {
             database.update_watchQueries.updateLastBackgroundCheckAt(timestamp, mangaId)
+        }
+    }
+
+    override suspend fun updateStaleMilestone(mangaId: Long, milestone: Int) {
+        database.transaction {
+            database.update_watchQueries.updateStaleMilestone(milestone.toLong(), mangaId)
+        }
+    }
+
+    override suspend fun resetStaleMilestone(mangaId: Long) {
+        database.transaction {
+            database.update_watchQueries.resetStaleMilestone(mangaId)
         }
     }
 }

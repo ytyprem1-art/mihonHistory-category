@@ -60,6 +60,7 @@ import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
 import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchContent
 import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchScreenModel
 import eu.kanade.tachiyomi.ui.mod.updatewatch.components.UpdateWatchInboxSheet
+import tachiyomi.domain.history.model.UpdateWatchInboxItem
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.manga.model.MangaCover
 import tachiyomi.domain.source.service.SourceManager
@@ -99,6 +100,7 @@ fun HistoryScreen(
     onClickGroup: (groupId: Long) -> Unit,
     onPauseTracking: (Long) -> Unit,
     onDismissInboxItem: (Long) -> Unit,
+    onDisableAutoRefresh: (Long) -> Unit,
     onClearInboxLoadTrigger: () -> Unit,
     onToggleNotifications: (Boolean) -> Unit,
     onClickTrackedManga: () -> Unit,
@@ -366,8 +368,18 @@ fun HistoryScreen(
             if (state.selectedCategoryId == HistoryScreenModel.State.UPDATE_WATCH_TAB_ID) {
                 val inboxCount = updateWatchState.enrichedInboxItems.size
                 if (inboxCount > 0) {
+                    val updateCount = updateWatchState.enrichedInboxItems.count { it.item.type == UpdateWatchInboxItem.TYPE_UPDATE }
+                    val warningCount = updateWatchState.enrichedInboxItems.count { it.item.type == UpdateWatchInboxItem.TYPE_INACTIVITY_WARNING }
+
+                    val text = when {
+                        updateCount > 0 && warningCount > 0 -> "$updateCount updates, $warningCount warnings"
+                        updateCount > 0 -> if (updateCount == 1) "1 update found" else "$updateCount updates found"
+                        warningCount > 0 -> if (warningCount == 1) "1 inactivity warning" else "$warningCount inactivity warnings"
+                        else -> "$inboxCount items in inbox"
+                    }
+
                     ExtendedFloatingActionButton(
-                        text = { Text("$inboxCount tracked manga found updates") },
+                        text = { Text(text) },
                         icon = { Icon(Icons.Outlined.NotificationsActive, contentDescription = null) },
                         onClick = { showInboxSheet = true },
                         containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -398,6 +410,7 @@ fun HistoryScreen(
                     onDismissRequest = { showInboxSheet = false },
                     onClickItem = onClickCover,
                     onDeleteItem = onDismissInboxItem,
+                    onDisableAutoRefresh = onDisableAutoRefresh,
                     onToggleNotifications = onToggleNotifications,
                 )
             }

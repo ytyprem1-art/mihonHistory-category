@@ -117,6 +117,7 @@ data object HistoryTab : Tab {
             onClickGroup = { navigator.push(HistoryGroupDetailScreen(it)) },
             onPauseTracking = updateWatchScreenModel::pauseTracking,
             onDismissInboxItem = updateWatchScreenModel::dismissInboxItem,
+            onDisableAutoRefresh = updateWatchScreenModel::disableAutoRefresh,
             onClearInboxLoadTrigger = updateWatchScreenModel::clearInboxLoadTrigger,
             onToggleNotifications = updateWatchScreenModel::toggleNotifications,
             onClickTrackedManga = { navigator.push(UpdateWatchManagerScreen()) },

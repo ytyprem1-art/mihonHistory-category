@@ -20,6 +20,8 @@ import logcat.LogPriority
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
+import tachiyomi.domain.history.interactor.ManageUpdateWatchInbox
+import tachiyomi.domain.history.model.UpdateWatchInboxItem
 import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetManga
@@ -34,6 +36,7 @@ import java.time.temporal.ChronoUnit
 
 class UpdateWatchManagerScreenModel(
     private val manageUpdateWatch: ManageUpdateWatch = Injekt.get(),
+    private val manageUpdateWatchInbox: ManageUpdateWatchInbox = Injekt.get(),
     private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
     private val getManga: GetManga = Injekt.get(),
     private val chapterRepository: ChapterRepository = Injekt.get(),
@@ -134,6 +137,33 @@ class UpdateWatchManagerScreenModel(
         screenModelScope.launchIO {
             try {
                 manageUpdateWatch.updateBackgroundRefresh(mangaId, enabled, interval, profile)
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+            }
+        }
+    }
+
+    fun simulateInactivityWarning(item: UpdateWatchUiModel.Item, milestone: Int) {
+        screenModelScope.launchIO {
+            try {
+                val source = sourceManager.getOrStub(item.trackingManga.source)
+                val inboxItem = UpdateWatchInboxItem(
+                    mangaId = item.trackingManga.id,
+                    mangaTitle = item.trackingManga.title,
+                    sourceId = source.id,
+                    sourceName = source.name,
+                    chapterCount = 0,
+                    chapterRange = "",
+                    firstFoundAt = System.currentTimeMillis(),
+                    lastFoundAt = System.currentTimeMillis(),
+                    latestChapterId = 0,
+                    latestChapterNumber = 0.0,
+                    chapterIds = emptyList(),
+                    type = UpdateWatchInboxItem.TYPE_INACTIVITY_WARNING,
+                    milestone = milestone
+                )
+                manageUpdateWatchInbox.insertOrMerge(inboxItem)
+                snackbarHostState.showSnackbar("Simulated $milestone-day warning for ${item.trackingManga.title}")
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
             }

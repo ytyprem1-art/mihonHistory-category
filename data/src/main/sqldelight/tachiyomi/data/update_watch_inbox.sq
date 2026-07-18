@@ -14,6 +14,8 @@ CREATE TABLE update_watch_inbox (
     latest_chapter_number REAL NOT NULL,
     latest_chapter_upload_at INTEGER NOT NULL,
     chapter_ids TEXT AS List<Long> NOT NULL,
+    type INTEGER NOT NULL DEFAULT 0,
+    milestone INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY(manga_id) REFERENCES mangas (_id) ON DELETE CASCADE
 );
 
@@ -27,12 +29,14 @@ insert:
 INSERT OR REPLACE INTO update_watch_inbox (
     manga_id, manga_title, source_id, source_name,
     chapter_count, chapter_range, first_found_at, last_found_at,
-    latest_chapter_id, latest_chapter_number, latest_chapter_upload_at, chapter_ids
+    latest_chapter_id, latest_chapter_number, latest_chapter_upload_at, chapter_ids,
+    type, milestone
 )
 VALUES (
     :mangaId, :mangaTitle, :sourceId, :sourceName,
     :chapterCount, :chapterRange, :firstFoundAt, :lastFoundAt,
-    :latestChapterId, :latestChapterNumber, :latestChapterUploadAt, :chapterIds
+    :latestChapterId, :latestChapterNumber, :latestChapterUploadAt, :chapterIds,
+    :type, :milestone
 );
 
 delete:

@@ -13,4 +13,11 @@ data class UpdateWatchInboxItem(
     val latestChapterNumber: Double,
     val chapterIds: List<Long>,
     val latestChapterUploadAt: Long = 0L,
-)
+    val type: Int = TYPE_UPDATE,
+    val milestone: Int = 0,
+) {
+    companion object {
+        const val TYPE_UPDATE = 0
+        const val TYPE_INACTIVITY_WARNING = 1
+    }
+}

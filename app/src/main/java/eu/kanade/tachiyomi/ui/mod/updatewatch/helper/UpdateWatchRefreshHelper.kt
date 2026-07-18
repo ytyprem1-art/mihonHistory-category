@@ -7,6 +7,18 @@ import java.time.temporal.ChronoUnit
 
 object UpdateWatchRefreshHelper {
 
+    const val CAP_HOT = 12
+    const val CAP_WARM = 8
+    const val CAP_COLD = 8
+    const val CAP_STALE = 4
+    const val CAP_TOTAL = 20
+    const val GLOBAL_CONCURRENCY = 4
+
+    const val STAGGER_DEBUG_MIN_MS = 3000L
+    const val STAGGER_DEBUG_MAX_MS = 8000L
+    const val STAGGER_RELEASE_MIN_MS = 30000L
+    const val STAGGER_RELEASE_MAX_MS = 90000L
+
     enum class RefreshStatus {
         WAITING,
         ACTIVE,

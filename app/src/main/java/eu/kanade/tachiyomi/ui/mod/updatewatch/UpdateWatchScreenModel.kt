@@ -77,6 +77,8 @@ class UpdateWatchScreenModel(
                     // Auto-cleanup: remove item if all TRACKED chapters are read
                     enrichedItems.forEach { enriched ->
                         val item = enriched.item
+                        if (item.type != UpdateWatchInboxItem.TYPE_UPDATE) return@forEach
+
                         val mangaId = item.mangaId
                         val allChapters = getChaptersByMangaId.await(mangaId)
 
@@ -196,6 +198,25 @@ class UpdateWatchScreenModel(
     fun dismissInboxItem(mangaId: Long) {
         screenModelScope.launchIO {
             manageUpdateWatchInbox.delete(mangaId)
+        }
+    }
+
+    fun disableAutoRefresh(mangaId: Long) {
+        screenModelScope.launchIO {
+            try {
+                val tracking = manageUpdateWatch.getById(mangaId)
+                if (tracking != null) {
+                    manageUpdateWatch.updateBackgroundRefresh(
+                        mangaId,
+                        enabled = false,
+                        interval = tracking.expectedIntervalDays,
+                        profile = tracking.refreshProfile
+                    )
+                }
+                manageUpdateWatchInbox.delete(mangaId)
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+            }
         }
     }
 

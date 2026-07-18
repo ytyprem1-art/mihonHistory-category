@@ -28,6 +28,9 @@ import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
 import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshScheduler
 import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshWorker
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
+import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import eu.kanade.tachiyomi.ui.mod.updatewatch.components.UpdateWatchHelpSheet
 import kotlinx.coroutines.launch
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.history.model.UpdateWatch
@@ -63,6 +66,7 @@ class UpdateWatchManagerScreen : Screen() {
         val scrollState = rememberLazyListState()
 
         var editItem by remember { mutableStateOf<UpdateWatchUiModel.Item?>(null) }
+        var showHelpSheet by remember { mutableStateOf(false) }
 
         LaunchedEffect(screenModel.sortMode) {
             scrollState.scrollToItem(0)
@@ -145,6 +149,13 @@ class UpdateWatchManagerScreen : Screen() {
                             }
                         }
 
+                        IconButton(onClick = { showHelpSheet = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                                contentDescription = "How it works",
+                            )
+                        }
+
                         var showSortMenu by remember { mutableStateOf(false) }
                         Box {
                             IconButton(onClick = { showSortMenu = true }) {
@@ -200,6 +211,8 @@ class UpdateWatchManagerScreen : Screen() {
                 onClickManga = { navigator.push(MangaScreen(it)) },
                 onUntrack = screenModel::untrack,
                 onEditBackgroundRefresh = { editItem = it },
+                onShowHelp = { showHelpSheet = true },
+                screenModel = screenModel,
             )
 
             if (editItem != null) {
@@ -209,7 +222,14 @@ class UpdateWatchManagerScreen : Screen() {
                     onSave = { enabled, interval, profile ->
                         screenModel.updateBackgroundRefresh(editItem!!.trackingManga.id, enabled, interval, profile)
                         editItem = null
-                    }
+                    },
+                    onShowHelp = { showHelpSheet = true }
+                )
+            }
+
+            if (showHelpSheet) {
+                UpdateWatchHelpSheet(
+                    onDismissRequest = { showHelpSheet = false }
                 )
             }
         }
@@ -224,6 +244,8 @@ private fun UpdateWatchManagerContent(
     onClickManga: (Long) -> Unit,
     onUntrack: (Long) -> Unit,
     onEditBackgroundRefresh: (UpdateWatchUiModel.Item) -> Unit,
+    onShowHelp: () -> Unit,
+    screenModel: UpdateWatchManagerScreenModel,
 ) {
     val items = state.items
     if (items == null) {
@@ -243,6 +265,26 @@ private fun UpdateWatchManagerContent(
             contentPadding = contentPadding,
             state = scrollState,
         ) {
+            item(key = "help-header") {
+                androidx.compose.material3.ListItem(
+                    modifier = Modifier.clickable(onClick = onShowHelp),
+                    headlineContent = { Text("How Auto Refresh works") },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                            contentDescription = null,
+                        )
+                    },
+                    trailingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowForwardIos,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                )
+            }
+
             items(
                 items = items,
                 key = { "tracked-${it.trackingManga.id}" }
@@ -253,6 +295,7 @@ private fun UpdateWatchManagerContent(
                 }
 
                 var showMenu by remember { mutableStateOf(false) }
+                var showDebugMilestoneMenu by remember { mutableStateOf(false) }
 
                 HistoryItem(
                     modifier = Modifier
@@ -318,6 +361,40 @@ private fun UpdateWatchManagerContent(
                                     )
                                 }
                             )
+
+                            if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text("Debug: Sim inactivity") },
+                                    onClick = {
+                                        showDebugMilestoneMenu = true
+                                        showMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.MoreVert,
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                            }
+                        }
+
+                        if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
+                            DropdownMenu(
+                                expanded = showDebugMilestoneMenu,
+                                onDismissRequest = { showDebugMilestoneMenu = false },
+                            ) {
+                                listOf(28, 56, 84).forEach { milestone ->
+                                    DropdownMenuItem(
+                                        text = { Text("$milestone days") },
+                                        onClick = {
+                                            screenModel.simulateInactivityWarning(item, milestone)
+                                            showDebugMilestoneMenu = false
+                                        }
+                                    )
+                                }
+                            }
                         }
                     },
                     onClickFavorite = { /* unused */ },
@@ -378,6 +455,7 @@ private fun BackgroundRefreshEditDialog(
     item: UpdateWatchUiModel.Item,
     onDismissRequest: () -> Unit,
     onSave: (Boolean, Int, UpdateWatch.RefreshProfile) -> Unit,
+    onShowHelp: () -> Unit,
 ) {
     var enabled by remember { mutableStateOf(item.backgroundRefreshEnabled) }
     var interval by remember { mutableIntStateOf(item.expectedIntervalDays) }
@@ -396,6 +474,27 @@ private fun BackgroundRefreshEditDialog(
                 ) {
                     Text("Enable background refresh")
                     Switch(checked = enabled, onCheckedChange = { enabled = it })
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onShowHelp)
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = "How Auto Refresh works",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                 }
 
                 if (enabled) {

@@ -94,6 +94,32 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                         )
                     }
                 }
+
+                // CHECK FOR INACTIVITY WARNING MILESTONES (28, 56, 84...)
+                if (tracking.backgroundRefreshEnabled && eligibility.isStale) {
+                    val daysOver = eligibility.ageDays - tracking.expectedIntervalDays
+                    val milestone = ((daysOver / 28) * 28).toInt()
+                    if (milestone >= 28 && milestone > tracking.lastWarnedMilestone) {
+                        manageUpdateWatchInbox.insertOrMerge(
+                            UpdateWatchInboxItem(
+                                mangaId = manga.id,
+                                mangaTitle = manga.title,
+                                sourceId = manga.source,
+                                sourceName = sourceManager.getOrStub(manga.source).name,
+                                chapterCount = 0,
+                                chapterRange = "",
+                                firstFoundAt = System.currentTimeMillis(),
+                                lastFoundAt = System.currentTimeMillis(),
+                                latestChapterId = 0,
+                                latestChapterNumber = 0.0,
+                                chapterIds = emptyList(),
+                                type = UpdateWatchInboxItem.TYPE_INACTIVITY_WARNING,
+                                milestone = milestone
+                            )
+                        )
+                        manageUpdateWatch.updateStaleMilestone(manga.id, milestone)
+                    }
+                }
             }
 
             if (allCandidates.isEmpty()) {
@@ -116,24 +142,24 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                     val selected = mutableListOf<RefreshCandidate>()
 
                     // Add HOT up to CAP_HOT
-                    selected.addAll(hotEligible.take(CAP_HOT))
+                    selected.addAll(hotEligible.take(UpdateWatchRefreshHelper.CAP_HOT))
 
                     // Add WARM up to CAP_WARM, keeping total under CAP_TOTAL
-                    val remainingTotal = CAP_TOTAL - selected.size
+                    val remainingTotal = UpdateWatchRefreshHelper.CAP_TOTAL - selected.size
                     if (remainingTotal > 0) {
-                        selected.addAll(warmEligible.take(minOf(CAP_WARM, remainingTotal)))
+                        selected.addAll(warmEligible.take(minOf(UpdateWatchRefreshHelper.CAP_WARM, remainingTotal)))
                     }
 
                     // Add COLD up to CAP_COLD, keeping total under CAP_TOTAL
-                    val remainingTotal2 = CAP_TOTAL - selected.size
+                    val remainingTotal2 = UpdateWatchRefreshHelper.CAP_TOTAL - selected.size
                     if (remainingTotal2 > 0) {
-                        selected.addAll(coldEligible.take(minOf(CAP_COLD, remainingTotal2)))
+                        selected.addAll(coldEligible.take(minOf(UpdateWatchRefreshHelper.CAP_COLD, remainingTotal2)))
                     }
 
                     // Add STALE up to CAP_STALE, keeping total under CAP_TOTAL
-                    val remainingTotal3 = CAP_TOTAL - selected.size
+                    val remainingTotal3 = UpdateWatchRefreshHelper.CAP_TOTAL - selected.size
                     if (remainingTotal3 > 0) {
-                        selected.addAll(staleEligible.take(minOf(CAP_STALE, remainingTotal3)))
+                        selected.addAll(staleEligible.take(minOf(UpdateWatchRefreshHelper.CAP_STALE, remainingTotal3)))
                     }
 
                     val deferred = list.size - selected.size
@@ -162,16 +188,31 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
             val failedCount = AtomicInteger(0)
             val stoppedQueuesCount = AtomicInteger(0)
 
-            // GLOBAL SOURCE CONCURRENCY: MAX 2
-            val sourceSemaphore = Semaphore(2)
+            // GLOBAL SOURCE CONCURRENCY
+            val sourceSemaphore = Semaphore(UpdateWatchRefreshHelper.GLOBAL_CONCURRENCY)
+            val sourcesStartedCount = AtomicInteger(0)
 
             coroutineScope {
                 sortedSourceQueues.map { (sourceId, sourceQueue) ->
                     async {
                         val sourceName = sourceManager.getOrStub(sourceId).name
+                        logcat(LogPriority.INFO) { "Source queue $sourceName waiting for global concurrency slot" }
                         sourceSemaphore.withPermit {
                             logcat(LogPriority.INFO) { "Source queue $sourceName acquired global concurrency slot" }
                             try {
+                                val startedIndex = sourcesStartedCount.getAndIncrement()
+                                if (startedIndex > 0) {
+                                    val staggerMillis = if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
+                                        Random.nextLong(UpdateWatchRefreshHelper.STAGGER_DEBUG_MIN_MS, UpdateWatchRefreshHelper.STAGGER_DEBUG_MAX_MS + 1)
+                                    } else {
+                                        Random.nextLong(UpdateWatchRefreshHelper.STAGGER_RELEASE_MIN_MS, UpdateWatchRefreshHelper.STAGGER_RELEASE_MAX_MS + 1)
+                                    }
+                                    logcat(LogPriority.INFO) { "Source queue $sourceName staggered start: waiting ${staggerMillis / 1000}s" }
+                                    delay(staggerMillis)
+                                }
+
+                                logcat(LogPriority.INFO) { "Source queue $sourceName actually starting" }
+
                                 // Sequential processing within source queue
                                 for (index in sourceQueue.indices) {
                                     val candidate = sourceQueue[index]
@@ -318,6 +359,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                         latestChapterUploadAt = newLatest.dateUpload,
                     )
                     manageUpdateWatchInbox.insertOrMerge(item)
+                    manageUpdateWatch.resetStaleMilestone(manga.id)
                     synchronized(newlyFoundInboxItems) {
                         newlyFoundInboxItems.add(item)
                     }
@@ -410,11 +452,5 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
         const val SIM_HTTP_403 = 2
         const val SIM_TRANSIENT = 3
         const val SIM_ORDINARY = 4
-
-        private const val CAP_HOT = 12
-        private const val CAP_WARM = 8
-        private const val CAP_COLD = 8
-        private const val CAP_STALE = 4
-        private const val CAP_TOTAL = 20
     }
 }

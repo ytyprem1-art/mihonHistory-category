@@ -39,6 +39,8 @@ class UpdateWatchInboxRepositoryImpl(
                 latestChapterNumber = item.latestChapterNumber,
                 latestChapterUploadAt = item.latestChapterUploadAt,
                 chapterIds = item.chapterIds,
+                type = item.type.toLong(),
+                milestone = item.milestone.toLong(),
             )
         }
     }
@@ -68,6 +70,8 @@ class UpdateWatchInboxRepositoryImpl(
         latestChapterNumber: Double,
         latestChapterUploadAt: Long,
         chapterIds: List<Long>,
+        type: Long,
+        milestone: Long,
     ): UpdateWatchInboxItem {
         return UpdateWatchInboxItem(
             mangaId = mangaId,
@@ -82,6 +86,8 @@ class UpdateWatchInboxRepositoryImpl(
             latestChapterNumber = latestChapterNumber,
             latestChapterUploadAt = latestChapterUploadAt,
             chapterIds = chapterIds,
+            type = type.toInt(),
+            milestone = milestone.toInt(),
         )
     }
 }

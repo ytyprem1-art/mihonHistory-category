@@ -1,0 +1,3 @@
+ALTER TABLE update_watch ADD COLUMN last_warned_milestone INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE update_watch_inbox ADD COLUMN type INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE update_watch_inbox ADD COLUMN milestone INTEGER NOT NULL DEFAULT 0;

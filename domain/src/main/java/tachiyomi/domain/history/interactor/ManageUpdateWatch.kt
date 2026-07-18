@@ -44,4 +44,12 @@ class ManageUpdateWatch(
     suspend fun updateLastBackgroundCheckAt(mangaId: Long, timestamp: Long) {
         repository.updateLastBackgroundCheckAt(mangaId, timestamp)
     }
+
+    suspend fun updateStaleMilestone(mangaId: Long, milestone: Int) {
+        repository.updateStaleMilestone(mangaId, milestone)
+    }
+
+    suspend fun resetStaleMilestone(mangaId: Long) {
+        repository.resetStaleMilestone(mangaId)
+    }
 }
