@@ -126,7 +126,7 @@ class BackupCreator(
                         }
                     )
                 },
-                backupUpdateWatch = manageUpdateWatch.subscribeAll().first().mapNotNull {
+                backupUpdateWatch = manageUpdateWatch.getAll().mapNotNull {
                     getModMember(it.mangaId)?.let { member ->
                         BackupUpdateWatch(
                             member = member,
@@ -138,7 +138,7 @@ class BackupCreator(
                         )
                     }
                 },
-                backupUpdateWatchInbox = getUpdateWatchInbox.subscribe().first().mapNotNull { item ->
+                backupUpdateWatchInbox = getUpdateWatchInbox.await().mapNotNull { item ->
                     getModMember(item.mangaId)?.let { member ->
                         val latestChapterUrl = chapterRepository.getChapterById(item.latestChapterId)?.url ?: return@mapNotNull null
                         val chapterUrls = item.chapterIds.mapNotNull { id -> chapterRepository.getChapterById(id)?.url }

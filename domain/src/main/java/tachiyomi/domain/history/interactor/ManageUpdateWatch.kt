@@ -11,6 +11,10 @@ class ManageUpdateWatch(
         return repository.subscribeAll()
     }
 
+    suspend fun getAll(): List<UpdateWatch> {
+        return repository.getAll()
+    }
+
     suspend fun getById(mangaId: Long): UpdateWatch? {
         return repository.getById(mangaId)
     }

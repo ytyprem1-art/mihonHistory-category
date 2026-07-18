@@ -91,6 +91,30 @@ private object DatabaseSchema : SqlSchema<QueryResult.AsyncValue<Unit>> {
                     driver.execute(null, "ALTER TABLE linked_source_members RENAME COLUMN source_id TO manga_id", 0).await()
                 }
             }
+
+            if (oldVersion <= 24 && newVersion >= 25) {
+                val inboxColumns = driver.executeQuery(
+                    identifier = null,
+                    sql = "PRAGMA table_info(update_watch_inbox)",
+                    mapper = { cursor ->
+                        QueryResult.AsyncValue {
+                            val columns = mutableSetOf<String>()
+                            while (cursor.next().await()) {
+                                columns.add(cursor.getString(1)!!)
+                            }
+                            columns
+                        }
+                    },
+                    parameters = 0,
+                ).await()
+
+                if (!inboxColumns.contains("latest_chapter_upload_at")) {
+                    driver.execute(null, "ALTER TABLE update_watch_inbox ADD COLUMN latest_chapter_upload_at INTEGER NOT NULL DEFAULT 0", 0).await()
+                }
+                if (!inboxColumns.contains("chapter_ids")) {
+                    driver.execute(null, "ALTER TABLE update_watch_inbox ADD COLUMN chapter_ids TEXT NOT NULL DEFAULT ''", 0).await()
+                }
+            }
         }
     }
 }
