@@ -55,8 +55,11 @@ import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import eu.kanade.presentation.util.animateItemFastScroll
+import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
+import eu.kanade.tachiyomi.ui.mod.components.HistoryAppBarActions
+import eu.kanade.tachiyomi.ui.mod.components.HistorySearchExpandedActions
 import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchContent
 import eu.kanade.tachiyomi.ui.mod.updatewatch.UpdateWatchScreenModel
 import eu.kanade.tachiyomi.ui.mod.updatewatch.components.UpdateWatchInboxSheet
@@ -74,6 +77,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
 import java.time.LocalDate
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
@@ -128,6 +132,24 @@ fun HistoryScreen(
         mutableMapOf()
     }
     val scrollState = scrollStates.getOrPut(state.selectedCategoryId) { LazyListState() }
+
+    val onCancelSelection = { screenModel.toggleSelectionMode() }
+    val onCancelSearch = { onSearchQueryChange(null) }
+
+    var searchActionsExpanded by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(state.searchQuery, state.selectedCategoryId) {
+        if (state.searchQuery == null) {
+            searchActionsExpanded = false
+        }
+    }
+
+    BackHandler(enabled = state.selectionMode || state.searchQuery != null) {
+        if (state.selectionMode) {
+            onCancelSelection()
+        } else {
+            onCancelSearch()
+        }
+    }
 
     var showInboxSheet by remember { mutableStateOf(false) }
 
@@ -254,81 +276,103 @@ fun HistoryScreen(
                             )
                         },
                         isActionMode = true,
-                        onCancelActionMode = { screenModel.toggleSelectionMode() },
+                        onCancelActionMode = onCancelSelection,
                         scrollBehavior = scrollBehavior,
                     )
                 } else {
+                    val trackedMangaText = "Tracked manga"
+                    val manageCategoryText = androidStringResource(R.string.history_categories_manage)
+                    val linkedGroupsText = "Linked source groups"
+                    val selectText = androidStringResource(R.string.history_select)
+                    val createCategoryText = androidStringResource(R.string.history_categories_create)
+                    val clearHistoryText = stringResource(MR.strings.pref_clear_history)
+
+                    val actions = remember(state.selectedCategoryId, state.historyCategories) {
+                        val list = mutableListOf<AppBar.Action>()
+
+                        if (state.selectedCategoryId == HistoryScreenModel.State.UPDATE_WATCH_TAB_ID) {
+                            list.add(
+                                AppBar.Action(
+                                    title = trackedMangaText,
+                                    icon = Icons.AutoMirrored.Outlined.ListAlt,
+                                    onClick = onClickTrackedManga,
+                                )
+                            )
+                        }
+
+                        // Tombol Edit Kategori (Hanya muncul jika bukan tab "Semua")
+                        if (state.selectedCategoryId != 0L) {
+                            state.historyCategories.find { it.id == state.selectedCategoryId }?.let { category ->
+                                list.add(
+                                    AppBar.Action(
+                                        title = manageCategoryText,
+                                        icon = Icons.Outlined.Settings,
+                                        onClick = {
+                                            onDialogChange(HistoryScreenModel.Dialog.ManageHistoryCategory(category))
+                                        },
+                                    )
+                                )
+                            }
+                        }
+
+                        list.add(
+                            AppBar.Action(
+                                title = linkedGroupsText,
+                                icon = Icons.Outlined.CollectionsBookmark,
+                                onClick = onClickLinkedSourceGroups,
+                            )
+                        )
+
+                        list.add(
+                            AppBar.Action(
+                                title = selectText,
+                                icon = Icons.Outlined.Checklist,
+                                onClick = { screenModel.toggleSelectionMode() },
+                            )
+                        )
+
+                        list.add(
+                            AppBar.Action(
+                                title = createCategoryText,
+                                icon = Icons.Outlined.Create,
+                                onClick = {
+                                    onDialogChange(HistoryScreenModel.Dialog.CreateHistoryCategory)
+                                },
+                            )
+                        )
+
+                        list.add(
+                            AppBar.Action(
+                                title = clearHistoryText,
+                                icon = Icons.Outlined.DeleteSweep,
+                                onClick = {
+                                    onDialogChange(HistoryScreenModel.Dialog.DeleteAll)
+                                },
+                            ),
+                        )
+                        list
+                    }
+
                     SearchToolbar(
                         titleContent = { AppBarTitle(stringResource(MR.strings.history)) },
                         searchQuery = state.searchQuery,
                         onChangeSearchQuery = onSearchQueryChange,
+                        onClickCloseSearch = onCancelSearch,
                         actions = {
-                            val actions = mutableListOf<AppBar.Action>()
-
-                            if (state.selectedCategoryId == HistoryScreenModel.State.UPDATE_WATCH_TAB_ID) {
-                                actions.add(
-                                    AppBar.Action(
-                                        title = "Tracked manga",
-                                        icon = Icons.AutoMirrored.Outlined.ListAlt,
-                                        onClick = onClickTrackedManga,
-                                    )
-                                )
-                            }
-
-                            // Tombol Edit Kategori (Hanya muncul jika bukan tab "Semua")
-                            if (state.selectedCategoryId != 0L) {
-                                state.historyCategories.find { it.id == state.selectedCategoryId }?.let { category ->
-                                    actions.add(
-                                        AppBar.Action(
-                                            title = androidStringResource(R.string.history_categories_manage),
-                                            icon = Icons.Outlined.Settings,
-                                            onClick = {
-                                                onDialogChange(HistoryScreenModel.Dialog.ManageHistoryCategory(category))
-                                            },
-                                        )
-                                    )
-                                }
-                            }
-
-                            actions.add(
-                                AppBar.Action(
-                                    title = "Linked source groups",
-                                    icon = Icons.Outlined.CollectionsBookmark,
-                                    onClick = onClickLinkedSourceGroups,
-                                )
+                            HistoryAppBarActions(
+                                actions = actions,
+                                isSearchActive = state.searchQuery != null,
+                                isTabletUi = isTabletUi(),
+                                isExpanded = searchActionsExpanded,
+                                onToggleExpand = { searchActionsExpanded = !searchActionsExpanded },
                             )
-
-                            actions.add(
-                                AppBar.Action(
-                                    title = androidStringResource(R.string.history_select),
-                                    icon = Icons.Outlined.Checklist,
-                                    onClick = { screenModel.toggleSelectionMode() },
-                                )
-                            )
-
-                            actions.add(
-                                AppBar.Action(
-                                    title = androidStringResource(R.string.history_categories_create),
-                                    icon = Icons.Outlined.Create,
-                                    onClick = {
-                                        onDialogChange(HistoryScreenModel.Dialog.CreateHistoryCategory)
-                                    },
-                                )
-                            )
-
-                            actions.add(
-                                AppBar.Action(
-                                    title = stringResource(MR.strings.pref_clear_history),
-                                    icon = Icons.Outlined.DeleteSweep,
-                                    onClick = {
-                                        onDialogChange(HistoryScreenModel.Dialog.DeleteAll)
-                                    },
-                                ),
-                            )
-
-                            AppBarActions(actions)
                         },
                         scrollBehavior = scrollBehavior,
+                    )
+
+                    HistorySearchExpandedActions(
+                        actions = actions,
+                        isVisible = state.searchQuery != null && !isTabletUi() && searchActionsExpanded,
                     )
                 }
 
