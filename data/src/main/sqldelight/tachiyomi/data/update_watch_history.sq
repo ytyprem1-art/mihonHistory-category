@@ -1,0 +1,51 @@
+CREATE TABLE update_watch_history (
+    manga_id INTEGER NOT NULL,
+    timestamp INTEGER NOT NULL,
+    success INTEGER NOT NULL,
+    new_chapters INTEGER NOT NULL,
+    category TEXT NOT NULL,
+    detail TEXT,
+    PRIMARY KEY (manga_id, timestamp),
+    FOREIGN KEY(manga_id) REFERENCES mangas (_id) ON DELETE CASCADE
+);
+
+CREATE INDEX update_watch_history_manga_id_timestamp_idx ON update_watch_history(manga_id, timestamp);
+
+insert:
+INSERT INTO update_watch_history (manga_id, timestamp, success, new_chapters, category, detail)
+VALUES (:mangaId, :timestamp, :success, :newChapters, :category, :detail);
+
+getLatestByMangaId:
+SELECT *
+FROM update_watch_history
+WHERE manga_id = :mangaId
+ORDER BY timestamp DESC
+LIMIT 1;
+
+getLatest5ByMangaId:
+SELECT *
+FROM update_watch_history
+WHERE manga_id = :mangaId
+ORDER BY timestamp DESC
+LIMIT 5;
+
+getLatestByMangaIds:
+SELECT *
+FROM update_watch_history
+WHERE (manga_id, timestamp) IN (
+    SELECT manga_id, MAX(timestamp)
+    FROM update_watch_history
+    WHERE manga_id IN :mangaIds
+    GROUP BY manga_id
+);
+
+deleteOldest:
+DELETE FROM update_watch_history
+WHERE manga_id = :mangaId
+AND timestamp NOT IN (
+    SELECT timestamp
+    FROM update_watch_history
+    WHERE manga_id = :mangaId
+    ORDER BY timestamp DESC
+    LIMIT 5
+);

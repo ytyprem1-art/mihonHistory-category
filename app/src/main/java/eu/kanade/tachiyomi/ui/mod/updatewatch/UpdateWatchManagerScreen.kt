@@ -17,7 +17,6 @@ import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.icerock.moko.resources.StringResource
-import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.history.components.HistoryItem
@@ -32,6 +31,11 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import eu.kanade.tachiyomi.ui.mod.updatewatch.components.UpdateWatchHelpSheet
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Error
+import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.library.service.LibraryPreferences
@@ -47,7 +51,14 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
 import androidx.compose.material.icons.outlined.SettingsBackupRestore
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.HorizontalDivider
+import tachiyomi.domain.history.model.UpdateWatchHistory
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.mutableIntStateOf
@@ -266,7 +277,7 @@ private fun UpdateWatchManagerContent(
             state = scrollState,
         ) {
             item(key = "help-header") {
-                androidx.compose.material3.ListItem(
+                ListItem(
                     modifier = Modifier.clickable(onClick = onShowHelp),
                     headlineContent = { Text("How Auto Refresh works") },
                     leadingContent = {
@@ -296,157 +307,309 @@ private fun UpdateWatchManagerContent(
 
                 var showMenu by remember { mutableStateOf(false) }
                 var showDebugMilestoneMenu by remember { mutableStateOf(false) }
+                var expanded by remember { mutableStateOf(false) }
 
-                HistoryItem(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateItemFastScroll(),
-                    history = HistoryWithRelations(
-                        id = 0,
-                        mangaId = item.trackingManga.id,
-                        chapterId = item.latestChapter.id,
-                        title = item.group?.name ?: item.trackingManga.title,
-                        chapterNumber = item.latestChapter.chapterNumber,
-                        readAt = if (item.latestChapter.dateUpload > 0) java.util.Date(item.latestChapter.dateUpload) else null,
-                        readDuration = 0,
-                        coverData = MangaCover(
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    HistoryItem(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateItemFastScroll(),
+                        history = HistoryWithRelations(
+                            id = 0,
                             mangaId = item.trackingManga.id,
-                            sourceId = item.trackingManga.source,
-                            isMangaFavorite = item.trackingManga.favorite,
-                            url = item.trackingManga.thumbnailUrl,
-                            lastModified = item.trackingManga.coverLastModified,
-                        )
-                    ),
-                    secondaryText = run {
-                        val ch = if (item.latestChapter.chapterNumber >= 0) {
-                            "Ch. ${eu.kanade.presentation.util.formatChapterNumber(item.latestChapter.chapterNumber)}"
-                        } else {
-                            "No chapters"
-                        }
-                        "$ch · $sourceName"
-                    },
-                    onClickCover = { onClickManga(item.trackingManga.id) },
-                    onClickResume = { onClickManga(item.trackingManga.id) },
-                    onClickDelete = null,
-                    onOverflowClick = { showMenu = true },
-                    overflowContent = {
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Edit background refresh") },
-                                onClick = {
-                                    onEditBackgroundRefresh(item)
-                                    showMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Outlined.SettingsBackupRestore,
-                                        contentDescription = null
-                                    )
-                                }
+                            chapterId = item.latestChapter.id,
+                            title = item.group?.name ?: item.trackingManga.title,
+                            chapterNumber = item.latestChapter.chapterNumber,
+                            readAt = if (item.latestChapter.dateUpload > 0) java.util.Date(item.latestChapter.dateUpload) else null,
+                            readDuration = 0,
+                            coverData = MangaCover(
+                                mangaId = item.trackingManga.id,
+                                sourceId = item.trackingManga.source,
+                                isMangaFavorite = item.trackingManga.favorite,
+                                url = item.trackingManga.thumbnailUrl,
+                                lastModified = item.trackingManga.coverLastModified,
                             )
-
-                            DropdownMenuItem(
-                                text = { Text("Untrack") },
-                                onClick = {
-                                    onUntrack(item.trackingManga.id)
-                                    showMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Delete,
-                                        contentDescription = null
-                                    )
-                                }
-                            )
-
-                            if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
-                                HorizontalDivider()
+                        ),
+                        secondaryText = run {
+                            val ch = if (item.latestChapter.chapterNumber >= 0) {
+                                "Ch. ${eu.kanade.presentation.util.formatChapterNumber(item.latestChapter.chapterNumber)}"
+                            } else {
+                                "No chapters"
+                            }
+                            "$ch · $sourceName"
+                        },
+                        onClickCover = { onClickManga(item.trackingManga.id) },
+                        onClickResume = { onClickManga(item.trackingManga.id) },
+                        onClickDelete = null,
+                        onOverflowClick = { showMenu = true },
+                        overflowContent = {
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                            ) {
                                 DropdownMenuItem(
-                                    text = { Text("Debug: Sim inactivity") },
+                                    text = { Text("Edit background refresh") },
                                     onClick = {
-                                        showDebugMilestoneMenu = true
+                                        onEditBackgroundRefresh(item)
                                         showMenu = false
                                     },
                                     leadingIcon = {
                                         Icon(
-                                            imageVector = Icons.Default.MoreVert,
+                                            imageVector = Icons.Outlined.SettingsBackupRestore,
                                             contentDescription = null
                                         )
                                     }
                                 )
-                            }
-                        }
 
-                        if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
-                            DropdownMenu(
-                                expanded = showDebugMilestoneMenu,
-                                onDismissRequest = { showDebugMilestoneMenu = false },
-                            ) {
-                                listOf(28, 56, 84).forEach { milestone ->
+                                DropdownMenuItem(
+                                    text = { Text("Untrack") },
+                                    onClick = {
+                                        onUntrack(item.trackingManga.id)
+                                        showMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Delete,
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+
+                                if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
+                                    HorizontalDivider()
                                     DropdownMenuItem(
-                                        text = { Text("$milestone days") },
+                                        text = { Text("Debug: Sim inactivity") },
                                         onClick = {
-                                            screenModel.simulateInactivityWarning(item, milestone)
-                                            showDebugMilestoneMenu = false
+                                            showDebugMilestoneMenu = true
+                                            showMenu = false
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.MoreVert,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Debug: Refresh now (real)") },
+                                        onClick = {
+                                            screenModel.simulateRealRefresh(item)
+                                            showMenu = false
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null
+                                            )
                                         }
                                     )
                                 }
                             }
-                        }
-                    },
-                    onClickFavorite = { /* unused */ },
-                    onLongClick = { /* unused */ },
-                    selectionMode = false,
-                    selected = false,
-                    subtitleBadge = {
-                        Column {
-                            val ageText = if (item.daysSinceRelease >= 0) {
-                                "${item.daysSinceRelease} days since latest release"
-                            } else {
-                                "Unknown release date"
-                            }
-                            Text(
-                                text = ageText,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
 
-                            if (item.backgroundRefreshEnabled) {
-                                val eligibility = UpdateWatchRefreshHelper.getEligibility(
-                                    enabled = item.backgroundRefreshEnabled,
-                                    expectedIntervalDays = item.expectedIntervalDays,
-                                    refreshProfile = item.refreshProfile,
-                                    latestChapterUploadDate = item.latestChapter.dateUpload,
-                                )
-                                Text(
-                                    text = "Auto refresh · every ${item.expectedIntervalDays} days",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE)
-                                        MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    text = "Profile: ${item.refreshProfile.name.replace("_", " ").lowercase().capitalize()}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                            if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
+                                DropdownMenu(
+                                    expanded = showDebugMilestoneMenu,
+                                    onDismissRequest = { showDebugMilestoneMenu = false },
+                                ) {
+                                    listOf(28, 56, 84).forEach { milestone ->
+                                        DropdownMenuItem(
+                                            text = { Text("$milestone days") },
+                                            onClick = {
+                                                screenModel.simulateInactivityWarning(item, milestone)
+                                                showDebugMilestoneMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        onClickFavorite = { /* unused */ },
+                        onLongClick = { /* unused */ },
+                        selectionMode = false,
+                        selected = false,
+                        subtitleBadge = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    val eligibility = UpdateWatchRefreshHelper.getEligibility(
+                                        enabled = item.backgroundRefreshEnabled,
+                                        expectedIntervalDays = item.expectedIntervalDays,
+                                        refreshProfile = item.refreshProfile,
+                                        latestChapterUploadDate = item.latestChapter.dateUpload,
+                                    )
 
-                                val lastCheckText = item.lastBackgroundCheckAt?.let {
-                                    "Last checked ${relativeTimeSpanString(it)}"
-                                } ?: "Not checked yet"
-                                Text(
-                                    text = lastCheckText,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                    val latestHistory = item.refreshHistory.firstOrNull()
+
+                                    // Row 1: Release Age
+                                    val ageText = if (item.daysSinceRelease >= 0) {
+                                        "${item.daysSinceRelease} days since latest release"
+                                    } else {
+                                        "Unknown release date"
+                                    }
+                                    Text(
+                                        text = ageText,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+
+                                    // Row 2: Tracking Status & Cadence
+                                    if (item.backgroundRefreshEnabled) {
+                                        Text(
+                                            text = "Auto Refresh: ${eligibility.bucket} · every ${item.expectedIntervalDays} days",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE)
+                                                MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+
+                                    // Row 3: Last Refresh Result
+                                    val lastResultText = if (latestHistory != null) {
+                                        val status = if (latestHistory.success) "Succeeded" else "Failed"
+                                        val reason = if (latestHistory.success) {
+                                            if (latestHistory.newChapters > 0) "${latestHistory.newChapters} new chapters" else "No new chapters"
+                                        } else {
+                                            getHumanReadableFailure(latestHistory.category, latestHistory.detail)
+                                        }
+                                        "$status · $reason"
+                                    } else {
+                                        "No refresh attempts yet"
+                                    }
+                                    Text(
+                                        text = lastResultText,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = if (latestHistory?.success == false) FontWeight.Bold else FontWeight.Normal
+                                    )
+
+                                    // Row 4: Times
+                                    val lastCheckText = item.lastBackgroundCheckAt?.let {
+                                        val time = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+                                        "Last checked ${relativeTimeSpanString(it)} · $time"
+                                    } ?: "Never checked"
+
+                                    val nextCheckText = if (item.backgroundRefreshEnabled && (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE)) {
+                                        val interval = eligibility.plannedCadenceIntervalMillis ?: 0L
+                                        val next = (item.lastBackgroundCheckAt ?: 0L) + interval
+                                        val now = System.currentTimeMillis()
+                                        if (next <= now) " · Next: Any moment" else " · Next in ${relativeTimeSpanString(next)}"
+                                    } else ""
+
+                                    Text(
+                                        text = lastCheckText + nextCheckText,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+
+                                IconButton(onClick = { expanded = !expanded }) {
+                                    Icon(
+                                        imageVector = if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                                        contentDescription = "Show history",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
+                    )
+
+                    if (expanded) {
+                        RefreshHistoryList(item.refreshHistory)
                     }
-                )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun RefreshHistoryList(history: List<UpdateWatchHistory>) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "Recent Attempts (latest 5)",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+
+            if (history.isEmpty()) {
+                Text(
+                    text = "No refresh attempts yet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                history.forEach { attempt ->
+                    RefreshHistoryRow(attempt)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RefreshHistoryRow(attempt: UpdateWatchHistory) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val timeText = remember(attempt.timestamp) {
+            val dateTime = Instant.ofEpochMilli(attempt.timestamp).atZone(ZoneId.systemDefault())
+            dateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.SHORT))
+        }
+
+        Text(
+            text = timeText,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.width(120.dp)
+        )
+
+        val statusText = if (attempt.success) {
+            if (attempt.newChapters > 0) "${attempt.newChapters} new" else "No updates"
+        } else {
+            getHumanReadableFailure(attempt.category, attempt.detail)
+        }
+
+        Text(
+            text = statusText,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (attempt.success) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Icon(
+            imageVector = if (attempt.success) {
+                androidx.compose.material.icons.Icons.Default.Check
+            } else {
+                androidx.compose.material.icons.Icons.Default.Error
+            },
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = if (attempt.success) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+        )
+    }
+}
+
+private fun getHumanReadableFailure(category: UpdateWatchHistory.FailureCategory, detail: String?): String {
+    return when (category) {
+        UpdateWatchHistory.FailureCategory.RATE_LIMITED -> "Rate limited"
+        UpdateWatchHistory.FailureCategory.ACCESS_BLOCKED_OR_CLOUDFLARE -> "Cloudflare / blocked"
+        UpdateWatchHistory.FailureCategory.TRANSIENT_NETWORK -> "Network timeout"
+        UpdateWatchHistory.FailureCategory.SOURCE_NOT_INSTALLED -> "Source not installed"
+        UpdateWatchHistory.FailureCategory.SOURCE_OR_PARSING_ERROR -> "Source error"
+        UpdateWatchHistory.FailureCategory.UNKNOWN -> detail ?: "Unknown error"
+        UpdateWatchHistory.FailureCategory.NONE -> "Unknown"
     }
 }
 
@@ -595,8 +758,4 @@ private fun BackgroundRefreshEditDialog(
             }
         }
     )
-}
-
-private fun String.capitalize(): String {
-    return this.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
 }

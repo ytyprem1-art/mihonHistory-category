@@ -26,6 +26,7 @@ import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
 import tachiyomi.domain.source.linked.model.LinkedSourceGroup
+import tachiyomi.domain.history.model.UpdateWatchHistory
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.time.LocalDate
@@ -258,5 +259,6 @@ sealed interface UpdateWatchUiModel {
         val expectedIntervalDays: Int = 7,
         val refreshProfile: UpdateWatch.RefreshProfile = UpdateWatch.RefreshProfile.WEEKLY_STABLE,
         val lastBackgroundCheckAt: Long? = null,
+        val refreshHistory: List<UpdateWatchHistory> = emptyList(),
     ) : UpdateWatchUiModel
 }

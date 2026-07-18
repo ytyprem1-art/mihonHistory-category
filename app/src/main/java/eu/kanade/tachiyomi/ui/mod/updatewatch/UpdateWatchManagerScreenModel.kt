@@ -19,11 +19,16 @@ import tachiyomi.core.common.util.system.logcat
 import logcat.LogPriority
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.repository.ChapterRepository
+import tachiyomi.domain.history.interactor.GetUpdateWatchHistory
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
 import tachiyomi.domain.history.interactor.ManageUpdateWatchInbox
+import tachiyomi.domain.history.interactor.ManageUpdateWatchHistory
 import tachiyomi.domain.history.model.UpdateWatchInboxItem
 import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.library.service.LibraryPreferences
+import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
+import mihon.domain.source.interactor.UpdateMangaFromRemote
+import tachiyomi.domain.history.model.UpdateWatchHistory
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
@@ -37,9 +42,13 @@ import java.time.temporal.ChronoUnit
 class UpdateWatchManagerScreenModel(
     private val manageUpdateWatch: ManageUpdateWatch = Injekt.get(),
     private val manageUpdateWatchInbox: ManageUpdateWatchInbox = Injekt.get(),
+    private val manageUpdateWatchHistory: ManageUpdateWatchHistory = Injekt.get(),
+    private val getUpdateWatchHistory: GetUpdateWatchHistory = Injekt.get(),
     private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
     private val getManga: GetManga = Injekt.get(),
     private val chapterRepository: ChapterRepository = Injekt.get(),
+    private val updateMangaFromRemote: UpdateMangaFromRemote = Injekt.get(),
+    private val getChaptersByMangaId: GetChaptersByMangaId = Injekt.get(),
     private val sourceManager: SourceManager = Injekt.get(),
     private val libraryPreferences: LibraryPreferences = Injekt.get(),
 ) : StateScreenModel<UpdateWatchManagerScreenModel.State>(State()) {
@@ -59,7 +68,8 @@ class UpdateWatchManagerScreenModel(
                             getManga.subscribe(mangaId),
                             chapterRepository.getChapterByMangaIdAsFlow(mangaId),
                             manageLinkedSourceGroup.subscribeGroupForManga(mangaId, 0L),
-                        ) { manga, chapters, group ->
+                            getUpdateWatchHistory.subscribeLatest5(mangaId),
+                        ) { manga, chapters, group, history ->
                             if (manga == null) return@combine null
 
                             val latestChapter = if (chapters.isNotEmpty()) {
@@ -84,6 +94,7 @@ class UpdateWatchManagerScreenModel(
                                 expectedIntervalDays = tracking.expectedIntervalDays,
                                 refreshProfile = tracking.refreshProfile,
                                 lastBackgroundCheckAt = tracking.lastBackgroundCheckAt,
+                                refreshHistory = history,
                             )
                         }
                     }
@@ -166,6 +177,81 @@ class UpdateWatchManagerScreenModel(
                 snackbarHostState.showSnackbar("Simulated $milestone-day warning for ${item.trackingManga.title}")
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
+            }
+        }
+    }
+
+    fun simulateRealRefresh(item: UpdateWatchUiModel.Item) {
+        screenModelScope.launchIO {
+            val mangaId = item.trackingManga.id
+            val startTime = System.currentTimeMillis()
+            try {
+                snackbarHostState.showSnackbar("Starting manual refresh for ${item.trackingManga.title}...")
+
+                val oldChapters = chapterRepository.getChapterByMangaId(mangaId)
+                val oldLatest = oldChapters.filter { it.dateUpload > 0 }.maxByOrNull { it.dateUpload }
+
+                val refreshResult = updateMangaFromRemote(item.trackingManga, fetchChapters = true)
+
+                if (refreshResult.isSuccess) {
+                    val newChapters = refreshResult.getOrThrow().newChapters
+                    val currentChapters = chapterRepository.getChapterByMangaId(mangaId)
+                    val newLatest = currentChapters.filter { it.dateUpload > 0 }.maxByOrNull { it.dateUpload }
+
+                    val foundNew = newChapters.isNotEmpty() || (newLatest != null && newLatest.id != oldLatest?.id)
+                    val newCount = newChapters.size.coerceAtLeast(if (foundNew) 1 else 0)
+
+                    if (foundNew && newLatest != null) {
+                        val source = sourceManager.getOrStub(item.trackingManga.source)
+                        val inboxItem = UpdateWatchInboxItem(
+                            mangaId = mangaId,
+                            mangaTitle = item.trackingManga.title,
+                            sourceId = source.id,
+                            sourceName = source.name,
+                            chapterCount = newCount,
+                            chapterRange = if (newCount > 1) "Ch. Multiple" else "Ch. ${newLatest.chapterNumber}",
+                            firstFoundAt = startTime,
+                            lastFoundAt = startTime,
+                            latestChapterId = newLatest.id,
+                            latestChapterNumber = newLatest.chapterNumber,
+                            chapterIds = newChapters.map { it.id }.ifEmpty { listOf(newLatest.id) },
+                            latestChapterUploadAt = newLatest.dateUpload,
+                        )
+                        manageUpdateWatchInbox.insertOrMerge(inboxItem)
+                        manageUpdateWatch.resetStaleMilestone(mangaId)
+                    }
+
+                    manageUpdateWatch.updateLastBackgroundCheckAt(mangaId, startTime)
+                    manageUpdateWatchHistory.insert(
+                        UpdateWatchHistory(
+                            mangaId = mangaId,
+                            timestamp = startTime,
+                            success = true,
+                            newChapters = newCount,
+                            category = UpdateWatchHistory.FailureCategory.NONE,
+                            detail = null
+                        )
+                    )
+                    snackbarHostState.showSnackbar("Refresh succeeded: found $newCount new chapters")
+                } else {
+                    val e = refreshResult.exceptionOrNull()
+                    val detail = e?.message?.take(150)
+                    manageUpdateWatch.updateLastBackgroundCheckAt(mangaId, startTime)
+                    manageUpdateWatchHistory.insert(
+                        UpdateWatchHistory(
+                            mangaId = mangaId,
+                            timestamp = startTime,
+                            success = false,
+                            newChapters = 0,
+                            category = UpdateWatchHistory.FailureCategory.UNKNOWN,
+                            detail = detail
+                        )
+                    )
+                    snackbarHostState.showSnackbar("Refresh failed: $detail")
+                }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                snackbarHostState.showSnackbar("Error: ${e.message}")
             }
         }
     }

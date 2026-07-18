@@ -19,8 +19,10 @@ import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
+import tachiyomi.domain.history.interactor.ManageUpdateWatchHistory
 import tachiyomi.domain.history.interactor.ManageUpdateWatchInbox
 import tachiyomi.domain.history.model.UpdateWatch
+import tachiyomi.domain.history.model.UpdateWatchHistory
 import tachiyomi.domain.history.model.UpdateWatchInboxItem
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetManga
@@ -37,6 +39,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
     CoroutineWorker(context, workerParams) {
 
     private val manageUpdateWatch: ManageUpdateWatch = Injekt.get()
+    private val manageUpdateWatchHistory: ManageUpdateWatchHistory = Injekt.get()
     private val getManga: GetManga = Injekt.get()
     private val chapterRepository: ChapterRepository = Injekt.get()
     private val sourceManager: SourceManager = Injekt.get()
@@ -301,10 +304,22 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                 logcat(LogPriority.WARN) { "SIMULATED FAILURE for ${candidate.title} (Source: ${source.name}) [$type]" }
 
                 return when (type) {
-                    FailureType.RATE_LIMITED -> RefreshStatus.FAILED_RATE_LIMITED
-                    FailureType.BLOCKED -> RefreshStatus.FAILED_BLOCKED
-                    FailureType.TRANSIENT -> RefreshStatus.FAILED_TRANSIENT
-                    FailureType.ORDINARY -> RefreshStatus.FAILED_ORDINARY
+                    FailureType.RATE_LIMITED -> {
+                        recordHistory(candidate, false, 0, UpdateWatchHistory.FailureCategory.RATE_LIMITED, "Simulated 429")
+                        RefreshStatus.FAILED_RATE_LIMITED
+                    }
+                    FailureType.BLOCKED -> {
+                        recordHistory(candidate, false, 0, UpdateWatchHistory.FailureCategory.ACCESS_BLOCKED_OR_CLOUDFLARE, "Simulated 403")
+                        RefreshStatus.FAILED_BLOCKED
+                    }
+                    FailureType.TRANSIENT -> {
+                        recordHistory(candidate, false, 0, UpdateWatchHistory.FailureCategory.TRANSIENT_NETWORK, "Simulated timeout")
+                        RefreshStatus.FAILED_TRANSIENT
+                    }
+                    FailureType.ORDINARY -> {
+                        recordHistory(candidate, false, 0, UpdateWatchHistory.FailureCategory.UNKNOWN, "Simulated error")
+                        RefreshStatus.FAILED_ORDINARY
+                    }
                 }
             }
         }
@@ -322,6 +337,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                 val newLatest = currentChapters.filter { it.dateUpload > 0 }.maxByOrNull { it.dateUpload }
 
                 val foundNew = newChapters.isNotEmpty() || (newLatest != null && newLatest.id != oldLatest?.id)
+                val newCount = newChapters.size.coerceAtLeast(if (foundNew) 1 else 0)
 
                 if (foundNew && newLatest != null) {
                     val range = if (newChapters.size > 1) {
@@ -349,7 +365,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                         mangaTitle = manga.title,
                         sourceId = source.id,
                         sourceName = source.name,
-                        chapterCount = newChapters.size.coerceAtLeast(1),
+                        chapterCount = newCount,
                         chapterRange = range,
                         firstFoundAt = startTime,
                         lastFoundAt = startTime,
@@ -371,6 +387,9 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                     "New latest: ${newLatest?.chapterNumber ?: "None"}. " +
                     "New chapters found: $foundNew"
                 }
+
+                recordHistory(candidate, true, newCount, UpdateWatchHistory.FailureCategory.NONE, null)
+
                 if (foundNew) RefreshStatus.UPDATED else RefreshStatus.SUCCESS
             } else {
                 val exception = refreshResult.exceptionOrNull()
@@ -378,6 +397,9 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                 val error = exception?.message ?: "Unknown error"
 
                 logcat(LogPriority.WARN) { "Refresh FAILED for ${candidate.title} [$type]: $error" }
+
+                val (category, safeDetail) = mapFailureToHistory(type, exception)
+                recordHistory(candidate, false, 0, category, safeDetail)
 
                 when (type) {
                     FailureType.RATE_LIMITED -> RefreshStatus.FAILED_RATE_LIMITED
@@ -388,8 +410,57 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
             }
         } catch (e: Exception) {
             logcat(LogPriority.ERROR, e) { "Error refreshing ${candidate.title}" }
+            recordHistory(candidate, false, 0, UpdateWatchHistory.FailureCategory.UNKNOWN, e.message?.take(100))
             RefreshStatus.FAILED_ORDINARY
         }
+    }
+
+    private suspend fun recordHistory(
+        candidate: RefreshCandidate,
+        success: Boolean,
+        newChapters: Int,
+        category: UpdateWatchHistory.FailureCategory,
+        detail: String?
+    ) {
+        try {
+            manageUpdateWatchHistory.insert(
+                UpdateWatchHistory(
+                    mangaId = candidate.mangaId,
+                    timestamp = System.currentTimeMillis(),
+                    success = success,
+                    newChapters = newChapters,
+                    category = category,
+                    detail = detail?.take(150),
+                )
+            )
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR, e) { "Failed to record refresh history for ${candidate.title}" }
+        }
+    }
+
+    private fun mapFailureToHistory(
+        type: FailureType,
+        e: Throwable?
+    ): Pair<UpdateWatchHistory.FailureCategory, String?> {
+        val category = when (type) {
+            FailureType.RATE_LIMITED -> UpdateWatchHistory.FailureCategory.RATE_LIMITED
+            FailureType.BLOCKED -> UpdateWatchHistory.FailureCategory.ACCESS_BLOCKED_OR_CLOUDFLARE
+            FailureType.TRANSIENT -> UpdateWatchHistory.FailureCategory.TRANSIENT_NETWORK
+            FailureType.ORDINARY -> {
+                val msg = e?.message ?: ""
+                when {
+                    msg.contains("Source not installed", ignoreCase = true) -> UpdateWatchHistory.FailureCategory.SOURCE_NOT_INSTALLED
+                    msg.contains("HttpException", ignoreCase = true) -> UpdateWatchHistory.FailureCategory.SOURCE_OR_PARSING_ERROR
+                    else -> UpdateWatchHistory.FailureCategory.SOURCE_OR_PARSING_ERROR
+                }
+            }
+        }
+        val safeDetail = e?.message?.let { msg ->
+            // Simple sanitization: remove anything that looks like a token/URL param
+            msg.replace(Regex("[?&][^= ]+=[^& ]+"), "")
+                .take(150)
+        }
+        return category to safeDetail
     }
 
     private fun classifyFailure(e: Throwable?): FailureType {

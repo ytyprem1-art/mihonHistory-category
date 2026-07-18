@@ -179,7 +179,10 @@ fun UpdateWatchContent(
                                             )
 
                                             val lastCheckText = item.lastBackgroundCheckAt?.let {
-                                                "Last checked ${relativeTimeSpanString(it)}"
+                                                val time = java.time.Instant.ofEpochMilli(it)
+                                                    .atZone(java.time.ZoneId.systemDefault())
+                                                    .format(java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT))
+                                                "Last checked ${relativeTimeSpanString(it)} · $time"
                                             } ?: "Not checked yet"
                                             Text(
                                                 text = lastCheckText,
