@@ -19,6 +19,7 @@ data class Backup(
     @ProtoNumber(602) var backupManualHistoryGroups: List<BackupManualHistoryGroup> = emptyList(),
     @ProtoNumber(603) var backupUpdateWatch: List<BackupUpdateWatch> = emptyList(),
     @ProtoNumber(604) var backupUpdateWatchInbox: List<BackupUpdateWatchInboxItem> = emptyList(),
+    @ProtoNumber(605) var backupUpdateWatchHistory: List<BackupUpdateWatchHistory> = emptyList(),
 )
 
 @Serializable
@@ -48,6 +49,7 @@ data class BackupUpdateWatch(
     @ProtoNumber(4) var expectedIntervalDays: Int = 7,
     @ProtoNumber(5) var refreshProfile: Int = 0,
     @ProtoNumber(6) var lastBackgroundCheckAt: Long? = null,
+    @ProtoNumber(7) var lastWarnedMilestone: Int = 0,
 )
 
 @Serializable
@@ -63,6 +65,18 @@ data class BackupUpdateWatchInboxItem(
     @ProtoNumber(9) var latestChapterNumber: Double,
     @ProtoNumber(10) var chapterUrls: List<String> = emptyList(),
     @ProtoNumber(11) var latestChapterUploadAt: Long = 0L,
+    @ProtoNumber(12) var type: Int = 0,
+    @ProtoNumber(13) var milestone: Int = 0,
+)
+
+@Serializable
+data class BackupUpdateWatchHistory(
+    @ProtoNumber(1) var member: BackupModMember,
+    @ProtoNumber(2) var timestamp: Long,
+    @ProtoNumber(3) var success: Boolean,
+    @ProtoNumber(4) var newChapters: Int,
+    @ProtoNumber(5) var category: Int,
+    @ProtoNumber(6) var detail: String? = null,
 )
 
 @Serializable

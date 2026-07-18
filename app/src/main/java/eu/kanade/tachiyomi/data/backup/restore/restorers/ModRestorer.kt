@@ -3,12 +3,15 @@ package eu.kanade.tachiyomi.data.backup.restore.restorers
 import eu.kanade.tachiyomi.data.backup.models.BackupLinkedSourceGroup
 import eu.kanade.tachiyomi.data.backup.models.BackupManualHistoryGroup
 import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatch
+import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatchHistory
 import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatchInboxItem
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
+import tachiyomi.domain.history.interactor.ManageUpdateWatchHistory
 import tachiyomi.domain.history.interactor.ManageUpdateWatchInbox
 import tachiyomi.domain.history.model.UpdateWatch
+import tachiyomi.domain.history.model.UpdateWatchHistory
 import tachiyomi.domain.history.model.UpdateWatchInboxItem
 import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
 import tachiyomi.domain.source.linked.repository.LinkedSourceRepository
@@ -21,6 +24,7 @@ class ModRestorer(
     private val manageHistoryGroups: ManageHistoryGroups = Injekt.get(),
     private val manageUpdateWatch: ManageUpdateWatch = Injekt.get(),
     private val manageUpdateWatchInbox: ManageUpdateWatchInbox = Injekt.get(),
+    private val manageUpdateWatchHistory: ManageUpdateWatchHistory = Injekt.get(),
     private val chapterRepository: ChapterRepository = Injekt.get(),
     private val linkedSourceRepository: LinkedSourceRepository = Injekt.get(),
 ) {
@@ -30,6 +34,7 @@ class ModRestorer(
         backupManualHistoryGroups: List<BackupManualHistoryGroup>,
         backupUpdateWatch: List<BackupUpdateWatch>,
         backupUpdateWatchInbox: List<BackupUpdateWatchInboxItem>,
+        backupUpdateWatchHistory: List<BackupUpdateWatchHistory>,
         mangaUrlToIdMap: Map<Pair<Long, String>, Long>,
     ): Int {
         var skippedCount = 0
@@ -92,6 +97,9 @@ class ModRestorer(
                 watch.lastBackgroundCheckAt?.let {
                     manageUpdateWatch.updateLastBackgroundCheckAt(mangaId, it)
                 }
+                if (watch.lastWarnedMilestone > 0) {
+                    manageUpdateWatch.updateStaleMilestone(mangaId, watch.lastWarnedMilestone)
+                }
             } else {
                 skippedCount++
             }
@@ -121,9 +129,28 @@ class ModRestorer(
                             latestChapterNumber = backupItem.latestChapterNumber,
                             chapterIds = chapterIds,
                             latestChapterUploadAt = backupItem.latestChapterUploadAt,
+                            type = backupItem.type,
+                            milestone = backupItem.milestone,
                         )
                     )
                 }
+            }
+        }
+
+        // 5. Update Watch History
+        backupUpdateWatchHistory.forEach { backupHistory ->
+            val mangaId = mangaUrlToIdMap[backupHistory.member.source to backupHistory.member.url]
+            if (mangaId != null) {
+                manageUpdateWatchHistory.insert(
+                    UpdateWatchHistory(
+                        mangaId = mangaId,
+                        timestamp = backupHistory.timestamp,
+                        success = backupHistory.success,
+                        newChapters = backupHistory.newChapters,
+                        category = UpdateWatchHistory.FailureCategory.entries.getOrElse(backupHistory.category) { UpdateWatchHistory.FailureCategory.UNKNOWN },
+                        detail = backupHistory.detail,
+                    )
+                )
             }
         }
 

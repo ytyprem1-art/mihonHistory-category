@@ -11,6 +11,10 @@ class GetUpdateWatchHistory(
         return repository.getLatestByMangaId(mangaId)
     }
 
+    suspend fun awaitAll(): List<UpdateWatchHistory> {
+        return repository.getAll()
+    }
+
     fun subscribeLatest(mangaId: Long): Flow<UpdateWatchHistory?> {
         return repository.subscribeLatestByMangaId(mangaId)
     }

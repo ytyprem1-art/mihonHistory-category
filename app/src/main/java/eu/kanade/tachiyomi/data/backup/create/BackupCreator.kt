@@ -18,6 +18,7 @@ import eu.kanade.tachiyomi.data.backup.models.BackupLinkedSourceGroup
 import eu.kanade.tachiyomi.data.backup.models.BackupManualHistoryGroup
 import eu.kanade.tachiyomi.data.backup.models.BackupModMember
 import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatch
+import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatchHistory
 import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatchInboxItem
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
@@ -31,6 +32,7 @@ import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
 import tachiyomi.domain.source.linked.interactor.ManageLinkedSourceGroup
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
 import tachiyomi.domain.history.interactor.GetUpdateWatchInbox
+import tachiyomi.domain.history.interactor.GetUpdateWatchHistory
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -64,6 +66,7 @@ class BackupCreator(
     private val manageLinkedSourceGroup: ManageLinkedSourceGroup = Injekt.get(),
     private val manageUpdateWatch: ManageUpdateWatch = Injekt.get(),
     private val getUpdateWatchInbox: GetUpdateWatchInbox = Injekt.get(),
+    private val getUpdateWatchHistory: GetUpdateWatchHistory = Injekt.get(),
     private val chapterRepository: ChapterRepository = Injekt.get(),
 
     private val categoriesBackupCreator: CategoriesBackupCreator = CategoriesBackupCreator(),
@@ -100,6 +103,62 @@ class BackupCreator(
             val nonFavoriteManga = if (options.readEntries) mangaRepository.getReadMangaNotInLibrary() else emptyList()
             val backupManga = backupMangas(getFavorites.await() + nonFavoriteManga, options)
 
+            val backupUpdateWatch = mutableListOf<BackupUpdateWatch>()
+            manageUpdateWatch.getAll().forEach {
+                val member = getModMember(it.mangaId) ?: return@forEach
+                backupUpdateWatch.add(
+                    BackupUpdateWatch(
+                        member = member,
+                        isPaused = it.isPaused,
+                        backgroundRefreshEnabled = it.backgroundRefreshEnabled,
+                        expectedIntervalDays = it.expectedIntervalDays,
+                        refreshProfile = it.refreshProfile.ordinal,
+                        lastBackgroundCheckAt = it.lastBackgroundCheckAt,
+                        lastWarnedMilestone = it.lastWarnedMilestone,
+                    )
+                )
+            }
+
+            val backupUpdateWatchInbox = mutableListOf<BackupUpdateWatchInboxItem>()
+            getUpdateWatchInbox.await().forEach { item ->
+                val member = getModMember(item.mangaId) ?: return@forEach
+                val latestChapterUrl = chapterRepository.getChapterById(item.latestChapterId)?.url ?: return@forEach
+                val chapterUrls = item.chapterIds.mapNotNull { id -> chapterRepository.getChapterById(id)?.url }
+
+                backupUpdateWatchInbox.add(
+                    BackupUpdateWatchInboxItem(
+                        member = member,
+                        mangaTitle = item.mangaTitle,
+                        sourceName = item.sourceName,
+                        chapterCount = item.chapterCount,
+                        chapterRange = item.chapterRange,
+                        firstFoundAt = item.firstFoundAt,
+                        lastFoundAt = item.lastFoundAt,
+                        latestChapterUrl = latestChapterUrl,
+                        latestChapterNumber = item.latestChapterNumber,
+                        chapterUrls = chapterUrls,
+                        latestChapterUploadAt = item.latestChapterUploadAt,
+                        type = item.type,
+                        milestone = item.milestone,
+                    )
+                )
+            }
+
+            val backupUpdateWatchHistory = mutableListOf<BackupUpdateWatchHistory>()
+            getUpdateWatchHistory.awaitAll().forEach {
+                val member = getModMember(it.mangaId) ?: return@forEach
+                backupUpdateWatchHistory.add(
+                    BackupUpdateWatchHistory(
+                        member = member,
+                        timestamp = it.timestamp,
+                        success = it.success,
+                        newChapters = it.newChapters,
+                        category = it.category.ordinal,
+                        detail = it.detail,
+                    )
+                )
+            }
+
             val backup = Backup(
                 backupManga = backupManga,
                 backupCategories = backupCategories(options),
@@ -126,38 +185,9 @@ class BackupCreator(
                         }
                     )
                 },
-                backupUpdateWatch = manageUpdateWatch.getAll().mapNotNull {
-                    getModMember(it.mangaId)?.let { member ->
-                        BackupUpdateWatch(
-                            member = member,
-                            isPaused = it.isPaused,
-                            backgroundRefreshEnabled = it.backgroundRefreshEnabled,
-                            expectedIntervalDays = it.expectedIntervalDays,
-                            refreshProfile = it.refreshProfile.ordinal,
-                            lastBackgroundCheckAt = it.lastBackgroundCheckAt,
-                        )
-                    }
-                },
-                backupUpdateWatchInbox = getUpdateWatchInbox.await().mapNotNull { item ->
-                    getModMember(item.mangaId)?.let { member ->
-                        val latestChapterUrl = chapterRepository.getChapterById(item.latestChapterId)?.url ?: return@mapNotNull null
-                        val chapterUrls = item.chapterIds.mapNotNull { id -> chapterRepository.getChapterById(id)?.url }
-
-                        BackupUpdateWatchInboxItem(
-                            member = member,
-                            mangaTitle = item.mangaTitle,
-                            sourceName = item.sourceName,
-                            chapterCount = item.chapterCount,
-                            chapterRange = item.chapterRange,
-                            firstFoundAt = item.firstFoundAt,
-                            lastFoundAt = item.lastFoundAt,
-                            latestChapterUrl = latestChapterUrl,
-                            latestChapterNumber = item.latestChapterNumber,
-                            chapterUrls = chapterUrls,
-                            latestChapterUploadAt = item.latestChapterUploadAt,
-                        )
-                    }
-                },
+                backupUpdateWatch = backupUpdateWatch,
+                backupUpdateWatchInbox = backupUpdateWatchInbox,
+                backupUpdateWatchHistory = backupUpdateWatchHistory,
             )
 
             val byteArray = parser.encodeToByteArray(Backup.serializer(), backup)

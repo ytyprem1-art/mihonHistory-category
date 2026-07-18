@@ -49,3 +49,7 @@ AND timestamp NOT IN (
     ORDER BY timestamp DESC
     LIMIT 5
 );
+
+getAll:
+SELECT *
+FROM update_watch_history;

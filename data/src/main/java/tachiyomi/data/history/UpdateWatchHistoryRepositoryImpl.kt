@@ -32,6 +32,11 @@ class UpdateWatchHistoryRepositoryImpl(
             .awaitAsOneOrNull()
     }
 
+    override suspend fun getAll(): List<UpdateWatchHistory> {
+        return database.update_watch_historyQueries.getAll(::mapUpdateWatchHistory)
+            .awaitAsList()
+    }
+
     override fun subscribeLatestByMangaId(mangaId: Long): Flow<UpdateWatchHistory?> {
         return database.update_watch_historyQueries.getLatestByMangaId(mangaId, ::mapUpdateWatchHistory)
             .subscribeToOneOrNull()
