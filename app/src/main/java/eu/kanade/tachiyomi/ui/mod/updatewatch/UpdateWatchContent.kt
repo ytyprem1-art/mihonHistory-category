@@ -71,32 +71,16 @@ fun UpdateWatchContent(
 
                         var showMenu by remember { mutableStateOf(false) }
 
-                        val warningText = if (item.backgroundRefreshEnabled) {
-                            if (item.daysSinceRelease == item.expectedIntervalDays.toLong()) {
-                                "Expected update around today"
-                            } else {
-                                "Update may be delayed"
-                            }
-                        } else {
-                            when {
-                                item.daysSinceRelease == 6L -> "Expected update tomorrow"
-                                item.daysSinceRelease == 7L -> "Expected update around today"
-                                else -> "Update may be delayed"
-                            }
+                        val warningText = when {
+                            item.daysSinceRelease == item.expectedIntervalDays.toLong() - 1 -> "Expected update tomorrow"
+                            item.daysSinceRelease == item.expectedIntervalDays.toLong() -> "Expected update around today"
+                            else -> "Update may be delayed"
                         }
 
-                        val warningColor = if (item.backgroundRefreshEnabled) {
-                            if (item.daysSinceRelease == item.expectedIntervalDays.toLong()) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.error
-                            }
-                        } else {
-                            when {
-                                item.daysSinceRelease == 6L -> MaterialTheme.colorScheme.secondary
-                                item.daysSinceRelease == 7L -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            }
+                        val warningColor = when {
+                            item.daysSinceRelease == item.expectedIntervalDays.toLong() - 1 -> MaterialTheme.colorScheme.secondary
+                            item.daysSinceRelease == item.expectedIntervalDays.toLong() -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.error
                         }
 
                         HistoryItem(

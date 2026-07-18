@@ -41,6 +41,7 @@ import eu.kanade.presentation.manga.components.LinkedSourcesSheet
 import eu.kanade.presentation.manga.components.MangaCoverDialog
 import eu.kanade.presentation.manga.components.ScanlatorFilterDialog
 import eu.kanade.presentation.manga.components.SetIntervalDialog
+import eu.kanade.presentation.manga.components.TrackUpdateWatchDialog
 import eu.kanade.presentation.util.AssistContentScreen
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
@@ -544,6 +545,12 @@ class MangaScreen(
                             androidx.compose.material3.Text(stringResource(MR.strings.action_cancel))
                         }
                     }
+                )
+            }
+            MangaScreenModel.Dialog.TrackUpdateWatch -> {
+                TrackUpdateWatchDialog(
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = screenModel::trackUpdateWatch,
                 )
             }
         }

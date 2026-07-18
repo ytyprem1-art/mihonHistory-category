@@ -76,6 +76,7 @@ import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.chapter.service.calculateChapterGap
 import tachiyomi.domain.chapter.service.getChapterSort
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
+import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.history.repository.HistoryRepository
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetDuplicateLibraryManga
@@ -1180,6 +1181,8 @@ class MangaScreenModel(
         data class RenameLinkedGroup(val group: LinkedSourceGroup) : Dialog
         data class DeleteLinkedGroup(val group: LinkedSourceGroup) : Dialog
         data class RemoveLinkedMember(val member: Manga, val isLast: Boolean) : Dialog
+
+        data object TrackUpdateWatch : Dialog
     }
 
     fun dismissDialog() {
@@ -1390,8 +1393,28 @@ class MangaScreenModel(
                 if (isTracked) {
                     manageUpdateWatch.delete(mangaId)
                 } else {
-                    manageUpdateWatch.updatePaused(mangaId, false)
+                    updateSuccessState { it.copy(dialog = Dialog.TrackUpdateWatch) }
                 }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+            }
+        }
+    }
+
+    fun trackUpdateWatch(interval: Int) {
+        screenModelScope.launchIO {
+            try {
+                manageUpdateWatch.insert(
+                    UpdateWatch(
+                        mangaId = mangaId,
+                        isPaused = false,
+                        backgroundRefreshEnabled = false,
+                        expectedIntervalDays = interval,
+                        refreshProfile = UpdateWatch.RefreshProfile.WEEKLY_STABLE,
+                        lastBackgroundCheckAt = null,
+                        lastWarnedMilestone = 0
+                    )
+                )
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
             }

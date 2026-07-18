@@ -19,6 +19,10 @@ class ManageUpdateWatch(
         return repository.getById(mangaId)
     }
 
+    suspend fun insert(updateWatch: UpdateWatch) {
+        repository.insert(updateWatch)
+    }
+
     suspend fun updatePaused(mangaId: Long, isPaused: Boolean) {
         val existing = repository.getById(mangaId)
         if (existing == null) {

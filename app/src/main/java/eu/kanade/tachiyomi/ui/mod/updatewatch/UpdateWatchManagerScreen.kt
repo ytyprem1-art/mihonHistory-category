@@ -30,6 +30,7 @@ import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import eu.kanade.tachiyomi.ui.mod.updatewatch.components.UpdateWatchHelpSheet
+import eu.kanade.tachiyomi.ui.mod.updatewatch.components.TrackedMangaHelpSheet
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,6 +79,7 @@ class UpdateWatchManagerScreen : Screen() {
 
         var editItem by remember { mutableStateOf<UpdateWatchUiModel.Item?>(null) }
         var showHelpSheet by remember { mutableStateOf(false) }
+        var showTrackedHelpSheet by remember { mutableStateOf(false) }
 
         LaunchedEffect(screenModel.sortMode) {
             scrollState.scrollToItem(0)
@@ -223,6 +225,7 @@ class UpdateWatchManagerScreen : Screen() {
                 onUntrack = screenModel::untrack,
                 onEditBackgroundRefresh = { editItem = it },
                 onShowHelp = { showHelpSheet = true },
+                onShowTrackedHelp = { showTrackedHelpSheet = true },
                 screenModel = screenModel,
             )
 
@@ -234,13 +237,20 @@ class UpdateWatchManagerScreen : Screen() {
                         screenModel.updateBackgroundRefresh(editItem!!.trackingManga.id, enabled, interval, profile)
                         editItem = null
                     },
-                    onShowHelp = { showHelpSheet = true }
+                    onShowHelp = { showHelpSheet = true },
+                    onShowTrackedHelp = { showTrackedHelpSheet = true }
                 )
             }
 
             if (showHelpSheet) {
                 UpdateWatchHelpSheet(
                     onDismissRequest = { showHelpSheet = false }
+                )
+            }
+
+            if (showTrackedHelpSheet) {
+                TrackedMangaHelpSheet(
+                    onDismissRequest = { showTrackedHelpSheet = false }
                 )
             }
         }
@@ -256,6 +266,7 @@ private fun UpdateWatchManagerContent(
     onUntrack: (Long) -> Unit,
     onEditBackgroundRefresh: (UpdateWatchUiModel.Item) -> Unit,
     onShowHelp: () -> Unit,
+    onShowTrackedHelp: () -> Unit,
     screenModel: UpdateWatchManagerScreenModel,
 ) {
     val items = state.items
@@ -277,23 +288,42 @@ private fun UpdateWatchManagerContent(
             state = scrollState,
         ) {
             item(key = "help-header") {
-                ListItem(
-                    modifier = Modifier.clickable(onClick = onShowHelp),
-                    headlineContent = { Text("How Auto Refresh works") },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
-                            contentDescription = null,
-                        )
-                    },
-                    trailingContent = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowForwardIos,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                )
+                Column {
+                    ListItem(
+                        modifier = Modifier.clickable(onClick = onShowTrackedHelp),
+                        headlineContent = { Text("How Tracking works") },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                                contentDescription = null,
+                            )
+                        },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    )
+                    ListItem(
+                        modifier = Modifier.clickable(onClick = onShowHelp),
+                        headlineContent = { Text("How Auto Refresh works") },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                                contentDescription = null,
+                            )
+                        },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    )
+                }
             }
 
             items(
@@ -462,53 +492,55 @@ private fun UpdateWatchManagerContent(
                                             color = if (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE)
                                                 MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
-                                    }
 
-                                    // Row 3: Last Refresh Result
-                                    val lastResultText = if (latestHistory != null) {
-                                        val status = if (latestHistory.success) "Succeeded" else "Failed"
-                                        val reason = if (latestHistory.success) {
-                                            if (latestHistory.newChapters > 0) "${latestHistory.newChapters} new chapters" else "No new chapters"
+                                        // Row 3: Last Refresh Result
+                                        val lastResultText = if (latestHistory != null) {
+                                            val status = if (latestHistory.success) "Succeeded" else "Failed"
+                                            val reason = if (latestHistory.success) {
+                                                if (latestHistory.newChapters > 0) "${latestHistory.newChapters} new chapters" else "No new chapters"
+                                            } else {
+                                                getHumanReadableFailure(latestHistory.category, latestHistory.detail)
+                                            }
+                                            "$status · $reason"
                                         } else {
-                                            getHumanReadableFailure(latestHistory.category, latestHistory.detail)
+                                            "No refresh attempts yet"
                                         }
-                                        "$status · $reason"
-                                    } else {
-                                        "No refresh attempts yet"
+                                        Text(
+                                            text = lastResultText,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontWeight = if (latestHistory?.success == false) FontWeight.Bold else FontWeight.Normal
+                                        )
+
+                                        // Row 4: Times
+                                        val lastCheckText = item.lastBackgroundCheckAt?.let {
+                                            val time = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+                                            "Last checked ${relativeTimeSpanString(it)} · $time"
+                                        } ?: "Never checked"
+
+                                        val nextCheckText = if (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE) {
+                                            val interval = eligibility.plannedCadenceIntervalMillis ?: 0L
+                                            val next = (item.lastBackgroundCheckAt ?: 0L) + interval
+                                            val now = System.currentTimeMillis()
+                                            if (next <= now) " · Next: Any moment" else " · Next in ${relativeTimeSpanString(next)}"
+                                        } else ""
+
+                                        Text(
+                                            text = lastCheckText + nextCheckText,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
-                                    Text(
-                                        text = lastResultText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = if (latestHistory?.success == false) FontWeight.Bold else FontWeight.Normal
-                                    )
-
-                                    // Row 4: Times
-                                    val lastCheckText = item.lastBackgroundCheckAt?.let {
-                                        val time = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
-                                        "Last checked ${relativeTimeSpanString(it)} · $time"
-                                    } ?: "Never checked"
-
-                                    val nextCheckText = if (item.backgroundRefreshEnabled && (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE)) {
-                                        val interval = eligibility.plannedCadenceIntervalMillis ?: 0L
-                                        val next = (item.lastBackgroundCheckAt ?: 0L) + interval
-                                        val now = System.currentTimeMillis()
-                                        if (next <= now) " · Next: Any moment" else " · Next in ${relativeTimeSpanString(next)}"
-                                    } else ""
-
-                                    Text(
-                                        text = lastCheckText + nextCheckText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
                                 }
 
-                                IconButton(onClick = { expanded = !expanded }) {
-                                    Icon(
-                                        imageVector = if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
-                                        contentDescription = "Show history",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                if (item.backgroundRefreshEnabled) {
+                                    IconButton(onClick = { expanded = !expanded }) {
+                                        Icon(
+                                            imageVector = if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                                            contentDescription = "Show history",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -619,6 +651,7 @@ private fun BackgroundRefreshEditDialog(
     onDismissRequest: () -> Unit,
     onSave: (Boolean, Int, UpdateWatch.RefreshProfile) -> Unit,
     onShowHelp: () -> Unit,
+    onShowTrackedHelp: () -> Unit,
 ) {
     var enabled by remember { mutableStateOf(item.backgroundRefreshEnabled) }
     var interval by remember { mutableIntStateOf(item.expectedIntervalDays) }
@@ -631,12 +664,24 @@ private fun BackgroundRefreshEditDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onShowTrackedHelp)
+                        .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Enable background refresh")
-                    Switch(checked = enabled, onCheckedChange = { enabled = it })
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = "How Tracking works",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                 }
 
                 Row(
@@ -660,67 +705,81 @@ private fun BackgroundRefreshEditDialog(
                     )
                 }
 
-                if (enabled) {
-                    Text(
-                        text = "Expected update interval (days)",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                Text(
+                    text = "Expected update interval (days)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
 
-                    listOf(7, 14, 30).forEach { preset ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    interval = preset
-                                    customInterval = ""
-                                    profile = UpdateWatch.RefreshProfile.fromInterval(preset)
-                                },
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
-                                selected = interval == preset && customInterval.isEmpty(),
-                                onClick = null
-                            )
-                            Text(
-                                text = "$preset days",
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                    }
-
+                listOf(7, 14, 30).forEach { preset ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                interval = preset
+                                customInterval = ""
+                                if (enabled) {
+                                    profile = UpdateWatch.RefreshProfile.fromInterval(preset)
+                                }
+                            },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(
-                            selected = customInterval.isNotEmpty() || (interval !in listOf(7, 14, 30)),
-                            onClick = { if (customInterval.isEmpty()) customInterval = interval.toString() }
+                            selected = interval == preset && customInterval.isEmpty(),
+                            onClick = null
                         )
-                        OutlinedTextField(
-                            value = customInterval,
-                            onValueChange = {
-                                customInterval = it.filter { c -> c.isDigit() }
-                                val newVal = customInterval.toIntOrNull()
-                                if (newVal != null && newVal > 0) {
-                                    interval = newVal
-                                    profile = UpdateWatch.RefreshProfile.fromInterval(newVal)
-                                }
-                            },
-                            label = { Text("Custom days") },
-                            modifier = Modifier.padding(start = 8.dp).weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
+                        Text(
+                            text = "$preset days",
+                            modifier = Modifier.padding(start = 8.dp)
                         )
                     }
+                }
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = customInterval.isNotEmpty() || (interval !in listOf(7, 14, 30)),
+                        onClick = { if (customInterval.isEmpty()) customInterval = interval.toString() }
+                    )
+                    OutlinedTextField(
+                        value = customInterval,
+                        onValueChange = {
+                            customInterval = it.filter { c -> c.isDigit() }
+                            val newVal = customInterval.toIntOrNull()
+                            if (newVal != null && newVal > 0) {
+                                interval = newVal
+                                if (enabled) {
+                                    profile = UpdateWatch.RefreshProfile.fromInterval(newVal)
+                                }
+                            }
+                        },
+                        label = { Text("Custom days") },
+                        modifier = Modifier.padding(start = 8.dp).weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                    )
+                }
 
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("Auto Refresh (background checks)")
+                    Switch(checked = enabled, onCheckedChange = { enabled = it })
+                }
+
+                if (enabled) {
                     Text(
                         text = "Refresh Profile",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 8.dp)
                     )
 
                     UpdateWatch.RefreshProfile.entries.forEach { p ->

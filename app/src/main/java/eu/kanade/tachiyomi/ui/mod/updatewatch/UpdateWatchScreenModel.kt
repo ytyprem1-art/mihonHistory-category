@@ -125,11 +125,7 @@ class UpdateWatchScreenModel(
                                 today = LocalDate.now(),
                             )
 
-                            val isVisible = if (tracking.backgroundRefreshEnabled) {
-                                eligibility.status != UpdateWatchRefreshHelper.RefreshStatus.WAITING
-                            } else {
-                                eligibility.ageDays >= 6
-                            }
+                            val isVisible = eligibility.ageDays >= (tracking.expectedIntervalDays - 1)
 
                             if (isVisible) {
                                 UpdateWatchUiModel.Item(
@@ -148,21 +144,9 @@ class UpdateWatchScreenModel(
                         }
                     }
                     combine(flows) { it.filterNotNull() }.map { items ->
-                        val upcoming = items.filter { !it.backgroundRefreshEnabled && it.daysSinceRelease == 6L }
-                        val dueToday = items.filter {
-                            if (it.backgroundRefreshEnabled) {
-                                it.daysSinceRelease == it.expectedIntervalDays.toLong()
-                            } else {
-                                it.daysSinceRelease == 7L
-                            }
-                        }
-                        val overdue = items.filter {
-                            if (it.backgroundRefreshEnabled) {
-                                it.daysSinceRelease > it.expectedIntervalDays
-                            } else {
-                                it.daysSinceRelease > 7
-                            }
-                        }
+                        val upcoming = items.filter { it.daysSinceRelease == it.expectedIntervalDays.toLong() - 1 }
+                        val dueToday = items.filter { it.daysSinceRelease == it.expectedIntervalDays.toLong() }
+                        val overdue = items.filter { it.daysSinceRelease > it.expectedIntervalDays }
 
                         mutableListOf<UpdateWatchUiModel>().apply {
                             if (upcoming.isNotEmpty()) {
