@@ -87,6 +87,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                                 ageDays = eligibility.ageDays,
                                 expectedIntervalDays = tracking.expectedIntervalDays,
                                 refreshProfile = tracking.refreshProfile.name,
+                                bucket = eligibility.bucket,
                                 plannedCadence = eligibility.plannedCadenceLabel ?: "Unknown",
                                 lastCheckAt = lastCheck
                             )
@@ -100,24 +101,60 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                 return@withIOContext Result.success()
             }
 
-            logcat(LogPriority.INFO) { "Background refresh: Total eligible candidates found: ${allCandidates.size}" }
+            logcat(LogPriority.INFO) { "Background refresh: Total potential eligible candidates found: ${allCandidates.size}" }
 
-            // GROUP AND CAP PER SOURCE (Max 8 per source)
+            // GROUP AND APPLY BUCKET CAPS PER SOURCE
             val workBySource = allCandidates.groupBy { it.sourceId }
                 .mapValues { (sourceId, list) ->
                     val sourceName = sourceManager.getOrStub(sourceId).name
-                    val ordered = list.sortedBy { it.lastCheckAt }
-                    val capped = ordered.take(8)
-                    val deferred = if (ordered.size > 8) ordered.size - 8 else 0
 
-                    logcat(LogPriority.INFO) {
-                        "Source $sourceName: Selected ${capped.size} candidates" + (if (deferred > 0) ", deferred $deferred due to cap" else "")
+                    val hotEligible = list.filter { it.bucket == UpdateWatchRefreshHelper.PriorityBucket.HOT }.sortedBy { it.lastCheckAt }
+                    val warmEligible = list.filter { it.bucket == UpdateWatchRefreshHelper.PriorityBucket.WARM }.sortedBy { it.lastCheckAt }
+                    val coldEligible = list.filter { it.bucket == UpdateWatchRefreshHelper.PriorityBucket.COLD }.sortedBy { it.lastCheckAt }
+                    val staleEligible = list.filter { it.bucket == UpdateWatchRefreshHelper.PriorityBucket.STALE }.sortedBy { it.lastCheckAt }
+
+                    val selected = mutableListOf<RefreshCandidate>()
+
+                    // Add HOT up to CAP_HOT
+                    selected.addAll(hotEligible.take(CAP_HOT))
+
+                    // Add WARM up to CAP_WARM, keeping total under CAP_TOTAL
+                    val remainingTotal = CAP_TOTAL - selected.size
+                    if (remainingTotal > 0) {
+                        selected.addAll(warmEligible.take(minOf(CAP_WARM, remainingTotal)))
                     }
-                    capped
+
+                    // Add COLD up to CAP_COLD, keeping total under CAP_TOTAL
+                    val remainingTotal2 = CAP_TOTAL - selected.size
+                    if (remainingTotal2 > 0) {
+                        selected.addAll(coldEligible.take(minOf(CAP_COLD, remainingTotal2)))
+                    }
+
+                    // Add STALE up to CAP_STALE, keeping total under CAP_TOTAL
+                    val remainingTotal3 = CAP_TOTAL - selected.size
+                    if (remainingTotal3 > 0) {
+                        selected.addAll(staleEligible.take(minOf(CAP_STALE, remainingTotal3)))
+                    }
+
+                    val deferred = list.size - selected.size
+
+                    if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
+                        logcat(LogPriority.INFO) {
+                            "[UpdateWatchRefreshWorker] source=$sourceName id=$sourceId " +
+                            "eligible hot=${hotEligible.size} warm=${warmEligible.size} cold=${coldEligible.size} stale=${staleEligible.size} " +
+                            "selected hot=${selected.count { it.bucket == UpdateWatchRefreshHelper.PriorityBucket.HOT }} " +
+                            "warm=${selected.count { it.bucket == UpdateWatchRefreshHelper.PriorityBucket.WARM }} " +
+                            "cold=${selected.count { it.bucket == UpdateWatchRefreshHelper.PriorityBucket.COLD }} " +
+                            "stale=${selected.count { it.bucket == UpdateWatchRefreshHelper.PriorityBucket.STALE }} " +
+                            "total=${selected.size} deferred=$deferred"
+                        }
+                    }
+                    selected
                 }
 
             // ORDER SOURCE QUEUES BY FAIRNESS (Source that has waited longest starts first)
             val sortedSourceQueues = workBySource.toList()
+                .filter { it.second.isNotEmpty() }
                 .sortedBy { (_, queue) -> queue.first().lastCheckAt }
 
             val processedCount = AtomicInteger(0)
@@ -360,6 +397,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
         val ageDays: Long,
         val expectedIntervalDays: Int,
         val refreshProfile: String,
+        val bucket: UpdateWatchRefreshHelper.PriorityBucket,
         val plannedCadence: String,
         val lastCheckAt: Long,
     )
@@ -372,5 +410,11 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
         const val SIM_HTTP_403 = 2
         const val SIM_TRANSIENT = 3
         const val SIM_ORDINARY = 4
+
+        private const val CAP_HOT = 12
+        private const val CAP_WARM = 8
+        private const val CAP_COLD = 8
+        private const val CAP_STALE = 4
+        private const val CAP_TOTAL = 20
     }
 }
