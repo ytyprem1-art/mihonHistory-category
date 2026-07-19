@@ -265,6 +265,13 @@ class UpdateWatchDiagnosticsScreen : Screen() {
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
+                } else if (diagnostic.type == UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT && diagnostic.isRecoveryRun) {
+                    Text(
+                        text = "RECOVERY RUN: A backlog of due manga was detected.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 AnimatedVisibility(visible = expanded && !isInSelectionMode) {

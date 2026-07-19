@@ -64,7 +64,8 @@ object UpdateWatchRefreshScheduler {
             }
 
             val now = System.currentTimeMillis()
-            val earliest = UpdateWatchRefreshHelper.getEarliestNextEligibleAt(trackedManga, latestChapterDates, now)
+            val zoneId = java.time.ZoneId.systemDefault()
+            val earliest = UpdateWatchRefreshHelper.getEarliestNextEligibleAt(trackedManga, latestChapterDates, now, zoneId)
 
             if (earliest == null) {
                 context.workManager.cancelUniqueWork(WORK_NAME_SCHEDULE)
@@ -90,11 +91,29 @@ object UpdateWatchRefreshScheduler {
             if (delayMillis == null) return@launch
 
             val scheduledAt = now + delayMillis
-            val oldTarget = if (lastScheduled > 0) " (Old target: ${UpdateWatchDiagnosticsManager.formatTimestamp(lastScheduled)})" else ""
-            UpdateWatchDiagnosticsManager.logEvent(
-                eventName = if (skipRunCheck) "Schedule created (self-reschedule)" else "Schedule replaced$oldTarget",
-                scheduledAt = scheduledAt
-            )
+            val isRecovery = earliest <= now
+            val marginMin = (marginMillis / (60 * 1000)).toInt()
+
+            val logMsg = buildString {
+                append(if (skipRunCheck) "Schedule created (self-reschedule)" else "Schedule replaced")
+                if (isRecovery) append(" [RECOVERY]")
+                append("\nBase slot: ${UpdateWatchDiagnosticsManager.formatTimestamp(earliest)}")
+                append("\nMargin: +$marginMin min")
+                append("\nZone: ${zoneId.id}")
+                if (lastScheduled > 0) append("\nOld target: ${UpdateWatchDiagnosticsManager.formatTimestamp(lastScheduled)}")
+            }
+
+            UpdateWatchDiagnosticsManager.log(UpdateWatchSchedulerDiagnostic(
+                type = UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT,
+                eventName = logMsg,
+                scheduledAt = scheduledAt,
+                earliestNextEligibleAt = earliest,
+                wallClockBaseSlot = earliest,
+                nextWorkerTargetAt = scheduledAt,
+                isRecoveryRun = isRecovery,
+                safetyMarginMinutes = marginMin,
+                timezone = zoneId.id
+            ))
 
             diagPrefs.lastEarliestEligibleAt.set(earliest)
             diagPrefs.lastScheduledAt.set(scheduledAt)

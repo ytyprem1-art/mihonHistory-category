@@ -30,8 +30,11 @@ data class UpdateWatchSchedulerDiagnostic(
     val sourceCount: Int = 0,
     val earliestNextEligibleManga: String? = null,
     val earliestNextEligibleAt: Long? = null,
+    val wallClockBaseSlot: Long? = null,
     val nextWorkerTargetAt: Long? = null,
+    val isRecoveryRun: Boolean = false,
     val safetyMarginMinutes: Int = 0,
+    val timezone: String? = null,
     val mangaDetails: List<MangaDiagnosticDetail> = emptyList()
 ) {
     enum class RunType { WORKER_RUN, SCHEDULER_EVENT }
@@ -93,7 +96,7 @@ object UpdateWatchDiagnosticsManager {
         logcat(LogPriority.INFO) { "[UpdateWatchScheduler] Worker Run: ${run.refreshedCount} refreshed, ${run.updatedCount} updates" }
     }
 
-    private fun log(entry: UpdateWatchSchedulerDiagnostic) {
+    fun log(entry: UpdateWatchSchedulerDiagnostic) {
         synchronized(this) {
             try {
                 val current = getDiagnostics()
