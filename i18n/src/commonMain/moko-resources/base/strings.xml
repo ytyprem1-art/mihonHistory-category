@@ -1062,4 +1062,14 @@
     <string name="donationCampaign.paragraph3">Regardless, Mihon will continue to be maintained by me and the volunteers, and it will stay open source.</string>
     <string name="donationCampaign.contactPlatform">Discord</string>
     <string name="donationCampaign.dismiss">Dismiss</string>
+
+    <!-- Update Watch Overdue -->
+    <string name="pref_fun_overdue_messages">Fun overdue messages</string>
+    <string name="pref_fun_overdue_messages_summary">Show playful overdue messages, including dark humor, for manga that have not updated for a long time.</string>
+    <string name="overdue_delayed">Update may be delayed</string>
+    <string name="overdue_fun_1">Author, where are you? We need an update ASAP! 👀</string>
+    <string name="overdue_fun_2">Bro, this break is getting suspicious... 🤨</string>
+    <string name="overdue_fun_3">Did bro start a disappearance arc? 👻</string>
+    <string name="overdue_fun_4">We may need to file a missing person report 🚨</string>
+    <string name="overdue_fun_5">Should\'ve filed that report sooner... 💀\nThe author may be dead at this point ☠️</string>
 </resources>

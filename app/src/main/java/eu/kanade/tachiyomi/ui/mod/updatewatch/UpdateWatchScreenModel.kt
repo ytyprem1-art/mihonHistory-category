@@ -52,6 +52,12 @@ class UpdateWatchScreenModel(
                 }
         }
         screenModelScope.launchIO {
+            libraryPreferences.funOverdueMessages.changes()
+                .collectLatest { enabled ->
+                    mutableState.update { it.copy(funOverdueMessages = enabled) }
+                }
+        }
+        screenModelScope.launchIO {
             getUpdateWatchInbox.subscribe()
                 .flatMapLatest { inboxItems ->
                     if (inboxItems.isEmpty()) return@flatMapLatest flowOf(emptyList<EnrichedUpdateWatchInboxItem>())
@@ -227,6 +233,7 @@ class UpdateWatchScreenModel(
         val enrichedInboxItems: List<EnrichedUpdateWatchInboxItem> = emptyList(),
         val notificationsEnabled: Boolean = false,
         val showInboxOnLoad: Boolean = false,
+        val funOverdueMessages: Boolean = false,
     )
 }
 

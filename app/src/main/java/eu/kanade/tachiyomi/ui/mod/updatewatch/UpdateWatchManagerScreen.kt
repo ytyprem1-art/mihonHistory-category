@@ -30,6 +30,7 @@ import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshWorker
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Face
 import eu.kanade.tachiyomi.ui.mod.updatewatch.components.UpdateWatchHelpSheet
 import eu.kanade.tachiyomi.ui.mod.updatewatch.components.TrackedMangaHelpSheet
 import eu.kanade.tachiyomi.ui.mod.updatewatch.components.AutoRefreshInactivityWarningDialog
@@ -341,6 +342,19 @@ private fun UpdateWatchManagerContent(
                                 imageVector = Icons.AutoMirrored.Outlined.ArrowForwardIos,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    )
+                    ListItem(
+                        headlineContent = { Text(stringResource(MR.strings.pref_fun_overdue_messages)) },
+                        supportingContent = { Text(stringResource(MR.strings.pref_fun_overdue_messages_summary)) },
+                        leadingContent = {
+                            Icon(imageVector = Icons.Outlined.Face, contentDescription = null)
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = screenModel.funOverdueMessages,
+                                onCheckedChange = { screenModel.toggleFunOverdueMessages(it) }
                             )
                         }
                     )

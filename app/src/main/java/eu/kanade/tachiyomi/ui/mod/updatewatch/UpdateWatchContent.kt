@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.presentation.util.relativeTimeSpanString
+import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchOverdueHelper
 import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
 import tachiyomi.domain.history.model.HistoryWithRelations
 import tachiyomi.domain.history.model.UpdateWatch
@@ -25,6 +26,7 @@ import tachiyomi.domain.manga.model.MangaCover
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.presentation.core.components.FastScrollLazyColumn
 import tachiyomi.presentation.core.components.ListGroupHeader
+import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
 import uy.kohesive.injekt.Injekt
@@ -74,7 +76,7 @@ fun UpdateWatchContent(
                         val warningText = when {
                             item.daysSinceRelease == item.expectedIntervalDays.toLong() - 1 -> "Expected update tomorrow"
                             item.daysSinceRelease == item.expectedIntervalDays.toLong() -> "Expected update around today"
-                            else -> "Update may be delayed"
+                            else -> stringResource(UpdateWatchOverdueHelper.getOverdueMessage(item.daysSinceRelease, state.funOverdueMessages))
                         }
 
                         val warningColor = when {

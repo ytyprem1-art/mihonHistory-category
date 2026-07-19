@@ -55,6 +55,7 @@ class UpdateWatchManagerScreenModel(
 ) : StateScreenModel<UpdateWatchManagerScreenModel.State>(State()) {
 
     val sortMode by libraryPreferences.trackedMangaSort.asState(screenModelScope)
+    val funOverdueMessages by libraryPreferences.funOverdueMessages.asState(screenModelScope)
     val snackbarHostState = SnackbarHostState()
 
     init {
@@ -144,6 +145,10 @@ class UpdateWatchManagerScreenModel(
                 logcat(LogPriority.ERROR, e)
             }
         }
+    }
+
+    fun toggleFunOverdueMessages(enabled: Boolean) {
+        libraryPreferences.funOverdueMessages.set(enabled)
     }
 
     fun updateBackgroundRefresh(mangaId: Long, enabled: Boolean, interval: Int, profile: UpdateWatch.RefreshProfile) {
