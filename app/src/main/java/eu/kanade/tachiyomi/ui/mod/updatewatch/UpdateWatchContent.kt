@@ -154,26 +154,30 @@ fun UpdateWatchContent(
                                         val nextTimeText = when {
                                             eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE -> {
                                                 if (eligibility.isDue) {
-                                                    "Next check: recovery pending"
+                                                    if (item.isQueued) {
+                                                        "Refresh queued · ${eligibility.bucket}"
+                                                    } else {
+                                                        "Recovery pending · ${eligibility.bucket}"
+                                                    }
                                                 } else {
                                                     val time = java.time.Instant.ofEpochMilli(eligibility.nextEligibleAt ?: 0L)
                                                         .atZone(java.time.ZoneId.systemDefault())
                                                         .format(java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT))
-                                                    "Next check around $time"
+                                                    "Next check around $time · ${eligibility.bucket}"
                                                 }
                                             }
                                             eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.WAITING -> {
                                                 val date = java.time.Instant.ofEpochMilli(eligibility.nextEligibleAt ?: 0L)
                                                     .atZone(java.time.ZoneId.systemDefault())
                                                     .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.SHORT))
-                                                "Auto refresh starts $date"
+                                                "Auto refresh starts $date · ${eligibility.bucket}"
                                             }
                                             else -> null
                                         }
 
                                         if (nextTimeText != null) {
                                             Text(
-                                                text = "$nextTimeText · ${eligibility.bucket}",
+                                                text = nextTimeText,
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.primary,
                                             )

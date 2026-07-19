@@ -5,6 +5,7 @@ import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
 import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshScheduler
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshState
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -118,7 +119,8 @@ class UpdateWatchScreenModel(
                             getManga.subscribe(mangaId),
                             chapterRepository.getChapterByMangaIdAsFlow(mangaId),
                             manageLinkedSourceGroup.subscribeGroupForManga(mangaId, 0L),
-                        ) { manga, chapters, group ->
+                            UpdateWatchRefreshState.queuedMangaIds,
+                        ) { manga, chapters, group, queuedIds ->
                             if (manga == null || chapters.isEmpty()) return@combine null
 
                             val latestChapter = chapters.filter { it.dateUpload > 0 }
@@ -145,6 +147,7 @@ class UpdateWatchScreenModel(
                                     expectedIntervalDays = tracking.expectedIntervalDays,
                                     refreshProfile = tracking.refreshProfile,
                                     lastBackgroundCheckAt = tracking.lastBackgroundCheckAt,
+                                    isQueued = mangaId in queuedIds,
                                 )
                             } else {
                                 null
@@ -255,5 +258,6 @@ sealed interface UpdateWatchUiModel {
         val refreshProfile: UpdateWatch.RefreshProfile = UpdateWatch.RefreshProfile.WEEKLY_STABLE,
         val lastBackgroundCheckAt: Long? = null,
         val refreshHistory: List<UpdateWatchHistory> = emptyList(),
+        val isQueued: Boolean = false,
     ) : UpdateWatchUiModel
 }

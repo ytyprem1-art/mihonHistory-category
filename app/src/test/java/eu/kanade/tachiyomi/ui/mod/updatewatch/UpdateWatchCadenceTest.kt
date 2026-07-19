@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.mod.updatewatch
 
 import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshState
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -121,6 +122,28 @@ class UpdateWatchCadenceTest {
         assertEquals(UpdateWatchRefreshHelper.PriorityBucket.HOT, eligibility.bucket)
         assertFalse(eligibility.isDue)
         assertEquals(t(2024, 5, 8, 16, 0), eligibility.nextEligibleAt)
+    }
+
+    @Test
+    fun `test refresh queued status mapping`() {
+        val mangaId = 1L
+
+        // Scenario 1: Unattended due manga (not in queued set)
+        UpdateWatchRefreshState.clear()
+        var isQueued = mangaId in UpdateWatchRefreshState.queuedMangaIds.value
+        assertFalse(isQueued)
+        // UI logic: if (isDue && !isQueued) -> "Recovery pending"
+
+        // Scenario 2: Selected candidate (added to queued set)
+        UpdateWatchRefreshState.setQueued(setOf(mangaId))
+        isQueued = mangaId in UpdateWatchRefreshState.queuedMangaIds.value
+        assertTrue(isQueued)
+        // UI logic: if (isDue && isQueued) -> "Refresh queued"
+
+        // Scenario 3: Completed/Failed/Cancelled (cleared)
+        UpdateWatchRefreshState.clear()
+        isQueued = mangaId in UpdateWatchRefreshState.queuedMangaIds.value
+        assertFalse(isQueued)
     }
 
     private fun t(year: Int, month: Int, day: Int, hour: Int, min: Int): Long {

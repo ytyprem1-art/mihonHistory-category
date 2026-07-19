@@ -164,6 +164,9 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                     selected
                 }
 
+            val allSelectedIds = workBySource.values.flatten().map { it.mangaId }.toSet()
+            UpdateWatchRefreshState.setQueued(allSelectedIds)
+
             val sortedSourceQueues = workBySource.toList()
                 .filter { it.second.isNotEmpty() }
                 .sortedBy { (_, queue) -> queue.first().lastCheckAt }
@@ -239,6 +242,8 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
             logcat(LogPriority.ERROR, e)
             UpdateWatchRefreshScheduler.setupTask(applicationContext, skipRunCheck = true)
             Result.failure()
+        } finally {
+            UpdateWatchRefreshState.clear()
         }
     }
 

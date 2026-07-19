@@ -8,6 +8,7 @@ import eu.kanade.tachiyomi.util.lang.toLocalDate
 import androidx.compose.runtime.getValue
 import eu.kanade.core.preference.asState
 import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshScheduler
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshState
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -71,7 +72,8 @@ class UpdateWatchManagerScreenModel(
                             chapterRepository.getChapterByMangaIdAsFlow(mangaId),
                             manageLinkedSourceGroup.subscribeGroupForManga(mangaId, 0L),
                             getUpdateWatchHistory.subscribeLatest5(mangaId),
-                        ) { manga, chapters, group, history ->
+                            UpdateWatchRefreshState.queuedMangaIds,
+                        ) { manga, chapters, group, history, queuedIds ->
                             if (manga == null) return@combine null
 
                             val latestChapter = if (chapters.isNotEmpty()) {
@@ -97,6 +99,7 @@ class UpdateWatchManagerScreenModel(
                                 refreshProfile = tracking.refreshProfile,
                                 lastBackgroundCheckAt = tracking.lastBackgroundCheckAt,
                                 refreshHistory = history,
+                                isQueued = mangaId in queuedIds,
                             )
                         }
                     }

@@ -562,7 +562,11 @@ private fun UpdateWatchManagerContent(
                                         val nextCheckText = when {
                                             eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE -> {
                                                 if (eligibility.isDue) {
-                                                    "Next check: Due now · recovery pending"
+                                                    if (item.isQueued) {
+                                                        "Refresh queued · ${eligibility.bucket}"
+                                                    } else {
+                                                        "Recovery pending · ${eligibility.bucket}"
+                                                    }
                                                 } else {
                                                     "Next check: ${UpdateWatchDiagnosticsManager.formatTimestamp(eligibility.nextEligibleAt)}"
                                                 }
