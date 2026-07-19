@@ -226,6 +226,7 @@ class UpdateWatchManagerScreen : Screen() {
                 onEditBackgroundRefresh = { editItem = it },
                 onShowHelp = { showHelpSheet = true },
                 onShowTrackedHelp = { showTrackedHelpSheet = true },
+                onShowDiagnostics = { navigator.push(UpdateWatchDiagnosticsScreen()) },
                 screenModel = screenModel,
             )
 
@@ -267,6 +268,7 @@ private fun UpdateWatchManagerContent(
     onEditBackgroundRefresh: (UpdateWatchUiModel.Item) -> Unit,
     onShowHelp: () -> Unit,
     onShowTrackedHelp: () -> Unit,
+    onShowDiagnostics: () -> Unit,
     screenModel: UpdateWatchManagerScreenModel,
 ) {
     val items = state.items
@@ -312,6 +314,23 @@ private fun UpdateWatchManagerContent(
                         leadingContent = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                                contentDescription = null,
+                            )
+                        },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    )
+                    ListItem(
+                        modifier = Modifier.clickable(onClick = onShowDiagnostics),
+                        headlineContent = { Text("Scheduler diagnostics") },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Outlined.SettingsBackupRestore,
                                 contentDescription = null,
                             )
                         },

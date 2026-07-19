@@ -5,6 +5,7 @@ import eu.kanade.tachiyomi.data.backup.models.BackupManualHistoryGroup
 import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatch
 import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatchHistory
 import eu.kanade.tachiyomi.data.backup.models.BackupUpdateWatchInboxItem
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshScheduler
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.group.interactor.ManageHistoryGroups
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
@@ -152,6 +153,10 @@ class ModRestorer(
                     )
                 )
             }
+        }
+
+        if (backupUpdateWatch.isNotEmpty()) {
+            UpdateWatchRefreshScheduler.setupTask(Injekt.get())
         }
 
         return skippedCount

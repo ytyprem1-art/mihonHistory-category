@@ -7,6 +7,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.tachiyomi.util.lang.toLocalDate
 import androidx.compose.runtime.getValue
 import eu.kanade.core.preference.asState
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshScheduler
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -138,6 +139,7 @@ class UpdateWatchManagerScreenModel(
         screenModelScope.launchIO {
             try {
                 manageUpdateWatch.delete(mangaId)
+                UpdateWatchRefreshScheduler.setupTask(Injekt.get())
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
             }
@@ -148,6 +150,7 @@ class UpdateWatchManagerScreenModel(
         screenModelScope.launchIO {
             try {
                 manageUpdateWatch.updateBackgroundRefresh(mangaId, enabled, interval, profile)
+                UpdateWatchRefreshScheduler.setupTask(Injekt.get())
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
             }

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshScheduler
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -174,6 +175,7 @@ class UpdateWatchScreenModel(
         screenModelScope.launchIO {
             try {
                 manageUpdateWatch.updatePaused(mangaId, true)
+                UpdateWatchRefreshScheduler.setupTask(Injekt.get())
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
             }
@@ -197,6 +199,7 @@ class UpdateWatchScreenModel(
                         interval = tracking.expectedIntervalDays,
                         profile = tracking.refreshProfile
                     )
+                    UpdateWatchRefreshScheduler.setupTask(Injekt.get())
                 }
                 manageUpdateWatchInbox.delete(mangaId)
             } catch (e: Exception) {

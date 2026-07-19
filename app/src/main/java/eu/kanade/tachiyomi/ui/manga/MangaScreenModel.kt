@@ -36,6 +36,7 @@ import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshScheduler
 import eu.kanade.tachiyomi.util.chapter.getNextUnread
 import eu.kanade.tachiyomi.util.removeCovers
 import eu.kanade.tachiyomi.util.system.toast
@@ -1392,6 +1393,7 @@ class MangaScreenModel(
                 val isTracked = manageUpdateWatch.getById(mangaId) != null
                 if (isTracked) {
                     manageUpdateWatch.delete(mangaId)
+                    UpdateWatchRefreshScheduler.setupTask(Injekt.get())
                 } else {
                     updateSuccessState { it.copy(dialog = Dialog.TrackUpdateWatch) }
                 }
@@ -1415,6 +1417,7 @@ class MangaScreenModel(
                         lastWarnedMilestone = 0
                     )
                 )
+                UpdateWatchRefreshScheduler.setupTask(Injekt.get())
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR, e)
             }

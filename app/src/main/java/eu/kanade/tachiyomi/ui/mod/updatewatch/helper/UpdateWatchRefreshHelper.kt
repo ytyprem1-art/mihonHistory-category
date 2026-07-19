@@ -19,6 +19,8 @@ object UpdateWatchRefreshHelper {
     const val STAGGER_RELEASE_MIN_MS = 30000L
     const val STAGGER_RELEASE_MAX_MS = 90000L
 
+    const val MIN_RESCHEDULE_GAP_MILLIS = 30 * 60 * 1000L
+
     enum class RefreshStatus {
         WAITING,
         ACTIVE,
@@ -111,6 +113,7 @@ object UpdateWatchRefreshHelper {
     /**
      * Finds the earliest nextEligibleAt timestamp across all provided candidates.
      * Only considers enabled and active (eligible for refresh) manga.
+     * Includes WAITING manga based on their expected release date.
      */
     fun getEarliestNextEligibleAt(
         trackingList: List<UpdateWatch>,
@@ -129,13 +132,33 @@ object UpdateWatchRefreshHelper {
                     lastCheckAt = tracking.lastBackgroundCheckAt,
                     today = today
                 )
-                if (eligibility.status == RefreshStatus.ACTIVE) {
-                    eligibility.nextEligibleAt
-                } else {
-                    null
+                when (eligibility.status) {
+                    RefreshStatus.ACTIVE -> eligibility.nextEligibleAt
+                    RefreshStatus.WAITING -> {
+                        // releaseDate + expectedIntervalDays
+                        latestDate + (tracking.expectedIntervalDays.toLong() * 24 * 60 * 60 * 1000L)
+                    }
+                    else -> null
                 }
             }
             .minOrNull()
+    }
+
+    /**
+     * Calculates the initial delay for the next OneTimeWorkRequest.
+     * Includes a safety margin and enforces a minimum gap.
+     */
+    fun calculateRescheduleDelay(
+        earliestNextEligibleAt: Long?,
+        now: Long,
+        marginMillis: Long,
+    ): Long? {
+        if (earliestNextEligibleAt == null) return null
+
+        var delayMillis = earliestNextEligibleAt - now
+        delayMillis += marginMillis
+
+        return delayMillis.coerceAtLeast(MIN_RESCHEDULE_GAP_MILLIS)
     }
 
     private fun getPlannedCadenceInfo(
