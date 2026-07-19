@@ -73,15 +73,16 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                     expectedIntervalDays = tracking.expectedIntervalDays,
                     refreshProfile = tracking.refreshProfile,
                     latestChapterUploadDate = latestChapter.dateUpload,
+                    lastCheckAt = tracking.lastBackgroundCheckAt,
                     today = LocalDate.now(),
                 )
 
                 if (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE) {
                     val lastCheck = tracking.lastBackgroundCheckAt ?: 0L
                     val now = System.currentTimeMillis()
-                    val interval = eligibility.plannedCadenceIntervalMillis ?: 0L
+                    val nextEligible = eligibility.nextEligibleAt ?: 0L
 
-                    if (now - lastCheck >= interval) {
+                    if (now >= nextEligible) {
                         allCandidates.add(
                             RefreshCandidate(
                                 mangaId = manga.id,

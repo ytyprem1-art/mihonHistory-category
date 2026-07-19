@@ -42,6 +42,7 @@ object UpdateWatchRefreshHelper {
         val bucket: PriorityBucket = PriorityBucket.NONE,
         val plannedCadenceLabel: String? = null,
         val plannedCadenceIntervalMillis: Long? = null,
+        val nextEligibleAt: Long? = null,
     )
 
     fun getEligibility(
@@ -49,6 +50,7 @@ object UpdateWatchRefreshHelper {
         expectedIntervalDays: Int,
         refreshProfile: UpdateWatch.RefreshProfile,
         latestChapterUploadDate: Long,
+        lastCheckAt: Long? = null,
         today: LocalDate = LocalDate.now(),
     ): RefreshEligibility {
         if (latestChapterUploadDate <= 0) {
@@ -88,6 +90,12 @@ object UpdateWatchRefreshHelper {
             else -> cycleBucket
         }
 
+        val nextEligibleAt = if (status == RefreshStatus.ACTIVE && cadenceIntervalMillis != null) {
+            (lastCheckAt ?: 0L) + cadenceIntervalMillis
+        } else {
+            null
+        }
+
         return RefreshEligibility(
             ageDays = ageDays,
             daysUntilDue = daysUntilDue,
@@ -96,7 +104,38 @@ object UpdateWatchRefreshHelper {
             bucket = finalBucket,
             plannedCadenceLabel = cadenceLabel,
             plannedCadenceIntervalMillis = cadenceIntervalMillis,
+            nextEligibleAt = nextEligibleAt,
         )
+    }
+
+    /**
+     * Finds the earliest nextEligibleAt timestamp across all provided candidates.
+     * Only considers enabled and active (eligible for refresh) manga.
+     */
+    fun getEarliestNextEligibleAt(
+        trackingList: List<UpdateWatch>,
+        latestChapterDates: Map<Long, Long>,
+        today: LocalDate = LocalDate.now(),
+    ): Long? {
+        return trackingList
+            .filter { it.backgroundRefreshEnabled && !it.isPaused }
+            .mapNotNull { tracking ->
+                val latestDate = latestChapterDates[tracking.mangaId] ?: return@mapNotNull null
+                val eligibility = getEligibility(
+                    enabled = tracking.backgroundRefreshEnabled,
+                    expectedIntervalDays = tracking.expectedIntervalDays,
+                    refreshProfile = tracking.refreshProfile,
+                    latestChapterUploadDate = latestDate,
+                    lastCheckAt = tracking.lastBackgroundCheckAt,
+                    today = today
+                )
+                if (eligibility.status == RefreshStatus.ACTIVE) {
+                    eligibility.nextEligibleAt
+                } else {
+                    null
+                }
+            }
+            .minOrNull()
     }
 
     private fun getPlannedCadenceInfo(
@@ -111,7 +150,7 @@ object UpdateWatchRefreshHelper {
                 val dayInCycle = (ageDays - expectedDays) % expectedDays
                 when {
                     dayInCycle <= 1L -> {
-                        ("Planned check every 1.5–2 hours" to 90 * 60 * 1000L) to PriorityBucket.HOT
+                        ("Planned check every 2 hours" to 120 * 60 * 1000L) to PriorityBucket.HOT
                     }
                     dayInCycle == 2L -> {
                         ("Planned check about every 4 hours" to 4 * 60 * 60 * 1000L) to PriorityBucket.WARM
