@@ -80,7 +80,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                     refreshProfile = tracking.refreshProfile,
                     latestChapterUploadDate = latestChapter.dateUpload,
                     lastCheckAt = tracking.lastBackgroundCheckAt,
-                    today = LocalDate.now(),
+                    now = startTime,
                 )
 
                 if (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE) {

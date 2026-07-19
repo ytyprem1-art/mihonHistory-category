@@ -487,6 +487,8 @@ private fun UpdateWatchManagerContent(
                                         expectedIntervalDays = item.expectedIntervalDays,
                                         refreshProfile = item.refreshProfile,
                                         latestChapterUploadDate = item.latestChapter.dateUpload,
+                                        lastCheckAt = item.lastBackgroundCheckAt,
+                                        now = System.currentTimeMillis()
                                     )
 
                                     val latestHistory = item.refreshHistory.firstOrNull()

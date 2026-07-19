@@ -123,7 +123,8 @@ class UpdateWatchScreenModel(
                                 expectedIntervalDays = tracking.expectedIntervalDays,
                                 refreshProfile = tracking.refreshProfile,
                                 latestChapterUploadDate = latestChapter.dateUpload,
-                                today = LocalDate.now(),
+                                lastCheckAt = tracking.lastBackgroundCheckAt,
+                                now = System.currentTimeMillis(),
                             )
 
                             val isVisible = eligibility.ageDays >= (tracking.expectedIntervalDays - 1)

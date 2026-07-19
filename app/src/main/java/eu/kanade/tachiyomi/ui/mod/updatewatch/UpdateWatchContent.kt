@@ -145,6 +145,8 @@ fun UpdateWatchContent(
                                             expectedIntervalDays = item.expectedIntervalDays,
                                             refreshProfile = item.refreshProfile,
                                             latestChapterUploadDate = item.latestChapter.dateUpload,
+                                            lastCheckAt = item.lastBackgroundCheckAt,
+                                            now = System.currentTimeMillis()
                                         )
 
                                         val refreshStatus = when (eligibility.status) {

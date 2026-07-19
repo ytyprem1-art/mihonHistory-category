@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.mod.updatewatch.helper
 import eu.kanade.tachiyomi.util.lang.toLocalDate
 import tachiyomi.domain.history.model.UpdateWatch
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 object UpdateWatchRefreshHelper {
@@ -53,14 +54,16 @@ object UpdateWatchRefreshHelper {
         refreshProfile: UpdateWatch.RefreshProfile,
         latestChapterUploadDate: Long,
         lastCheckAt: Long? = null,
-        today: LocalDate = LocalDate.now(),
+        now: Long = System.currentTimeMillis(),
+        zoneId: ZoneId = ZoneId.systemDefault(),
     ): RefreshEligibility {
         if (latestChapterUploadDate <= 0) {
             return RefreshEligibility(0, 0, RefreshStatus.INVALID_DATE, false)
         }
 
-        val releaseDate = latestChapterUploadDate.toLocalDate()
-        val ageDays = ChronoUnit.DAYS.between(releaseDate, today)
+        val releaseDate = latestChapterUploadDate.toLocalDate(zoneId)
+        val currentLocalDate = java.time.Instant.ofEpochMilli(now).atZone(zoneId).toLocalDate()
+        val ageDays = ChronoUnit.DAYS.between(releaseDate, currentLocalDate)
         val daysUntilDue = expectedIntervalDays - ageDays
         val isStale = ageDays >= expectedIntervalDays + 28
 
@@ -74,11 +77,9 @@ object UpdateWatchRefreshHelper {
             RefreshStatus.ACTIVE
         }
 
-        var cadenceIntervalMillis: Long? = null
         var cycleBucket = PriorityBucket.NONE
         val cadenceLabel = if (status == RefreshStatus.ACTIVE) {
             val (info, bucket) = getPlannedCadenceInfo(refreshProfile, ageDays, expectedIntervalDays.toLong())
-            cadenceIntervalMillis = info.second
             cycleBucket = bucket
             info.first
         } else {
@@ -92,8 +93,12 @@ object UpdateWatchRefreshHelper {
             else -> cycleBucket
         }
 
-        val nextEligibleAt = if (status == RefreshStatus.ACTIVE && cadenceIntervalMillis != null) {
-            (lastCheckAt ?: 0L) + cadenceIntervalMillis
+        val nextEligibleAt = if (status == RefreshStatus.ACTIVE) {
+            if (UpdateWatchSlotHelper.isDue(finalBucket, now, lastCheckAt, zoneId)) {
+                UpdateWatchSlotHelper.getCurrentSlot(finalBucket, now, zoneId)
+            } else {
+                UpdateWatchSlotHelper.getNextSlot(finalBucket, now, zoneId)
+            }
         } else {
             null
         }
@@ -105,7 +110,7 @@ object UpdateWatchRefreshHelper {
             isStale = isStale,
             bucket = finalBucket,
             plannedCadenceLabel = cadenceLabel,
-            plannedCadenceIntervalMillis = cadenceIntervalMillis,
+            plannedCadenceIntervalMillis = null, // Deprecated in wall-clock mode
             nextEligibleAt = nextEligibleAt,
         )
     }
@@ -118,7 +123,8 @@ object UpdateWatchRefreshHelper {
     fun getEarliestNextEligibleAt(
         trackingList: List<UpdateWatch>,
         latestChapterDates: Map<Long, Long>,
-        today: LocalDate = LocalDate.now(),
+        now: Long = System.currentTimeMillis(),
+        zoneId: ZoneId = ZoneId.systemDefault(),
     ): Long? {
         return trackingList
             .filter { it.backgroundRefreshEnabled && !it.isPaused }
@@ -130,13 +136,15 @@ object UpdateWatchRefreshHelper {
                     refreshProfile = tracking.refreshProfile,
                     latestChapterUploadDate = latestDate,
                     lastCheckAt = tracking.lastBackgroundCheckAt,
-                    today = today
+                    now = now,
+                    zoneId = zoneId
                 )
                 when (eligibility.status) {
                     RefreshStatus.ACTIVE -> eligibility.nextEligibleAt
                     RefreshStatus.WAITING -> {
-                        // releaseDate + expectedIntervalDays
-                        latestDate + (tracking.expectedIntervalDays.toLong() * 24 * 60 * 60 * 1000L)
+                        val releaseDate = latestDate.toLocalDate(zoneId)
+                        val activeDate = releaseDate.plusDays(tracking.expectedIntervalDays.toLong())
+                        activeDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
                     }
                     else -> null
                 }
@@ -204,5 +212,9 @@ object UpdateWatchRefreshHelper {
                 }
             }
         }
+    }
+
+    private fun Long.toLocalDate(zoneId: ZoneId): LocalDate {
+        return java.time.Instant.ofEpochMilli(this).atZone(zoneId).toLocalDate()
     }
 }

@@ -63,8 +63,8 @@ object UpdateWatchRefreshScheduler {
                 tracking.mangaId to (latest?.dateUpload ?: 0L)
             }
 
-            val earliest = UpdateWatchRefreshHelper.getEarliestNextEligibleAt(trackedManga, latestChapterDates)
             val now = System.currentTimeMillis()
+            val earliest = UpdateWatchRefreshHelper.getEarliestNextEligibleAt(trackedManga, latestChapterDates, now)
 
             if (earliest == null) {
                 context.workManager.cancelUniqueWork(WORK_NAME_SCHEDULE)
