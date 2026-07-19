@@ -96,8 +96,58 @@ private fun PageOne(onNext: () -> Unit) {
         BulletItem("Weekly manga enter a faster checking window again during the next weekly cycle.")
         BulletItem("Rapid-update series use a faster schedule.")
         BulletItem("Older inactive series are checked less often.")
-        BulletItem("Users may track as many manga as they want.")
-        BulletItem("When many titles from one source are eligible together, some may wait for a later background run.")
+
+        Text(
+            text = "Fixed refresh schedule",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = "To keep updates predictable and consistent, Auto Refresh follows fixed device-local wall-clock slots:",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            BulletItem("HOT: Every 2 hours (00:00, 02:00, 04:00, etc.)")
+            BulletItem("WARM: Every 4 hours (00:00, 04:00, 08:00, 12:00, 16:00, 20:00)")
+            BulletItem("COLD: Every 12 hours (00:00 and 12:00)")
+            BulletItem("STALE: Once daily (00:00)")
+        }
+
+        Text(
+            text = "A small randomized safety delay is added after the base slot to avoid hitting sources exactly on the hour. Android may also execute background work slightly later due to system battery or network restrictions.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = "If several slots are missed (for example, while the device is off), only one catch-up refresh is performed for the latest elapsed slot.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = "Old or inactive manga",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = "Auto Refresh is intended mainly for active series. If the latest known chapter is already old, Mihon shows a confirmation warning before enabling:",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            BulletItem("60–179 days old: Standard inactivity warning.")
+            BulletItem("180+ days old: Stronger warning that the manga may be inactive, completed, or on hiatus.")
+        }
+
+        Text(
+            text = "The user may still choose “Enable anyway.” This warning is based on how old the latest chapter already is, and is separate from later monitoring warnings (28/60/90 days) which track how long Auto Refresh has been active without finding new content.\n\nNo new network request is made for this warning, and missing release dates do not block enabling.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Text(
             text = "How this differs from standard Mihon",
@@ -121,12 +171,6 @@ private fun PageOne(onNext: () -> Unit) {
                 modifier = Modifier.padding(MaterialTheme.padding.medium)
             )
         }
-
-        Text(
-            text = "Example: A weekly manga expected on Monday is checked more often on Monday and Tuesday. If it is still late, checks slow down until the next weekly window.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -188,21 +232,25 @@ private fun PageTwo() {
 
         PriorityBucketItem(
             name = "HOT",
+            frequency = "Every 2 hours",
             description = "Manga inside the most likely update window. Checked first and more often.",
             limit = UpdateWatchRefreshHelper.CAP_HOT
         )
         PriorityBucketItem(
             name = "WARM",
+            frequency = "Every 4 hours",
             description = "Manga slightly past its most likely update window. Checked after HOT manga.",
             limit = UpdateWatchRefreshHelper.CAP_WARM
         )
         PriorityBucketItem(
             name = "COLD",
+            frequency = "Every 12 hours",
             description = "Manga still waiting for an update. Checked less often.",
             limit = UpdateWatchRefreshHelper.CAP_COLD
         )
         PriorityBucketItem(
             name = "STALE",
+            frequency = "Once daily",
             description = "Manga with no update for a long time. Lowest queue priority outside its recurring fast window. Auto Refresh is not disabled automatically. You may receive an inbox warning asking whether Auto Refresh should continue.",
             limit = UpdateWatchRefreshHelper.CAP_STALE
         )
@@ -219,7 +267,7 @@ private fun PageTwo() {
         BulletItem("Maximum active sources: ${UpdateWatchRefreshHelper.GLOBAL_CONCURRENCY} at the same time")
 
         Text(
-            text = "These limits are not a limit on how many manga you can track. Manga that do not fit in the current run remain eligible and will be reconsidered during a later background run.",
+            text = "These limits are not a limit on how many manga you can track. Manga that are skipped because of these limits remain due for the current wall-clock slot and will be reconsidered during a later background run.",
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -257,13 +305,19 @@ private fun PageTwo() {
         BulletItem("Use slower profiles for manga that update infrequently.")
         BulletItem("Disable Auto Refresh for completed or inactive series.")
 
+        Text(
+            text = "Tracking very old or inactive manga may create unnecessary background checks. Mihon warns before enabling Auto Refresh, but users may continue if they still want to monitor the title.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant,
             shape = MaterialTheme.shapes.medium,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "Auto Refresh uses cooldowns, priority limits, staggered source starts, and per-source queues to reduce unnecessary activity.",
+                text = "Auto Refresh uses wall-clock slots, priority limits, staggered source starts, and per-source queues to reduce unnecessary activity.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(MaterialTheme.padding.medium)
             )
@@ -280,16 +334,22 @@ private fun BulletItem(text: String) {
 }
 
 @Composable
-private fun PriorityBucketItem(name: String, description: String, limit: Int) {
+private fun PriorityBucketItem(name: String, frequency: String, description: String, limit: Int) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = frequency,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 shape = MaterialTheme.shapes.extraSmall

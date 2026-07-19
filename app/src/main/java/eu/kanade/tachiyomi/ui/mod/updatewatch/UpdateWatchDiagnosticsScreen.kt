@@ -75,9 +75,14 @@ class UpdateWatchDiagnosticsScreen : Screen() {
                                         appendLine("Eligible: ${diag.eligibleCount} | Selected: ${diag.selectedCount}")
                                         appendLine("Updates: ${diag.updatedCount} | No update: ${diag.noUpdateCount} | Failed: ${diag.failedCount}")
                                         appendLine("Sources: ${diag.sourceCount}")
+
                                         if (diag.nextWorkerTargetAt != null) {
-                                            appendLine("Next target: ${UpdateWatchDiagnosticsManager.formatTimestamp(diag.nextWorkerTargetAt)} (+${diag.safetyMarginMinutes} min margin)")
+                                            appendLine("Final scheduled target: ${UpdateWatchDiagnosticsManager.formatTimestamp(diag.nextWorkerTargetAt)}")
                                         }
+                                        if (diag.proposedTargetAt != null && diag.proposedTargetAt != diag.nextWorkerTargetAt) {
+                                            appendLine("Proposed target: ${UpdateWatchDiagnosticsManager.formatTimestamp(diag.proposedTargetAt)} (+${diag.proposedMarginMinutes} min margin)")
+                                        }
+
                                         if (diag.mangaDetails.isNotEmpty()) {
                                             appendLine("\nManga Details:")
                                             diag.mangaDetails.forEach { m ->
@@ -86,8 +91,16 @@ class UpdateWatchDiagnosticsScreen : Screen() {
                                                 appendLine("  Next eligible: ${UpdateWatchDiagnosticsManager.formatTimestamp(m.nextEligibleAt)}")
                                             }
                                         }
-                                    } else if (diag.scheduledAt != null) {
-                                        appendLine("Target: ${UpdateWatchDiagnosticsManager.formatTimestamp(diag.scheduledAt)}")
+                                    } else {
+                                        if (diag.wallClockBaseSlot != null) {
+                                            appendLine("Base slot: ${UpdateWatchDiagnosticsManager.formatTimestamp(diag.wallClockBaseSlot)}")
+                                        }
+                                        if (diag.safetyMarginMinutes > 0) {
+                                            appendLine("Margin: +${diag.safetyMarginMinutes} min")
+                                        }
+                                        if (diag.nextWorkerTargetAt != null) {
+                                            appendLine("Final scheduled target: ${UpdateWatchDiagnosticsManager.formatTimestamp(diag.nextWorkerTargetAt)}")
+                                        }
                                     }
                                 }
                             }
@@ -224,7 +237,8 @@ class UpdateWatchDiagnosticsScreen : Screen() {
                             fontWeight = FontWeight.Bold
                         )
                         if (diagnostic.type == UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT) {
-                            Text(text = diagnostic.eventName ?: "Unknown event", style = MaterialTheme.typography.bodyMedium)
+                            val eventTitle = diagnostic.eventName?.substringBefore("\n") ?: "Unknown event"
+                            Text(text = eventTitle, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                     if (!isInSelectionMode) {
@@ -260,17 +274,51 @@ class UpdateWatchDiagnosticsScreen : Screen() {
 
                     if (diagnostic.nextWorkerTargetAt != null) {
                         Text(
-                            text = "Next target: ${UpdateWatchDiagnosticsManager.formatTimestamp(diagnostic.nextWorkerTargetAt)} (+${diagnostic.safetyMarginMinutes} min margin)",
+                            text = "Final scheduled target: ${UpdateWatchDiagnosticsManager.formatTimestamp(diagnostic.nextWorkerTargetAt)}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        // Only show proposed if it differs from final
+                        if (diagnostic.proposedTargetAt != null && diagnostic.proposedTargetAt != diagnostic.nextWorkerTargetAt) {
+                            Text(
+                                text = "Proposed target: ${UpdateWatchDiagnosticsManager.formatTimestamp(diagnostic.proposedTargetAt)} (+${diagnostic.proposedMarginMinutes} min margin)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else if (diagnostic.type == UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT) {
+                    if (diagnostic.isRecoveryRun) {
+                        Text(
+                            text = "RECOVERY RUN: A backlog of due manga was detected.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                } else if (diagnostic.type == UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT && diagnostic.isRecoveryRun) {
+
                     Text(
-                        text = "RECOVERY RUN: A backlog of due manga was detected.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold
+                        text = buildString {
+                            if (diagnostic.wallClockBaseSlot != null) {
+                                append("Base slot: ${UpdateWatchDiagnosticsManager.formatTimestamp(diagnostic.wallClockBaseSlot)}\n")
+                            }
+                            if (diagnostic.safetyMarginMinutes > 0) {
+                                append("Margin: +${diagnostic.safetyMarginMinutes} min\n")
+                            }
+                            if (diagnostic.nextWorkerTargetAt != null) {
+                                append("Final scheduled target: ${UpdateWatchDiagnosticsManager.formatTimestamp(diagnostic.nextWorkerTargetAt)}\n")
+                            }
+                            if (diagnostic.timezone != null) {
+                                append("Zone: ${diagnostic.timezone}")
+                            }
+                            val oldTargetText = diagnostic.eventName?.lines()?.find { it.contains("Old target:") }
+                            if (oldTargetText != null) {
+                                append("\n$oldTargetText")
+                            }
+                        }.trim(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -286,13 +334,6 @@ class UpdateWatchDiagnosticsScreen : Screen() {
                             diagnostic.mangaDetails.forEach { detail ->
                                 MangaDetailRow(detail)
                             }
-                        }
-
-                        if (diagnostic.type == UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT && diagnostic.scheduledAt != null) {
-                            Text(
-                                text = "Target: ${UpdateWatchDiagnosticsManager.formatTimestamp(diagnostic.scheduledAt)}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
                         }
                     }
                 }

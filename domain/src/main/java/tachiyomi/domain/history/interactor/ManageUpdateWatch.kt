@@ -42,7 +42,15 @@ class ManageUpdateWatch(
         interval: Int,
         profile: UpdateWatch.RefreshProfile
     ) {
+        val existing = repository.getById(mangaId)
+        val newlyEnabled = enabled && existing?.backgroundRefreshEnabled == false
+
         repository.updateBackgroundRefresh(mangaId, enabled, interval, profile)
+
+        if (newlyEnabled) {
+            // Store enablement timestamp as negative value to distinguish from actual checks
+            repository.updateLastBackgroundCheckAt(mangaId, -System.currentTimeMillis())
+        }
     }
 
     suspend fun updateLastBackgroundCheckAt(mangaId: Long, timestamp: Long) {

@@ -32,6 +32,9 @@ data class UpdateWatchSchedulerDiagnostic(
     val earliestNextEligibleAt: Long? = null,
     val wallClockBaseSlot: Long? = null,
     val nextWorkerTargetAt: Long? = null,
+    val proposedTargetAt: Long? = null,
+    val proposedBaseSlotAt: Long? = null,
+    val proposedMarginMinutes: Int = 0,
     val isRecoveryRun: Boolean = false,
     val safetyMarginMinutes: Int = 0,
     val timezone: String? = null,
@@ -64,6 +67,10 @@ class UpdateWatchDiagnosticsPreferences(val preferenceStore: PreferenceStore) {
     val lastScheduledAt: Preference<Long> = preferenceStore.getLong(
         Preference.appStateKey("update_watch_last_scheduled_at"),
         0L
+    )
+    val lastMarginMinutes: Preference<Int> = preferenceStore.getInt(
+        Preference.appStateKey("update_watch_last_margin_min"),
+        0
     )
 }
 

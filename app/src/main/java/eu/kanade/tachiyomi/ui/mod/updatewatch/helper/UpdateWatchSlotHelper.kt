@@ -44,7 +44,9 @@ object UpdateWatchSlotHelper {
 
     /**
      * Returns true if the manga is due for the current slot.
-     * [lastProcessedSlotAt] is the start time of the slot that was last processed for this manga.
+     * [lastProcessedSlotAt] is the timestamp stored in database.
+     * Positive values are actual check times.
+     * Negative values are enablement times.
      */
     fun isDue(
         bucket: UpdateWatchRefreshHelper.PriorityBucket,
@@ -55,7 +57,18 @@ object UpdateWatchSlotHelper {
         if (bucket == UpdateWatchRefreshHelper.PriorityBucket.NONE) return false
 
         val currentSlot = getCurrentSlot(bucket, now, zoneId)
-        return lastProcessedSlotAt == null || currentSlot > lastProcessedSlotAt
+
+        val actualLastProcessed = if (lastProcessedSlotAt != null && lastProcessedSlotAt > 0) lastProcessedSlotAt else null
+        val enabledAt = if (lastProcessedSlotAt != null && lastProcessedSlotAt < 0) -lastProcessedSlotAt else 0L
+
+        // 1. Never processed or a new slot has started since last real check?
+        val slotNotProcessed = actualLastProcessed == null || currentSlot > actualLastProcessed
+
+        // 2. Was it enabled before or at the start of this slot?
+        // If enabled at 3:20 PM, currentSlot is 2:00 PM. 2:00 PM >= 3:20 PM is false.
+        val enabledInTime = currentSlot >= enabledAt
+
+        return slotNotProcessed && enabledInTime
     }
 
     /**

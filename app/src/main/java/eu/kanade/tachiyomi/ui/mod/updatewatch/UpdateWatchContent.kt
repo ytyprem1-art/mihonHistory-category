@@ -149,39 +149,31 @@ fun UpdateWatchContent(
                                             now = System.currentTimeMillis()
                                         )
 
-                                        val refreshStatus = when (eligibility.status) {
-                                            UpdateWatchRefreshHelper.RefreshStatus.WAITING ->
-                                                "Auto refresh enabled · starts in ${eligibility.daysUntilDue} days"
-                                            UpdateWatchRefreshHelper.RefreshStatus.ACTIVE ->
-                                                "Auto refresh active"
+                                        val nextTimeText = when {
+                                            eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE -> {
+                                                if (eligibility.isDue) {
+                                                    "Next check: recovery pending"
+                                                } else {
+                                                    val time = java.time.Instant.ofEpochMilli(eligibility.nextEligibleAt ?: 0L)
+                                                        .atZone(java.time.ZoneId.systemDefault())
+                                                        .format(java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT))
+                                                    "Next check around $time"
+                                                }
+                                            }
+                                            eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.WAITING -> {
+                                                val date = java.time.Instant.ofEpochMilli(eligibility.nextEligibleAt ?: 0L)
+                                                    .atZone(java.time.ZoneId.systemDefault())
+                                                    .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.SHORT))
+                                                "Auto refresh starts $date"
+                                            }
                                             else -> null
                                         }
 
-                                        if (refreshStatus != null) {
+                                        if (nextTimeText != null) {
                                             Text(
-                                                text = refreshStatus,
+                                                text = "$nextTimeText · ${eligibility.bucket}",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.primary,
-                                            )
-
-                                            val lastCheckText = item.lastBackgroundCheckAt?.let {
-                                                val time = java.time.Instant.ofEpochMilli(it)
-                                                    .atZone(java.time.ZoneId.systemDefault())
-                                                    .format(java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT))
-                                                "Last checked ${relativeTimeSpanString(it)} · $time"
-                                            } ?: "Not checked yet"
-                                            Text(
-                                                text = lastCheckText,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-
-                                            val cadence = eligibility.plannedCadenceLabel ?: "Expected every ${item.expectedIntervalDays} days"
-
-                                            Text(
-                                                text = cadence,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
                                     }

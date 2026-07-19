@@ -24,6 +24,7 @@ import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.presentation.util.relativeTimeSpanString
 import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchDiagnosticsManager
 import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshScheduler
 import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshWorker
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import eu.kanade.tachiyomi.ui.mod.updatewatch.components.UpdateWatchHelpSheet
 import eu.kanade.tachiyomi.ui.mod.updatewatch.components.TrackedMangaHelpSheet
+import eu.kanade.tachiyomi.ui.mod.updatewatch.components.AutoRefreshInactivityWarningDialog
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -493,9 +495,9 @@ private fun UpdateWatchManagerContent(
 
                                     val latestHistory = item.refreshHistory.firstOrNull()
 
-                                    // Row 1: Release Age
+                                    // Row 1: Release Age / Pattern
                                     val ageText = if (item.daysSinceRelease >= 0) {
-                                        "${item.daysSinceRelease} days since latest release"
+                                        "${item.daysSinceRelease} days since latest release · about every ${item.expectedIntervalDays} days"
                                     } else {
                                         "Unknown release date"
                                     }
@@ -505,10 +507,10 @@ private fun UpdateWatchManagerContent(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
 
-                                    // Row 2: Tracking Status & Cadence
                                     if (item.backgroundRefreshEnabled) {
+                                        // Row 2: Auto Refresh Status
                                         Text(
-                                            text = "Auto Refresh: ${eligibility.bucket} · every ${item.expectedIntervalDays} days",
+                                            text = "Auto refresh: ${eligibility.bucket}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = if (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE)
                                                 MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -522,7 +524,7 @@ private fun UpdateWatchManagerContent(
                                             } else {
                                                 getHumanReadableFailure(latestHistory.category, latestHistory.detail)
                                             }
-                                            "$status · $reason"
+                                            "Last result: $status · $reason"
                                         } else {
                                             "No refresh attempts yet"
                                         }
@@ -535,22 +537,40 @@ private fun UpdateWatchManagerContent(
 
                                         // Row 4: Times
                                         val lastCheckText = item.lastBackgroundCheckAt?.let {
-                                            val time = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
-                                            "Last checked ${relativeTimeSpanString(it)} · $time"
+                                            if (it > 0) {
+                                                val time = UpdateWatchDiagnosticsManager.formatTimestamp(it)
+                                                "Last checked: $time"
+                                            } else {
+                                                "Not checked yet"
+                                            }
                                         } ?: "Never checked"
 
-                                        val nextCheckText = if (eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE) {
-                                            val interval = eligibility.plannedCadenceIntervalMillis ?: 0L
-                                            val next = (item.lastBackgroundCheckAt ?: 0L) + interval
-                                            val now = System.currentTimeMillis()
-                                            if (next <= now) " · Next: Any moment" else " · Next in ${relativeTimeSpanString(next)}"
-                                        } else ""
+                                        val nextCheckText = when {
+                                            eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.ACTIVE -> {
+                                                if (eligibility.isDue) {
+                                                    "Next check: Due now · recovery pending"
+                                                } else {
+                                                    "Next check: ${UpdateWatchDiagnosticsManager.formatTimestamp(eligibility.nextEligibleAt)}"
+                                                }
+                                            }
+                                            eligibility.status == UpdateWatchRefreshHelper.RefreshStatus.WAITING -> {
+                                                "Next check: Starts ${UpdateWatchDiagnosticsManager.formatTimestamp(eligibility.nextEligibleAt)}"
+                                            }
+                                            else -> ""
+                                        }
 
                                         Text(
-                                            text = lastCheckText + nextCheckText,
+                                            text = lastCheckText,
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
+                                        if (nextCheckText.isNotEmpty()) {
+                                            Text(
+                                                text = nextCheckText,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
                                     }
                                 }
 
@@ -678,6 +698,21 @@ private fun BackgroundRefreshEditDialog(
     var interval by remember { mutableIntStateOf(item.expectedIntervalDays) }
     var profile by remember { mutableStateOf(item.refreshProfile) }
     var customInterval by remember { mutableStateOf(if (interval !in listOf(7, 14, 30)) interval.toString() else "") }
+
+    var showInactivityWarning by remember { mutableStateOf(false) }
+
+    if (showInactivityWarning) {
+        AutoRefreshInactivityWarningDialog(
+            days = item.daysSinceRelease,
+            onConfirm = {
+                onSave(enabled, interval, profile)
+                showInactivityWarning = false
+            },
+            onDismissRequest = {
+                showInactivityWarning = false
+            }
+        )
+    }
 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismissRequest,
@@ -828,7 +863,13 @@ private fun BackgroundRefreshEditDialog(
             }
         },
         confirmButton = {
-            androidx.compose.material3.TextButton(onClick = { onSave(enabled, interval, profile) }) {
+            androidx.compose.material3.TextButton(onClick = {
+                if (enabled && !item.backgroundRefreshEnabled && item.daysSinceRelease >= 60) {
+                    showInactivityWarning = true
+                } else {
+                    onSave(enabled, interval, profile)
+                }
+            }) {
                 Text(stringResource(MR.strings.action_ok))
             }
         },

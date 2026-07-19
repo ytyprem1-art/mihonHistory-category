@@ -1,6 +1,5 @@
 package eu.kanade.tachiyomi.ui.mod.updatewatch.helper
 
-import eu.kanade.tachiyomi.util.lang.toLocalDate
 import tachiyomi.domain.history.model.UpdateWatch
 import java.time.LocalDate
 import java.time.ZoneId
@@ -44,8 +43,8 @@ object UpdateWatchRefreshHelper {
         val isStale: Boolean = false,
         val bucket: PriorityBucket = PriorityBucket.NONE,
         val plannedCadenceLabel: String? = null,
-        val plannedCadenceIntervalMillis: Long? = null,
         val nextEligibleAt: Long? = null,
+        val isDue: Boolean = false,
     )
 
     fun getEligibility(
@@ -93,14 +92,21 @@ object UpdateWatchRefreshHelper {
             else -> cycleBucket
         }
 
-        val nextEligibleAt = if (status == RefreshStatus.ACTIVE) {
-            if (UpdateWatchSlotHelper.isDue(finalBucket, now, lastCheckAt, zoneId)) {
-                UpdateWatchSlotHelper.getCurrentSlot(finalBucket, now, zoneId)
-            } else {
-                UpdateWatchSlotHelper.getNextSlot(finalBucket, now, zoneId)
+        val isDue = status == RefreshStatus.ACTIVE && UpdateWatchSlotHelper.isDue(finalBucket, now, lastCheckAt, zoneId)
+
+        val nextEligibleAt = when (status) {
+            RefreshStatus.ACTIVE -> {
+                if (isDue) {
+                    UpdateWatchSlotHelper.getCurrentSlot(finalBucket, now, zoneId)
+                } else {
+                    UpdateWatchSlotHelper.getNextSlot(finalBucket, now, zoneId)
+                }
             }
-        } else {
-            null
+            RefreshStatus.WAITING -> {
+                val activeDate = releaseDate.plusDays(expectedIntervalDays.toLong())
+                activeDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
+            }
+            else -> null
         }
 
         return RefreshEligibility(
@@ -110,8 +116,8 @@ object UpdateWatchRefreshHelper {
             isStale = isStale,
             bucket = finalBucket,
             plannedCadenceLabel = cadenceLabel,
-            plannedCadenceIntervalMillis = null, // Deprecated in wall-clock mode
             nextEligibleAt = nextEligibleAt,
+            isDue = isDue,
         )
     }
 
@@ -139,15 +145,7 @@ object UpdateWatchRefreshHelper {
                     now = now,
                     zoneId = zoneId
                 )
-                when (eligibility.status) {
-                    RefreshStatus.ACTIVE -> eligibility.nextEligibleAt
-                    RefreshStatus.WAITING -> {
-                        val releaseDate = latestDate.toLocalDate(zoneId)
-                        val activeDate = releaseDate.plusDays(tracking.expectedIntervalDays.toLong())
-                        activeDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
-                    }
-                    else -> null
-                }
+                eligibility.nextEligibleAt
             }
             .minOrNull()
     }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.interactor.ManageUpdateWatch
 import uy.kohesive.injekt.Injekt
@@ -33,115 +34,135 @@ object UpdateWatchRefreshScheduler {
     private val schedulerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     fun setupTask(context: Context, skipRunCheck: Boolean = false) {
-        if (!isMainProcess(context)) return
-
         schedulerScope.launch {
-            if (!skipRunCheck) {
-                // If a refresh is currently running or retrying, don't schedule a new one.
-                // Let the running worker call setupTask(skipRunCheck = true) when it finishes.
-                val workInfos = context.workManager.getWorkInfosForUniqueWork(WORK_NAME_RUN).get()
-                val isActive = workInfos.any { !it.state.isFinished }
-                if (isActive) {
-                    UpdateWatchDiagnosticsManager.logEvent("Schedule/Launcher ignored: a run is already active")
-                    return@launch
-                }
-            }
-
-            val manageUpdateWatch: ManageUpdateWatch = Injekt.get()
-            val chapterRepository: ChapterRepository = Injekt.get()
-
-            val trackedManga = manageUpdateWatch.subscribeAll().first()
-            if (trackedManga.none { it.backgroundRefreshEnabled && !it.isPaused }) {
-                context.workManager.cancelUniqueWork(WORK_NAME_SCHEDULE)
-                UpdateWatchDiagnosticsManager.logEvent("Schedule cancelled: no active Auto Refresh manga")
-                return@launch
-            }
-
-            val latestChapterDates = trackedManga.associate { tracking ->
-                val chapters = chapterRepository.getChapterByMangaId(tracking.mangaId)
-                val latest = chapters.filter { it.dateUpload > 0 }.maxByOrNull { it.dateUpload }
-                tracking.mangaId to (latest?.dateUpload ?: 0L)
-            }
-
-            val now = System.currentTimeMillis()
-            val zoneId = java.time.ZoneId.systemDefault()
-            val earliest = UpdateWatchRefreshHelper.getEarliestNextEligibleAt(trackedManga, latestChapterDates, now, zoneId)
-
-            if (earliest == null) {
-                context.workManager.cancelUniqueWork(WORK_NAME_SCHEDULE)
-                UpdateWatchDiagnosticsManager.logEvent("Schedule cancelled: no future eligible timestamp")
-                return@launch
-            }
-
-            // IDEMPOTENCY CHECK
-            val diagPrefs = Injekt.get<UpdateWatchDiagnosticsPreferences>()
-            val lastEarliest = diagPrefs.lastEarliestEligibleAt.get()
-            val lastScheduled = diagPrefs.lastScheduledAt.get()
-
-            val existingWork = context.workManager.getWorkInfosForUniqueWork(WORK_NAME_SCHEDULE).get()
-                .firstOrNull { !it.state.isFinished }
-
-            if (existingWork != null && lastEarliest == earliest && lastScheduled > now) {
-                UpdateWatchDiagnosticsManager.logEvent("Schedule kept: existing target is valid (Target: ${UpdateWatchDiagnosticsManager.formatTimestamp(lastScheduled)})")
-                return@launch
-            }
-
-            val marginMillis = Random.nextLong(5, 9) * 60 * 1000L
-            val delayMillis = UpdateWatchRefreshHelper.calculateRescheduleDelay(earliest, now, marginMillis)
-            if (delayMillis == null) return@launch
-
-            val scheduledAt = now + delayMillis
-            val isRecovery = earliest <= now
-            val marginMin = (marginMillis / (60 * 1000)).toInt()
-
-            val logMsg = buildString {
-                append(if (skipRunCheck) "Schedule created (self-reschedule)" else "Schedule replaced")
-                if (isRecovery) append(" [RECOVERY]")
-                append("\nBase slot: ${UpdateWatchDiagnosticsManager.formatTimestamp(earliest)}")
-                append("\nMargin: +$marginMin min")
-                append("\nZone: ${zoneId.id}")
-                if (lastScheduled > 0) append("\nOld target: ${UpdateWatchDiagnosticsManager.formatTimestamp(lastScheduled)}")
-            }
-
-            UpdateWatchDiagnosticsManager.log(UpdateWatchSchedulerDiagnostic(
-                type = UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT,
-                eventName = logMsg,
-                scheduledAt = scheduledAt,
-                earliestNextEligibleAt = earliest,
-                wallClockBaseSlot = earliest,
-                nextWorkerTargetAt = scheduledAt,
-                isRecoveryRun = isRecovery,
-                safetyMarginMinutes = marginMin,
-                timezone = zoneId.id
-            ))
-
-            diagPrefs.lastEarliestEligibleAt.set(earliest)
-            diagPrefs.lastScheduledAt.set(scheduledAt)
-
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)
-                .build()
-
-            val request = OneTimeWorkRequestBuilder<UpdateWatchScheduleWorker>()
-                .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
-                .addTag(WORK_NAME_SCHEDULE)
-                .setConstraints(constraints)
-                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.MINUTES)
-                .setInputData(workDataOf(KEY_SCHEDULED_AT to scheduledAt))
-                .build()
-
-            context.workManager.enqueueUniqueWork(
-                WORK_NAME_SCHEDULE,
-                ExistingWorkPolicy.REPLACE,
-                request,
-            )
+            setupTaskSuspend(context, skipRunCheck)
         }
     }
 
-    /**
-     * Enqueues the actual refresh worker. Called by UpdateWatchScheduleWorker.
-     */
+    suspend fun setupTaskSuspend(context: Context, skipRunCheck: Boolean = false): Long? = withContext(Dispatchers.IO) {
+        if (!isMainProcess(context)) return@withContext null
+
+        if (!skipRunCheck) {
+            val workInfos = context.workManager.getWorkInfosForUniqueWork(WORK_NAME_RUN).get()
+            val isActive = workInfos.any { !it.state.isFinished }
+            if (isActive) {
+                UpdateWatchDiagnosticsManager.logEvent("Schedule/Launcher ignored: a run is already active")
+                return@withContext null
+            }
+        }
+
+        val manageUpdateWatch: ManageUpdateWatch = Injekt.get()
+        val chapterRepository: ChapterRepository = Injekt.get()
+
+        val trackedManga = manageUpdateWatch.subscribeAll().first()
+        if (trackedManga.none { it.backgroundRefreshEnabled && !it.isPaused }) {
+            context.workManager.cancelUniqueWork(WORK_NAME_SCHEDULE)
+            UpdateWatchDiagnosticsManager.logEvent("Schedule cancelled: no active Auto Refresh manga")
+            return@withContext null
+        }
+
+        val latestChapterDates = trackedManga.associate { tracking ->
+            val chapters = chapterRepository.getChapterByMangaId(tracking.mangaId)
+            val latest = chapters.filter { it.dateUpload > 0 }.maxByOrNull { it.dateUpload }
+            tracking.mangaId to (latest?.dateUpload ?: 0L)
+        }
+
+        val now = System.currentTimeMillis()
+        val zoneId = java.time.ZoneId.systemDefault()
+        val earliest = UpdateWatchRefreshHelper.getEarliestNextEligibleAt(trackedManga, latestChapterDates, now, zoneId)
+
+        if (earliest == null) {
+            context.workManager.cancelUniqueWork(WORK_NAME_SCHEDULE)
+            UpdateWatchDiagnosticsManager.logEvent("Schedule cancelled: no future eligible timestamp")
+            return@withContext null
+        }
+
+        val diagPrefs = Injekt.get<UpdateWatchDiagnosticsPreferences>()
+        val lastEarliest = diagPrefs.lastEarliestEligibleAt.get()
+        val lastScheduled = diagPrefs.lastScheduledAt.get()
+        val lastMargin = diagPrefs.lastMarginMinutes.get()
+
+        val existingWork = context.workManager.getWorkInfosForUniqueWork(WORK_NAME_SCHEDULE).get()
+            .firstOrNull { !it.state.isFinished }
+
+        if (existingWork != null && lastEarliest == earliest && lastScheduled > now) {
+            val logMsg = buildString {
+                append("Schedule kept: existing target is valid")
+                append("\nBase slot: ${UpdateWatchDiagnosticsManager.formatTimestamp(earliest)}")
+                append("\nMargin: +$lastMargin min")
+                append("\nFinal target: ${UpdateWatchDiagnosticsManager.formatTimestamp(lastScheduled)}")
+                append("\nZone: ${zoneId.id}")
+            }
+            UpdateWatchDiagnosticsManager.log(UpdateWatchSchedulerDiagnostic(
+                type = UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT,
+                eventName = logMsg,
+                scheduledAt = lastScheduled,
+                earliestNextEligibleAt = earliest,
+                wallClockBaseSlot = earliest,
+                nextWorkerTargetAt = lastScheduled,
+                safetyMarginMinutes = lastMargin,
+                timezone = zoneId.id
+            ))
+            return@withContext lastScheduled
+        }
+
+        val marginMillis = Random.nextLong(5, 9) * 60 * 1000L
+        val delayMillis = UpdateWatchRefreshHelper.calculateRescheduleDelay(earliest, now, marginMillis)
+        if (delayMillis == null) return@withContext null
+
+        val scheduledAt = now + delayMillis
+        val isRecovery = earliest <= now
+        val marginMin = (marginMillis / (60 * 1000)).toInt()
+
+        val logMsg = buildString {
+            append(if (skipRunCheck) "Schedule created (self-reschedule)" else "Schedule replaced")
+            if (isRecovery) append(" [RECOVERY]")
+            append("\nBase slot: ${UpdateWatchDiagnosticsManager.formatTimestamp(earliest)}")
+            append("\nMargin: +$marginMin min")
+            append("\nNew target: ${UpdateWatchDiagnosticsManager.formatTimestamp(scheduledAt)}")
+            if (lastScheduled > now && lastScheduled != scheduledAt) {
+                append("\nOld target: ${UpdateWatchDiagnosticsManager.formatTimestamp(lastScheduled)}")
+            }
+            append("\nZone: ${zoneId.id}")
+        }
+
+        UpdateWatchDiagnosticsManager.log(UpdateWatchSchedulerDiagnostic(
+            type = UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT,
+            eventName = logMsg,
+            scheduledAt = scheduledAt,
+            earliestNextEligibleAt = earliest,
+            wallClockBaseSlot = earliest,
+            nextWorkerTargetAt = scheduledAt,
+            isRecoveryRun = isRecovery,
+            safetyMarginMinutes = marginMin,
+            timezone = zoneId.id
+        ))
+
+        diagPrefs.lastEarliestEligibleAt.set(earliest)
+        diagPrefs.lastScheduledAt.set(scheduledAt)
+        diagPrefs.lastMarginMinutes.set(marginMin)
+
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true)
+            .build()
+
+        val request = OneTimeWorkRequestBuilder<UpdateWatchScheduleWorker>()
+            .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
+            .addTag(WORK_NAME_SCHEDULE)
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.MINUTES)
+            .setInputData(workDataOf(KEY_SCHEDULED_AT to scheduledAt))
+            .build()
+
+        context.workManager.enqueueUniqueWork(
+            WORK_NAME_SCHEDULE,
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
+        return@withContext scheduledAt
+    }
+
     fun launchRunNow(context: Context, scheduledAt: Long? = null) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
