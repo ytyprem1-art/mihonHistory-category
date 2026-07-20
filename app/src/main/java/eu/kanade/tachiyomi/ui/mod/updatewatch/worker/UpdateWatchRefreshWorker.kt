@@ -46,7 +46,6 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
     private val sourceManager: SourceManager = Injekt.get()
     private val updateMangaFromRemote: UpdateMangaFromRemote = Injekt.get()
     private val manageUpdateWatchInbox: ManageUpdateWatchInbox = Injekt.get()
-    private val libraryPreferences: LibraryPreferences = Injekt.get()
 
     private val simulationTriggered = AtomicBoolean(false)
     private val newlyFoundInboxItems = mutableListOf<UpdateWatchInboxItem>()
@@ -232,9 +231,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                 }.awaitAll()
             }
 
-            if (newlyFoundInboxItems.isNotEmpty() && libraryPreferences.notifyTrackedUpdates.get()) {
-                UpdateWatchNotifier(applicationContext).showUpdateNotification(newlyFoundInboxItems)
-            }
+            UpdateWatchPostRefreshHandler.showNotificationIfEnabled(applicationContext, newlyFoundInboxItems)
 
             val finalTarget = UpdateWatchRefreshScheduler.setupTaskSuspend(applicationContext, skipRunCheck = true)
             recordRunDiagnostics(allCandidates, trackedManga, processedCount.get(), updatedCount.get(), failedCount.get(), startTime, scheduledAt, workBySource.size, finalTarget)
@@ -306,42 +303,18 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                 val currentChapters = chapterRepository.getChapterByMangaId(manga.id)
                 val newLatest = currentChapters.filter { it.dateUpload > 0 }.maxByOrNull { it.dateUpload }
 
-                val foundNew = newChapters.isNotEmpty() || (newLatest != null && newLatest.id != oldLatest?.id)
-                val newCount = newChapters.size.coerceAtLeast(if (foundNew) 1 else 0)
+                UpdateWatchPostRefreshHandler.handleRefreshResult(
+                    manga = manga,
+                    oldLatestChapter = oldLatest,
+                    newChapters = newChapters,
+                    currentLatestChapter = newLatest,
+                    startTime = startTime,
+                    onInboxItemCreated = { synchronized(newlyFoundInboxItems) { newlyFoundInboxItems.add(it) } }
+                )
 
-                if (foundNew && newLatest != null) {
-                    val range = if (newChapters.size > 1) {
-                        val sorted = newChapters.sortedBy { it.chapterNumber }
-                        val min = sorted.first().chapterNumber
-                        val max = sorted.last().chapterNumber
-                        val isContiguous = (max - min).toInt() == newChapters.size - 1
-                        if (isContiguous) "Ch. ${formatChapterNumber(min)}–${formatChapterNumber(max)}"
-                        else if (newChapters.size > 3) "Ch. ${formatChapterNumber(min)}, ..., ${formatChapterNumber(max)}"
-                        else "Ch. " + sorted.joinToString(", ") { formatChapterNumber(it.chapterNumber) }
-                    } else "Ch. ${formatChapterNumber(newLatest.chapterNumber)}"
-
-                    val item = UpdateWatchInboxItem(
-                        mangaId = manga.id,
-                        mangaTitle = manga.title,
-                        sourceId = source.id,
-                        sourceName = source.name,
-                        chapterCount = newCount,
-                        chapterRange = range,
-                        firstFoundAt = startTime,
-                        lastFoundAt = startTime,
-                        latestChapterId = newLatest.id,
-                        latestChapterNumber = newLatest.chapterNumber,
-                        chapterIds = newChapters.map { it.id }.ifEmpty { listOf(newLatest.id) },
-                        latestChapterUploadAt = newLatest.dateUpload,
-                    )
-                    manageUpdateWatchInbox.insertOrMerge(item)
-                    manageUpdateWatch.resetStaleMilestone(manga.id)
-                    synchronized(newlyFoundInboxItems) { newlyFoundInboxItems.add(item) }
-                }
-
-                recordHistory(candidate, true, newCount, UpdateWatchHistory.FailureCategory.NONE, null)
-                val finalStatus = if (foundNew) RefreshStatus.UPDATED else RefreshStatus.SUCCESS
-                recordMangaDiagnostic(candidate, source.name, if (foundNew) "Update found" else "No update", null)
+                recordHistory(candidate, true, if (newChapters.isNotEmpty()) newChapters.size else 0, UpdateWatchHistory.FailureCategory.NONE, null)
+                val finalStatus = if (newChapters.isNotEmpty() || (newLatest != null && newLatest.id != oldLatest?.id)) RefreshStatus.UPDATED else RefreshStatus.SUCCESS
+                recordMangaDiagnostic(candidate, source.name, if (finalStatus == RefreshStatus.UPDATED) "Update found" else "No update", null)
                 finalStatus
             } else {
                 val exception = refreshResult.exceptionOrNull()

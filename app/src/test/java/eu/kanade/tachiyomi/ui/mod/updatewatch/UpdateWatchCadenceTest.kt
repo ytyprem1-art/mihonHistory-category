@@ -1,12 +1,15 @@
 package eu.kanade.tachiyomi.ui.mod.updatewatch
 
 import eu.kanade.tachiyomi.ui.mod.updatewatch.helper.UpdateWatchRefreshHelper
+import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchPostRefreshHandler
 import eu.kanade.tachiyomi.ui.mod.updatewatch.worker.UpdateWatchRefreshState
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
+import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.history.model.UpdateWatch
+import tachiyomi.domain.manga.model.Manga
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -142,6 +145,51 @@ class UpdateWatchCadenceTest {
         UpdateWatchRefreshState.clear()
         isQueued = mangaId in UpdateWatchRefreshState.queuedMangaIds.value
         assertFalse(isQueued)
+    }
+
+    @Test
+    fun `test shared candidate claim`() {
+        val id1 = 100L
+        val id2 = 101L
+        UpdateWatchRefreshState.clear()
+
+        // Background claims id1
+        val bgClaimed = UpdateWatchRefreshState.claim(setOf(id1))
+        assertEquals(setOf(id1), bgClaimed)
+
+        // Foreground tries to claim id1 and id2
+        val fgClaimed = UpdateWatchRefreshState.claim(setOf(id1, id2))
+        assertEquals(setOf(id2), fgClaimed) // only id2 was available
+
+        // Background releases id1
+        UpdateWatchRefreshState.release(bgClaimed)
+        assertFalse(id1 in UpdateWatchRefreshState.queuedMangaIds.value)
+        assertTrue(id2 in UpdateWatchRefreshState.queuedMangaIds.value)
+
+        // Foreground releases id2
+        UpdateWatchRefreshState.release(fgClaimed)
+        assertTrue(UpdateWatchRefreshState.queuedMangaIds.value.isEmpty())
+    }
+
+    @Test
+    fun `test chapter range formatting`() {
+        // Single chapter
+        val ch1 = Chapter.create().copy(chapterNumber = 1.0)
+        assertEquals("Ch. 1", UpdateWatchPostRefreshHandler.formatChapterRange(emptyList(), ch1))
+        assertEquals("Ch. 1", UpdateWatchPostRefreshHandler.formatChapterRange(listOf(ch1), ch1))
+
+        // Contiguous multiple
+        val ch2 = Chapter.create().copy(chapterNumber = 2.0)
+        val ch3 = Chapter.create().copy(chapterNumber = 3.0)
+        assertEquals("Ch. 1–3", UpdateWatchPostRefreshHandler.formatChapterRange(listOf(ch1, ch2, ch3), ch3))
+
+        // Non-contiguous multiple (small)
+        val ch5 = Chapter.create().copy(chapterNumber = 5.0)
+        assertEquals("Ch. 1, 2, 5", UpdateWatchPostRefreshHandler.formatChapterRange(listOf(ch1, ch2, ch5), ch5))
+
+        // Non-contiguous multiple (large)
+        val ch4 = Chapter.create().copy(chapterNumber = 4.0)
+        assertEquals("Ch. 1, ..., 5", UpdateWatchPostRefreshHandler.formatChapterRange(listOf(ch1, ch2, ch4, ch5), ch5))
     }
 
     @Test

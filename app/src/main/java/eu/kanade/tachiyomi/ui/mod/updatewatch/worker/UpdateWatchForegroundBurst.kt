@@ -24,6 +24,7 @@ import tachiyomi.domain.history.interactor.ManageUpdateWatch
 import tachiyomi.domain.history.interactor.ManageUpdateWatchHistory
 import tachiyomi.domain.history.model.UpdateWatch
 import tachiyomi.domain.history.model.UpdateWatchHistory
+import tachiyomi.domain.history.model.UpdateWatchInboxItem
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.Injekt
@@ -108,6 +109,7 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
             val processedCount = AtomicInteger(0)
             val updatedCount = AtomicInteger(0)
             val failedCount = AtomicInteger(0)
+            val newlyFoundInboxItems = mutableListOf<UpdateWatchInboxItem>()
             val mangaDiagnosticDetails = mutableListOf<MangaDiagnosticDetail>()
 
             candidatesBySource.map { (sourceId, sourceQueue) ->
@@ -138,7 +140,7 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
                                     break
                                 }
 
-                                val result = processCandidate(candidate, mangaDiagnosticDetails)
+                                val result = processCandidate(candidate, mangaDiagnosticDetails, newlyFoundInboxItems)
                                 processedCount.incrementAndGet()
                                 burstCounter++
 
@@ -160,13 +162,17 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
                 }
             }.awaitAll()
 
+            val context = Injekt.get<Context>()
+            UpdateWatchPostRefreshHandler.showNotificationIfEnabled(context, newlyFoundInboxItems)
+
             recordDiagnostics(startTime, dueHotCandidates.size, processedCount.get(), updatedCount.get(), failedCount.get(), candidatesBySource.size, mangaDiagnosticDetails)
         }
     }
 
     private suspend fun processCandidate(
         candidate: RefreshCandidate,
-        mangaDiagnosticDetails: MutableList<MangaDiagnosticDetail>
+        mangaDiagnosticDetails: MutableList<MangaDiagnosticDetail>,
+        newlyFoundInboxItems: MutableList<UpdateWatchInboxItem>
     ): RefreshStatus {
         val getManga = Injekt.get<GetManga>()
         val sourceManager = Injekt.get<SourceManager>()
@@ -192,12 +198,18 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
                 val newLatest = currentChapters.filter { it.dateUpload > 0 }
                     .maxByOrNull { it.dateUpload }
 
-                val foundNew = newChapters.isNotEmpty() || (newLatest != null && newLatest.id != oldLatest?.id)
-                val newCount = newChapters.size.coerceAtLeast(if (foundNew) 1 else 0)
+                UpdateWatchPostRefreshHandler.handleRefreshResult(
+                    manga = manga,
+                    oldLatestChapter = oldLatest,
+                    newChapters = newChapters,
+                    currentLatestChapter = newLatest,
+                    startTime = startTime,
+                    onInboxItemCreated = { synchronized(newlyFoundInboxItems) { newlyFoundInboxItems.add(it) } }
+                )
 
-                recordHistory(candidate, true, newCount, UpdateWatchHistory.FailureCategory.NONE, null)
-                val finalStatus = if (foundNew) RefreshStatus.UPDATED else RefreshStatus.SUCCESS
-                recordMangaDiagnostic(candidate, source.name, if (foundNew) "Update found" else "No update", null, mangaDiagnosticDetails)
+                recordHistory(candidate, true, newChapters.size, UpdateWatchHistory.FailureCategory.NONE, null)
+                val finalStatus = if (newChapters.isNotEmpty() || (newLatest != null && newLatest.id != oldLatest?.id)) RefreshStatus.UPDATED else RefreshStatus.SUCCESS
+                recordMangaDiagnostic(candidate, source.name, if (finalStatus == RefreshStatus.UPDATED) "Update found" else "No update", null, mangaDiagnosticDetails)
                 finalStatus
             } else {
                 val exception = refreshResult.exceptionOrNull()
