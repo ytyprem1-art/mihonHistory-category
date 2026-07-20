@@ -65,6 +65,7 @@ class UpdateWatchDiagnosticsScreen : Screen() {
                                     val title = when (diag.type) {
                                         UpdateWatchSchedulerDiagnostic.RunType.WORKER_RUN -> "WORKER RUN"
                                         UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT -> "SCHEDULER EVENT"
+                                        UpdateWatchSchedulerDiagnostic.RunType.FOREGROUND_HOT_BURST -> "FOREGROUND HOT BURST"
                                     }
                                     appendLine("$title [${UpdateWatchDiagnosticsManager.formatTimestamp(diag.timestamp)}]")
                                     if (diag.eventName != null) appendLine("Event: ${diag.eventName}")
@@ -227,6 +228,7 @@ class UpdateWatchDiagnosticsScreen : Screen() {
                 val title = when (diagnostic.type) {
                     UpdateWatchSchedulerDiagnostic.RunType.WORKER_RUN -> "Worker run"
                     UpdateWatchSchedulerDiagnostic.RunType.SCHEDULER_EVENT -> "Scheduler event"
+                    UpdateWatchSchedulerDiagnostic.RunType.FOREGROUND_HOT_BURST -> "Foreground HOT burst"
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -251,7 +253,7 @@ class UpdateWatchDiagnosticsScreen : Screen() {
                     }
                 }
 
-                if (diagnostic.type == UpdateWatchSchedulerDiagnostic.RunType.WORKER_RUN) {
+                if (diagnostic.type == UpdateWatchSchedulerDiagnostic.RunType.WORKER_RUN || diagnostic.type == UpdateWatchSchedulerDiagnostic.RunType.FOREGROUND_HOT_BURST) {
                     val delay = if (diagnostic.scheduledAt != null && diagnostic.startedAt != null) {
                         (diagnostic.startedAt - diagnostic.scheduledAt) / 1000 / 60
                     } else null

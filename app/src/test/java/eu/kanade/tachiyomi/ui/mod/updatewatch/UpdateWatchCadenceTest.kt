@@ -134,7 +134,7 @@ class UpdateWatchCadenceTest {
         assertFalse(isQueued)
 
         // Scenario 2: Selected candidate (added to queued set)
-        UpdateWatchRefreshState.setQueued(setOf(mangaId))
+        UpdateWatchRefreshState.claim(setOf(mangaId))
         isQueued = mangaId in UpdateWatchRefreshState.queuedMangaIds.value
         assertTrue(isQueued)
 

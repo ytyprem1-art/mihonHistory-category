@@ -55,6 +55,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
     override suspend fun doWork(): Result = withIOContext {
         val startTime = System.currentTimeMillis()
         val scheduledAt = inputData.getLong(UpdateWatchRefreshScheduler.KEY_SCHEDULED_AT, 0L).takeIf { it > 0 }
+        var claimedIds: Set<Long> = emptySet()
 
         try {
             val simulationMode = if (eu.kanade.tachiyomi.BuildConfig.DEBUG) {
@@ -165,9 +166,12 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                 }
 
             val allSelectedIds = workBySource.values.flatten().map { it.mangaId }.toSet()
-            UpdateWatchRefreshState.setQueued(allSelectedIds)
+            claimedIds = UpdateWatchRefreshState.claim(allSelectedIds)
 
             val sortedSourceQueues = workBySource.toList()
+                .map { (sourceId, queue) ->
+                    sourceId to queue.filter { it.mangaId in claimedIds }
+                }
                 .filter { it.second.isNotEmpty() }
                 .sortedBy { (_, queue) -> queue.first().lastCheckAt }
 
@@ -243,7 +247,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
             UpdateWatchRefreshScheduler.setupTask(applicationContext, skipRunCheck = true)
             Result.failure()
         } finally {
-            UpdateWatchRefreshState.clear()
+            UpdateWatchRefreshState.release(claimedIds)
         }
     }
 

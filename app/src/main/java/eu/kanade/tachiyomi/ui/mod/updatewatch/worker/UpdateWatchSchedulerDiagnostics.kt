@@ -40,7 +40,7 @@ data class UpdateWatchSchedulerDiagnostic(
     val timezone: String? = null,
     val mangaDetails: List<MangaDiagnosticDetail> = emptyList()
 ) {
-    enum class RunType { WORKER_RUN, SCHEDULER_EVENT }
+    enum class RunType { WORKER_RUN, SCHEDULER_EVENT, FOREGROUND_HOT_BURST }
 }
 
 @Serializable
