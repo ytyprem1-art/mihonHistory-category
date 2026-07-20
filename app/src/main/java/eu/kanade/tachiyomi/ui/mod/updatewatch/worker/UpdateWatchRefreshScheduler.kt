@@ -85,12 +85,20 @@ object UpdateWatchRefreshScheduler {
         val existingWork = context.workManager.getWorkInfosForUniqueWork(WORK_NAME_SCHEDULE).get()
             .firstOrNull { !it.state.isFinished }
 
-        if (existingWork != null && lastEarliest == earliest && lastScheduled > now) {
+        val canKeep = existingWork != null && lastEarliest == earliest && lastScheduled > 0
+
+        if (canKeep) {
+            val isOverdue = lastScheduled <= now
             val logMsg = buildString {
-                append("Schedule kept: existing target is valid")
+                if (isOverdue) {
+                    append("Schedule kept: launcher is overdue but active")
+                } else {
+                    append("Schedule kept: existing target is valid")
+                }
                 append("\nBase slot: ${UpdateWatchDiagnosticsManager.formatTimestamp(earliest)}")
                 append("\nMargin: +$lastMargin min")
                 append("\nFinal target: ${UpdateWatchDiagnosticsManager.formatTimestamp(lastScheduled)}")
+                append("\nWork state: ${existingWork.state}")
                 append("\nZone: ${zoneId.id}")
             }
             UpdateWatchDiagnosticsManager.log(UpdateWatchSchedulerDiagnostic(

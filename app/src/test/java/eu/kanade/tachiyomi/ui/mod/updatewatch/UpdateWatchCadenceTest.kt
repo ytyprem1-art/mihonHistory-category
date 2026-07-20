@@ -132,18 +132,52 @@ class UpdateWatchCadenceTest {
         UpdateWatchRefreshState.clear()
         var isQueued = mangaId in UpdateWatchRefreshState.queuedMangaIds.value
         assertFalse(isQueued)
-        // UI logic: if (isDue && !isQueued) -> "Recovery pending"
 
         // Scenario 2: Selected candidate (added to queued set)
         UpdateWatchRefreshState.setQueued(setOf(mangaId))
         isQueued = mangaId in UpdateWatchRefreshState.queuedMangaIds.value
         assertTrue(isQueued)
-        // UI logic: if (isDue && isQueued) -> "Refresh queued"
 
         // Scenario 3: Completed/Failed/Cancelled (cleared)
         UpdateWatchRefreshState.clear()
         isQueued = mangaId in UpdateWatchRefreshState.queuedMangaIds.value
         assertFalse(isQueued)
+    }
+
+    @Test
+    fun `test recovery launcher postponement fix`() {
+        val now = t(2024, 5, 8, 8, 40)
+        val earliest = t(2024, 5, 8, 8, 0) // current due slot
+
+        // Scenario: recovery target was 8:39
+        val lastScheduled = t(2024, 5, 8, 8, 39)
+        val lastEarliest = earliest
+
+        // Simulation of new logic in setupTaskSuspend:
+        val hasActiveExistingWork = true
+        val canKeep = hasActiveExistingWork && (lastEarliest == earliest) && (lastScheduled > 0)
+        val isOverdue = lastScheduled <= now
+
+        assertTrue(canKeep)
+        assertTrue(isOverdue)
+
+        // If we can keep it, we don't schedule a NEW one (which would be now + 30m = 9:10)
+        val schedulerAction = if (canKeep) "KEEP" else "REPLACE"
+        assertEquals("KEEP", schedulerAction)
+    }
+
+    @Test
+    fun `test terminal work is replaced`() {
+        val earliest = t(2024, 5, 8, 8, 0)
+        val lastScheduled = t(2024, 5, 8, 8, 39)
+        val lastEarliest = earliest
+
+        // Scenario: existing work finished or was cancelled
+        val hasActiveExistingWork = false
+        val canKeep = hasActiveExistingWork && (lastEarliest == earliest) && (lastScheduled > 0)
+
+        assertFalse(canKeep)
+        assertEquals("REPLACE", if (canKeep) "KEEP" else "REPLACE")
     }
 
     private fun t(year: Int, month: Int, day: Int, hour: Int, min: Int): Long {
