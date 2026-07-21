@@ -172,6 +172,24 @@ class UpdateWatchCadenceTest {
     }
 
     @Test
+    fun `test active runner count`() {
+        UpdateWatchRefreshState.clear()
+        assertEquals(0, UpdateWatchRefreshState.getActiveRunnerCount())
+
+        UpdateWatchRefreshState.onRunStarted()
+        assertEquals(1, UpdateWatchRefreshState.getActiveRunnerCount())
+
+        UpdateWatchRefreshState.onRunStarted()
+        assertEquals(2, UpdateWatchRefreshState.getActiveRunnerCount())
+
+        UpdateWatchRefreshState.onRunFinished()
+        assertEquals(1, UpdateWatchRefreshState.getActiveRunnerCount())
+
+        UpdateWatchRefreshState.onRunFinished()
+        assertEquals(0, UpdateWatchRefreshState.getActiveRunnerCount())
+    }
+
+    @Test
     fun `test chapter range formatting`() {
         // Single chapter
         val ch1 = Chapter.create().copy(chapterNumber = 1.0)

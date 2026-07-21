@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Transient in-memory state for manga currently being processed or queued
@@ -12,6 +13,8 @@ import kotlinx.coroutines.flow.update
 object UpdateWatchRefreshState {
     private val _queuedMangaIds = MutableStateFlow<Set<Long>>(emptySet())
     val queuedMangaIds: StateFlow<Set<Long>> = _queuedMangaIds.asStateFlow()
+
+    private val _activeRunners = AtomicInteger(0)
 
     /**
      * Atomically claims a set of manga IDs. Returns the IDs that were successfully claimed
@@ -42,9 +45,19 @@ object UpdateWatchRefreshState {
     }
 
     /**
-     * Clears all claims. Use with caution (e.g., in worker finally block).
+     * Clears all claims. Use with caution.
      */
     fun clear() {
         _queuedMangaIds.value = emptySet()
     }
+
+    fun onRunStarted() {
+        _activeRunners.incrementAndGet()
+    }
+
+    fun onRunFinished() {
+        _activeRunners.decrementAndGet()
+    }
+
+    fun getActiveRunnerCount(): Int = _activeRunners.get()
 }

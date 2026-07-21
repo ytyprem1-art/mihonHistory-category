@@ -30,6 +30,9 @@ object UpdateWatchRefreshScheduler {
     const val WORK_NAME_RUN = "UpdateWatchRefreshRun"
     const val MANUAL_WORK_NAME = "UpdateWatchRefreshManual"
     const val KEY_SCHEDULED_AT = "scheduled_at"
+    const val KEY_RUN_ORIGIN = "run_origin"
+    const val ORIGIN_SCHEDULED = "scheduled"
+    const val ORIGIN_MANUAL = "manual"
 
     private val schedulerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -182,8 +185,12 @@ object UpdateWatchRefreshScheduler {
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.MINUTES)
             .apply {
+                setInputData(workDataOf(KEY_RUN_ORIGIN to ORIGIN_SCHEDULED))
                 if (scheduledAt != null) {
-                    setInputData(workDataOf(KEY_SCHEDULED_AT to scheduledAt))
+                    setInputData(workDataOf(
+                        KEY_SCHEDULED_AT to scheduledAt,
+                        KEY_RUN_ORIGIN to ORIGIN_SCHEDULED
+                    ))
                 }
             }
             .build()
@@ -198,7 +205,10 @@ object UpdateWatchRefreshScheduler {
     fun runNow(context: Context, simulationMode: Int = UpdateWatchRefreshWorker.SIM_NONE) {
         val request = OneTimeWorkRequestBuilder<UpdateWatchRefreshWorker>()
             .addTag(MANUAL_WORK_NAME)
-            .setInputData(workDataOf(UpdateWatchRefreshWorker.KEY_SIMULATION_MODE to simulationMode))
+            .setInputData(workDataOf(
+                UpdateWatchRefreshWorker.KEY_SIMULATION_MODE to simulationMode,
+                KEY_RUN_ORIGIN to ORIGIN_MANUAL
+            ))
             .build()
 
         context.workManager.enqueueUniqueWork(

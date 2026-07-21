@@ -62,8 +62,6 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
 
     override fun onStop(owner: LifecycleOwner) {
         isAppInForeground.set(false)
-        // burstJob?.cancel() // Requirement: "allow an already-started network attempt to finish safely"
-        // We'll check isAppInForeground before starting each new item.
     }
 
     private fun startBurst() {
@@ -75,6 +73,7 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
 
         burstJob?.cancel()
         burstJob = scope.launch {
+            UpdateWatchRefreshState.onRunStarted()
             try {
                 val manageUpdateWatch = Injekt.get<ManageUpdateWatch>()
                 val getManga = Injekt.get<GetManga>()
@@ -137,14 +136,12 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
 
                                 val candidate = sourceQueue[i]
                                 val claimed = UpdateWatchRefreshState.claim(setOf(candidate.mangaId))
-                                if (claimed.isEmpty()) continue // Already claimed by background or other burst
+                                if (claimed.isEmpty()) continue
 
                                 try {
                                     if (burstCounter > 0 && burstCounter % 5 == 0) {
-                                        // Burst limit reached, wait 60s
                                         delay(60000)
                                     } else if (burstCounter > 0) {
-                                        // Delay between items in same burst
                                         delay(Random.nextLong(3000, 5001))
                                     }
 
@@ -162,7 +159,7 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
                                         RefreshStatus.FAILED_RATE_LIMITED, RefreshStatus.FAILED_BLOCKED -> {
                                             failedCount.incrementAndGet()
                                             notifySourceFailure(sourceId, result)
-                                            break // Stop burst for this source
+                                            break
                                         }
                                         RefreshStatus.FAILED_ORDINARY -> failedCount.incrementAndGet()
                                         else -> {}
@@ -184,6 +181,8 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
                 if (e is CancellationException) throw e
                 logcat(LogPriority.ERROR, e) { "Foreground burst encountered unexpected error" }
                 UpdateWatchDiagnosticsManager.logEvent("Foreground burst error: ${e.message}")
+            } finally {
+                UpdateWatchRefreshState.onRunFinished()
             }
         }
     }
@@ -238,7 +237,7 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
                 val finalStatus = when (type) {
                     FailureType.RATE_LIMITED -> RefreshStatus.FAILED_RATE_LIMITED
                     FailureType.BLOCKED -> RefreshStatus.FAILED_BLOCKED
-                    FailureType.TRANSIENT -> RefreshStatus.FAILED_ORDINARY // Simplification
+                    FailureType.TRANSIENT -> RefreshStatus.FAILED_ORDINARY
                     FailureType.ORDINARY -> RefreshStatus.FAILED_ORDINARY
                 }
                 recordMangaDiagnostic(candidate, source.name, finalStatus.name, error, mangaDiagnosticDetails)
@@ -304,7 +303,6 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
             RefreshStatus.FAILED_RATE_LIMITED -> "Fast refresh was stopped because $sourceName temporarily rate-limited requests. Remaining manga will use the normal background queue."
             else -> "Fast refresh was stopped due to repeated errors from $sourceName."
         }
-        // In a real implementation, this would use UpdateWatchNotifier
         logcat(LogPriority.WARN) { "NOTIFICATION: $title - $body" }
     }
 

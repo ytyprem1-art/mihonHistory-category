@@ -37,6 +37,7 @@ data class UpdateWatchSchedulerDiagnostic(
     val proposedMarginMinutes: Int = 0,
     val isRecoveryRun: Boolean = false,
     val safetyMarginMinutes: Int = 0,
+    val runOrigin: String? = null,
     val timezone: String? = null,
     val mangaDetails: List<MangaDiagnosticDetail> = emptyList()
 ) {

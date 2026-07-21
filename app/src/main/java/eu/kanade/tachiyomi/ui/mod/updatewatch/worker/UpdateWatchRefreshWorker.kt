@@ -52,8 +52,10 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
     private val mangaDiagnosticDetails = mutableListOf<MangaDiagnosticDetail>()
 
     override suspend fun doWork(): Result = withIOContext {
+        UpdateWatchRefreshState.onRunStarted()
         val startTime = System.currentTimeMillis()
         val scheduledAt = inputData.getLong(UpdateWatchRefreshScheduler.KEY_SCHEDULED_AT, 0L).takeIf { it > 0 }
+        val runOrigin = inputData.getString(UpdateWatchRefreshScheduler.KEY_RUN_ORIGIN) ?: UpdateWatchRefreshScheduler.ORIGIN_SCHEDULED
         var claimedIds: Set<Long> = emptySet()
 
         try {
@@ -134,7 +136,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
             if (allCandidates.isEmpty()) {
                 logcat(LogPriority.INFO) { "Background refresh: No eligible candidates." }
                 val finalTarget = UpdateWatchRefreshScheduler.setupTaskSuspend(applicationContext, skipRunCheck = true)
-                recordRunDiagnostics(allCandidates, trackedManga, processedCount = 0, updatedCount = 0, failedCount = 0, startTime, scheduledAt, sourceCount = 0, finalTarget)
+                recordRunDiagnostics(allCandidates, trackedManga, processedCount = 0, updatedCount = 0, failedCount = 0, startTime, scheduledAt, sourceCount = 0, finalTarget, runOrigin)
                 return@withIOContext Result.success()
             }
 
@@ -166,6 +168,21 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
 
             val allSelectedIds = workBySource.values.flatten().map { it.mangaId }.toSet()
             claimedIds = UpdateWatchRefreshState.claim(allSelectedIds)
+
+            if (allSelectedIds.isNotEmpty() && claimedIds.isEmpty()) {
+                // CLAIM CONTENTION
+                if (UpdateWatchRefreshState.getActiveRunnerCount() > 1) {
+                    UpdateWatchDiagnosticsManager.logEvent(
+                        "Worker skipped reschedule: all ${allSelectedIds.size} eligible candidates are already claimed by another active run.\nActive claims: ${UpdateWatchRefreshState.queuedMangaIds.value.size}"
+                    )
+                    recordRunDiagnostics(allCandidates, trackedManga, processedCount = 0, updatedCount = 0, failedCount = 0, startTime, scheduledAt, sourceCount = 0, finalTarget = null, runOrigin)
+                    return@withIOContext Result.success()
+                } else {
+                    // STALE CLAIMS FALLBACK
+                    UpdateWatchRefreshState.clear()
+                    claimedIds = UpdateWatchRefreshState.claim(allSelectedIds)
+                }
+            }
 
             val sortedSourceQueues = workBySource.toList()
                 .map { (sourceId, queue) ->
@@ -234,7 +251,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
             UpdateWatchPostRefreshHandler.showNotificationIfEnabled(applicationContext, newlyFoundInboxItems)
 
             val finalTarget = UpdateWatchRefreshScheduler.setupTaskSuspend(applicationContext, skipRunCheck = true)
-            recordRunDiagnostics(allCandidates, trackedManga, processedCount.get(), updatedCount.get(), failedCount.get(), startTime, scheduledAt, workBySource.size, finalTarget)
+            recordRunDiagnostics(allCandidates, trackedManga, processedCount.get(), updatedCount.get(), failedCount.get(), startTime, scheduledAt, workBySource.size, finalTarget, runOrigin)
 
             Result.success()
         } catch (e: CancellationException) {
@@ -244,6 +261,7 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
             UpdateWatchRefreshScheduler.setupTask(applicationContext, skipRunCheck = true)
             Result.failure()
         } finally {
+            UpdateWatchRefreshState.onRunFinished()
             UpdateWatchRefreshState.release(claimedIds)
         }
     }
@@ -377,7 +395,8 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
         startTime: Long,
         scheduledAt: Long?,
         sourceCount: Int,
-        finalTarget: Long?
+        finalTarget: Long?,
+        runOrigin: String
     ) {
         try {
             val completionTime = System.currentTimeMillis()
@@ -407,7 +426,8 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
                 proposedBaseSlotAt = earliestNext,
                 proposedMarginMinutes = (marginMillis / (60 * 1000)).toInt(),
                 nextWorkerTargetAt = finalTarget,
-                mangaDetails = mangaDiagnosticDetails.toList()
+                mangaDetails = mangaDiagnosticDetails.toList(),
+                runOrigin = runOrigin
             ))
         } catch (e: Exception) {
             logcat(LogPriority.ERROR, e) { "Failed to record run diagnostics" }
@@ -451,10 +471,6 @@ class UpdateWatchRefreshWorker(context: Context, workerParams: WorkerParameters)
         if (message.contains("Cloudflare", ignoreCase = true) || message.contains("Access denied", ignoreCase = true)) return FailureType.BLOCKED
         if (e is java.net.SocketTimeoutException || e is java.net.ConnectException || e is java.net.UnknownHostException || e is java.io.InterruptedIOException) return FailureType.TRANSIENT
         return FailureType.ORDINARY
-    }
-
-    private fun formatChapterNumber(number: Double): String {
-        return if (number % 1 == 0.0) number.toInt().toString() else number.toString()
     }
 
     private enum class RefreshStatus { SUCCESS, UPDATED, FAILED_ORDINARY, FAILED_TRANSIENT, FAILED_RATE_LIMITED, FAILED_BLOCKED, SKIPPED }
