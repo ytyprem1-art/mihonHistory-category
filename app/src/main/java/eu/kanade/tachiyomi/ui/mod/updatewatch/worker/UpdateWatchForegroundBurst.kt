@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.CancellationException
 import logcat.LogPriority
 import mihon.domain.source.interactor.UpdateMangaFromRemote
 import tachiyomi.core.common.util.system.logcat
@@ -41,9 +42,14 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
     private const val BURST_COOLDOWN_MS = 5 * 60 * 1000L
 
     private val isAppInForeground = AtomicBoolean(false)
+    private var applicationContext: Context? = null
+    private var isInitialized = false
 
-    fun init(@Suppress("UNUSED_PARAMETER") context: Context) {
+    fun init(context: Context) {
+        if (isInitialized) return
+        applicationContext = context.applicationContext
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+        isInitialized = true
     }
 
     override fun onStart(owner: LifecycleOwner) {
@@ -61,111 +67,124 @@ object UpdateWatchForegroundBurst : DefaultLifecycleObserver {
     }
 
     private fun startBurst() {
+        val context = applicationContext
+        if (context == null) {
+            UpdateWatchDiagnosticsManager.logEvent("Foreground burst failed: Not initialized")
+            return
+        }
+
         burstJob?.cancel()
         burstJob = scope.launch {
-            val manageUpdateWatch = Injekt.get<ManageUpdateWatch>()
-            val getManga = Injekt.get<GetManga>()
-            val chapterRepository = Injekt.get<ChapterRepository>()
+            try {
+                val manageUpdateWatch = Injekt.get<ManageUpdateWatch>()
+                val getManga = Injekt.get<GetManga>()
+                val chapterRepository = Injekt.get<ChapterRepository>()
 
-            val startTime = System.currentTimeMillis()
-            val trackedManga = manageUpdateWatch.subscribeAll().first()
-            val dueHotCandidates = mutableListOf<RefreshCandidate>()
+                val startTime = System.currentTimeMillis()
+                val trackedManga = manageUpdateWatch.subscribeAll().first()
+                val dueHotCandidates = mutableListOf<RefreshCandidate>()
 
-            for (tracking in trackedManga) {
-                if (!tracking.backgroundRefreshEnabled || tracking.isPaused) continue
+                for (tracking in trackedManga) {
+                    if (!tracking.backgroundRefreshEnabled || tracking.isPaused) continue
 
-                val manga = getManga.await(tracking.mangaId) ?: continue
-                val chapters = chapterRepository.getChapterByMangaId(manga.id)
-                val latestChapter = chapters.filter { it.dateUpload > 0 }.maxByOrNull { it.dateUpload } ?: continue
+                    val manga = getManga.await(tracking.mangaId) ?: continue
+                    val chapters = chapterRepository.getChapterByMangaId(manga.id)
+                    val latestChapter = chapters.filter { it.dateUpload > 0 }.maxByOrNull { it.dateUpload } ?: continue
 
-                val eligibility = UpdateWatchRefreshHelper.getEligibility(
-                    enabled = true,
-                    expectedIntervalDays = tracking.expectedIntervalDays,
-                    refreshProfile = tracking.refreshProfile,
-                    latestChapterUploadDate = latestChapter.dateUpload,
-                    lastCheckAt = tracking.lastBackgroundCheckAt,
-                    now = startTime,
-                )
-
-                if (eligibility.bucket == UpdateWatchRefreshHelper.PriorityBucket.HOT && eligibility.isDue) {
-                    dueHotCandidates.add(RefreshCandidate(
-                        mangaId = manga.id,
-                        title = manga.title,
-                        sourceId = manga.source,
+                    val eligibility = UpdateWatchRefreshHelper.getEligibility(
+                        enabled = true,
                         expectedIntervalDays = tracking.expectedIntervalDays,
-                        refreshProfile = tracking.refreshProfile.name,
-                        lastCheckAt = tracking.lastBackgroundCheckAt ?: 0L
-                    ))
+                        refreshProfile = tracking.refreshProfile,
+                        latestChapterUploadDate = latestChapter.dateUpload,
+                        lastCheckAt = tracking.lastBackgroundCheckAt,
+                        now = startTime,
+                    )
+
+                    if (eligibility.bucket == UpdateWatchRefreshHelper.PriorityBucket.HOT && eligibility.isDue) {
+                        dueHotCandidates.add(RefreshCandidate(
+                            mangaId = manga.id,
+                            title = manga.title,
+                            sourceId = manga.source,
+                            expectedIntervalDays = tracking.expectedIntervalDays,
+                            refreshProfile = tracking.refreshProfile.name,
+                            lastCheckAt = tracking.lastBackgroundCheckAt ?: 0L
+                        ))
+                    }
                 }
-            }
 
-            if (dueHotCandidates.isEmpty()) return@launch
+                if (dueHotCandidates.isEmpty()) return@launch
 
-            lastBurstAt = System.currentTimeMillis()
-            logcat(LogPriority.INFO) { "Foreground HOT burst started: ${dueHotCandidates.size} candidates found." }
+                lastBurstAt = System.currentTimeMillis()
+                logcat(LogPriority.INFO) { "Foreground HOT burst started: ${dueHotCandidates.size} candidates found." }
 
-            val candidatesBySource = dueHotCandidates.groupBy { it.sourceId }
-            val sourceSemaphore = Semaphore(4)
-            val processedCount = AtomicInteger(0)
-            val updatedCount = AtomicInteger(0)
-            val failedCount = AtomicInteger(0)
-            val newlyFoundInboxItems = mutableListOf<UpdateWatchInboxItem>()
-            val mangaDiagnosticDetails = mutableListOf<MangaDiagnosticDetail>()
+                val candidatesBySource = dueHotCandidates.groupBy { it.sourceId }
+                val sourceSemaphore = Semaphore(4)
+                val processedCount = AtomicInteger(0)
+                val updatedCount = AtomicInteger(0)
+                val failedCount = AtomicInteger(0)
+                val newlyFoundInboxItems = mutableListOf<UpdateWatchInboxItem>()
+                val mangaDiagnosticDetails = mutableListOf<MangaDiagnosticDetail>()
 
-            candidatesBySource.map { (sourceId, sourceQueue) ->
-                async {
-                    sourceSemaphore.withPermit {
-                        var burstCounter = 0
-                        for (i in sourceQueue.indices) {
-                            if (!isAppInForeground.get()) {
-                                logcat(LogPriority.INFO) { "Foreground HOT burst stopped for source $sourceId: app left foreground." }
-                                break
-                            }
-
-                            val candidate = sourceQueue[i]
-                            val claimed = UpdateWatchRefreshState.claim(setOf(candidate.mangaId))
-                            if (claimed.isEmpty()) continue // Already claimed by background or other burst
-
-                            try {
-                                if (burstCounter > 0 && burstCounter % 5 == 0) {
-                                    // Burst limit reached, wait 60s
-                                    delay(60000)
-                                } else if (burstCounter > 0) {
-                                    // Delay between items in same burst
-                                    delay(Random.nextLong(3000, 5001))
-                                }
-
+                candidatesBySource.map { (sourceId, sourceQueue) ->
+                    async {
+                        sourceSemaphore.withPermit {
+                            var burstCounter = 0
+                            for (i in sourceQueue.indices) {
                                 if (!isAppInForeground.get()) {
-                                    UpdateWatchRefreshState.releaseOne(candidate.mangaId)
+                                    logcat(LogPriority.INFO) { "Foreground HOT burst stopped for source $sourceId: app left foreground." }
                                     break
                                 }
 
-                                val result = processCandidate(candidate, mangaDiagnosticDetails, newlyFoundInboxItems)
-                                processedCount.incrementAndGet()
-                                burstCounter++
+                                val candidate = sourceQueue[i]
+                                val claimed = UpdateWatchRefreshState.claim(setOf(candidate.mangaId))
+                                if (claimed.isEmpty()) continue // Already claimed by background or other burst
 
-                                when (result) {
-                                    RefreshStatus.UPDATED -> updatedCount.incrementAndGet()
-                                    RefreshStatus.FAILED_RATE_LIMITED, RefreshStatus.FAILED_BLOCKED -> {
-                                        failedCount.incrementAndGet()
-                                        notifySourceFailure(sourceId, result)
-                                        break // Stop burst for this source
+                                try {
+                                    if (burstCounter > 0 && burstCounter % 5 == 0) {
+                                        // Burst limit reached, wait 60s
+                                        delay(60000)
+                                    } else if (burstCounter > 0) {
+                                        // Delay between items in same burst
+                                        delay(Random.nextLong(3000, 5001))
                                     }
-                                    RefreshStatus.FAILED_ORDINARY -> failedCount.incrementAndGet()
-                                    else -> {}
+
+                                    if (!isAppInForeground.get()) {
+                                        UpdateWatchRefreshState.releaseOne(candidate.mangaId)
+                                        break
+                                    }
+
+                                    val result = processCandidate(candidate, mangaDiagnosticDetails, newlyFoundInboxItems)
+                                    processedCount.incrementAndGet()
+                                    burstCounter++
+
+                                    when (result) {
+                                        RefreshStatus.UPDATED -> updatedCount.incrementAndGet()
+                                        RefreshStatus.FAILED_RATE_LIMITED, RefreshStatus.FAILED_BLOCKED -> {
+                                            failedCount.incrementAndGet()
+                                            notifySourceFailure(sourceId, result)
+                                            break // Stop burst for this source
+                                        }
+                                        RefreshStatus.FAILED_ORDINARY -> failedCount.incrementAndGet()
+                                        else -> {}
+                                    }
+                                } finally {
+                                    UpdateWatchRefreshState.releaseOne(candidate.mangaId)
                                 }
-                            } finally {
-                                UpdateWatchRefreshState.releaseOne(candidate.mangaId)
                             }
                         }
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
 
-            val context = Injekt.get<Context>()
-            UpdateWatchPostRefreshHandler.showNotificationIfEnabled(context, newlyFoundInboxItems)
+                UpdateWatchPostRefreshHandler.showNotificationIfEnabled(context, newlyFoundInboxItems)
 
-            recordDiagnostics(startTime, dueHotCandidates.size, processedCount.get(), updatedCount.get(), failedCount.get(), candidatesBySource.size, mangaDiagnosticDetails)
+                recordDiagnostics(startTime, dueHotCandidates.size, processedCount.get(), updatedCount.get(), failedCount.get(), candidatesBySource.size, mangaDiagnosticDetails)
+
+                UpdateWatchRefreshScheduler.setupTaskSuspend(context, skipRunCheck = true)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                logcat(LogPriority.ERROR, e) { "Foreground burst encountered unexpected error" }
+                UpdateWatchDiagnosticsManager.logEvent("Foreground burst error: ${e.message}")
+            }
         }
     }
 
